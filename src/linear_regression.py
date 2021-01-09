@@ -28,21 +28,26 @@ class WeightHeight:
 
         self.init_data()
         self.normalize()
-        self.init_window()
+        self.init_window3D()
+        self.error_space()
+        self.init_window2D()
 
-    def init_window(self):
+
+    def init_window3D(self):
+        self.win3D = gl.GLViewWidget()
+        g = gl.GLGridItem()
+        g.scale(1, 1, 1)
+        g.setDepthValue(10)  # draw grid after surfaces since they may be translucent
+        self.win3D.addItem(g)
+        self.win3D.show()
+        self.win3D.setWindowTitle('pyqtgraph example: GLSurfacePlot')
+        self.win3D.setCameraPosition(distance=2)
+
+    def init_window2D(self):
         self.win = pg.GraphicsWindow(title="Basic plotting examples")
         self.win.resize(1000, 600)
         self.win.setWindowTitle('pyqtgraph example: Plotting')
 
-        # self.win3D = gl.GLViewWidget()
-        # g = gl.GLGridItem()
-        # g.scale(2, 2, 1)
-        # g.setDepthValue(10)  # draw grid after surfaces since they may be translucent
-        # self.win3D.addItem(g)
-        # self.win3D.show()
-        # self.win3D.setWindowTitle('pyqtgraph example: GLSurfacePlot')
-        # self.win3D.setCameraPosition(distance=50)
         #
         # 2D
         pg.setConfigOptions(antialias=True)
@@ -54,36 +59,27 @@ class WeightHeight:
         self.model = p2.plot(x=[0, 1], y=[0, 1])
 
         # 3D
-        ## Animated example
-        ## compute surface vertex data
-        # cols = 90
-        # rows = 100
-        # x = np.linspace(-8, 8, cols + 1).reshape(cols + 1, 1)
-        # y = np.linspace(-8, 8, rows + 1).reshape(1, rows + 1)
-        # d = (x ** 2 + y ** 2) * 0.1
-        # d2 = d ** 0.5 + 0.1
-
-        ## precompute height values for all frames
-        # phi = np.arange(0, np.pi * 2, np.pi / 20.)
-        # z = np.sin(d[np.newaxis, ...] + phi.reshape(phi.shape[0], 1, 1)) / d2[np.newaxis, ...]
-
-        ## create a surface plot, tell it to use the 'heightColor' shader
-        ## since this does not require normal vectors to render (thus we
-        ## can set computeNormals=False to save time when the mesh updates)
-        # p4 = gl.GLSurfacePlotItem(x=x[:, 0], y=y[0, :], shader='heightColor', computeNormals=False, smooth=False)
-        # p4.shader()['colorMap'] = np.array([0.2, 2, 0.5, 0.2, 1, 1, 0.2, 0, 2])
-        # p4.translate(10, 10, 0)
-        # self.win3D.addItem(p4)
-
-        # index = 0
-        # def update():
-        #     global p4, z, index
-        #     index -= 1
-        #     p4.setData(z=z[index%z.shape[0]])
-
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.train)
         self.timer.start(1)
+
+    def error_space(self):
+        k = [i/100.0 for i in range(100)]
+        y0 = [i/100.0 for i in range(100)]
+        errors = []
+        for ki in k:
+            errors.append([])
+            for y0i in y0:
+                err = self.error(ki, y0i)
+                errors[-1].append(err)
+
+        x=np.array(k)
+        y=np.array(y0)
+        z=np.array(errors)
+        z = z/z.max()
+        p = gl.GLSurfacePlotItem(x, y, z, shader='heightColor')
+        self.win3D.addItem(p)
+
 
     def normalize(self):
         max_x = max(self.x)
@@ -98,21 +94,21 @@ class WeightHeight:
                 self.x.append(float(row['Height']))
                 self.y.append(float(row['Weight']))
 
-    def predict(self, x):
-        return self.k * x + self.y0
+    def predict(self, k, y0, x):
+        return k * x + y0
 
-    def error(self):
+    def error(self, k, y0):
         error = 0
         for i in range(len(self.x)):
             x = self.x[i]
             y = self.y[i]
-            yfun = self.predict(x)
+            yfun = self.predict(k, y0, x)
             error += abs(y - yfun)
         return error
 
     def new_error(self):
         self.train_i += 1
-        err = self.error()
+        err = self.error(self.k, self.y0)
         self.errors.append(err)
         self.errorCurve.setData(self.errors)
         if err < self.min_error:
@@ -126,8 +122,8 @@ class WeightHeight:
         print([round(e, 2) for e in info])
 
     def draw_model(self):
-        y1 = self.predict(0)
-        y2 = self.predict(1)
+        y1 = self.predict(self.k, self.y0, 0)
+        y2 = self.predict(self.k, self.y0, 1)
         self.model.setData([y1, y2])
 
     def train(self):
