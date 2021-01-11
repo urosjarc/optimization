@@ -9,7 +9,7 @@ o = env.observation_space
 
 class Layer:
     def __init__(self, size, activation):
-        self.weights = [1 for i in range(size)]
+        self.weights = []
         self.size = size
         self.activation = activation
 
@@ -18,6 +18,8 @@ class Layer:
 
 class Act:
     sigmoid = lambda x: 1 / (1 + np.exp(-x))
+    output = lambda x: x
+    squash = lambda x: [0 if xi<0.5 else 1 for xi in x]
 
 
 class NeuralNet:
@@ -38,10 +40,11 @@ class NeuralNet:
             print('===============')
 
     def calculate(self, vector):
-        for i in range(len(self.layers)):
+        for i in range(len(self.layers)-1):
+            print(vector)
             vector = self.layers[i].output(vector)
 
-        return vector
+        return self.layers[-1].activation(vector)
 
 
 
@@ -50,14 +53,14 @@ class NeuralNet:
 
 
 nn = NeuralNet([
-    Layer(5 , Act.sigmoid),
-    Layer(10, Act.sigmoid),
-    Layer(1, Act.sigmoid)
+    Layer(4 , Act.sigmoid),
+    Layer(4, Act.sigmoid),
+    Layer(2, Act.squash)
 ])
 
 nn.init()
 
-print(nn.calculate(np.array([1,1,1,1,1])))
+print(nn.calculate(np.array([0.5,0.5,0.5,0.5])))
 exit()
 for i_episode in range(20):
     observation = env.reset()
