@@ -41,6 +41,7 @@ class NeuralNet:
             this.biases = np.random.rand(next.size)
 
     def train(self, optimizer: Optimizer):
+        pass
     def calculate(self, vector):
         for i in range(len(self.layers)):
             vector = self.layers[i].output(vector)
