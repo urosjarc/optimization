@@ -16,7 +16,7 @@ class Surface:
 
     def init(self):
         self.x = np.linspace(self.xrange[0], self.xrange[1], self.step)
-        self.y = np.linspace(self.xrange[0], self.yrange[1], self.step)
+        self.y = np.linspace(self.yrange[0], self.yrange[1], self.step)
         self.xx, self.yy = np.meshgrid(self.x, self.y, sparse=True)
         self.z = self.f(self.xx, self.yy)
 
