@@ -1,37 +1,56 @@
-import random
-
 import matplotlib.pyplot as plt
-from matplotlib import cm
+import numpy as np
 from src.math import *
+from gobench import go_benchmark_functions
 
-
-# run()
 
 class Plot:
-
-    def __init__(self, surface: Surface):
-        self.fun: Surface = surface
+    def __init__(self, function):
+        self.surface: Surface = Surface(function)
         self.fig = None
+        self.fig3D = None
         self.scatter = None
-        self.init()
+        self.step = 100
 
     def init(self):
-        self.fun.init()
+        self.surface.init()
+
+    def show(self):
         plt.ion()
-        self.fig, ax = plt.subplots(1, 1)
-        cp = ax.contourf(self.fun.x, self.fun.y, self.fun.z, levels=100, cmap="hsv")
+        z = self.surface.z
+        zLog = np.log2(z - np.min(z) + 1)
+        zOpt = self.surface.f.fglob
+        zOptLog = np.log2(zOpt - np.min(z) + 1)
+        xyOpt = self.surface.f.global_optimum
+
+        # Drawing main figure
+        self.fig = plt.figure()
+        self.fig.suptitle(f'{self.surface.name}[{self.surface._dim}]  {len(self.surface.f.global_optimum)}')
+
+        # Drawing contour bars
+        ax = self.fig.add_subplot(2, 2, 2)
+        cp = ax.contourf(self.surface.x, self.surface.y, z, levels=100, cmap="jet")
+        ax.scatter([m[0] for m in xyOpt], [m[1] for m in xyOpt], color='black')
+        self.fig.colorbar(cp)
+        ax = self.fig.add_subplot(2, 2, 4)
+        cp = ax.contourf(self.surface.x, self.surface.y, zLog, levels=100, cmap="jet")
+        ax.scatter([m[0] for m in xyOpt], [m[1] for m in xyOpt], color='black')
         self.fig.colorbar(cp)
 
-        plt.scatter([m[0] for m in self.fun.min], [m[1] for m in self.fun.min], color='w')
+        # Draw global optimums
 
+        # Drawing points
         self.scatter = ax.scatter([], [], color='y')
         self.scatter._x = []
         self.scatter._y = []
 
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-        ax.plot_surface(self.fun.xx, self.fun.yy, self.fun.z, cmap="hsv", linewidth=1, antialiased=False)
-
+        # Drawing surface 3D
+        ax = self.fig.add_subplot(2, 2, 1, projection='3d')
+        ax.plot_surface(self.surface.xx, self.surface.yy, z,cmap="jet", linewidth=0, antialiased=True, rcount=100, ccount=100)
+        ax.scatter([m[0] for m in xyOpt], [m[1] for m in xyOpt], [zOpt for _ in xyOpt], color='black')
+        ax = self.fig.add_subplot(2, 2, 3, projection='3d')
+        ax.scatter([m[0] for m in xyOpt], [m[1] for m in xyOpt], zOptLog, color='black')
+        ax.plot_surface(self.surface.xx, self.surface.yy, zLog, cmap="jet", linewidth=0, antialiased=True)
         plt.show()
 
     def addPoint(self, x, y):
@@ -40,12 +59,28 @@ class Plot:
         self.scatter.set_offsets(np.c_[self.scatter._x, self.scatter._y])
         self.fig.canvas.draw_idle()
 
+def evaluate():
+    import csv
+    with open('test_functions.csv', 'a', newline='') as f:
+        w = csv.DictWriter(f, ['rate', 'function'])
+        funs = functions()
+        # w.writeheader()
+        for i, f in enumerate(funs):
+            if i <146:
+                continue
+            plot = Plot(f)
+            plot.init()
+            plot.show()
+            plt.waitforbuttonpress()
+            plt.close()
+            w.writerow({
+                'rate': float(input(f"{plot.surface.name}:")),
+                'function': plot.surface.name
+            })
 
-plot = Plot(fun.rosenbrock)
-
-plt.pause(1000)
-# plot = Plot(fun.rastigin)
-# for i in range(1000):
-#     plot.addPoint(random.random()*100, random.random()*100)
-#     plt.pause(0.1)
-# plot.init()
+plot = Plot(go_benchmark_functions.Damavandi)
+plot.init()
+plot.show()
+plt.waitforbuttonpress()
+# plt.close()
+input("")
