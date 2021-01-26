@@ -23,29 +23,17 @@ def dimensions(fun: Benchmark) -> int:
 
 
 class Surface:
-
     def __init__(self, f: Benchmark):
         self.f: Benchmark = f()
         self._dim = dimensions(f)
+        self.min = np.nan_to_num(self.f.fglob)
         self.name = str(f).split('.')[-1][:-2]
-        self.step = 101
-        self.x = []
-        self.y = []
-        self.z = []
-        self.xx = []
-        self.yy = []
+        self.opt = self.f.global_optimum
 
-    def init(self):
-        self.x = np.linspace(self.f.bounds[0][0], self.f.bounds[0][1], self.step)
-        self.y = np.linspace(self.f.bounds[1][0], self.f.bounds[1][1], self.step)
-        self.xx, self.yy = np.meshgrid(self.x, self.y, sparse=True)
-        z = []
-        for yi in self.y:
-            z.append([])
-            for xi in self.x:
-                z[-1].append(self(xi, yi))
-        self.z = np.array(z)
+        if self.name == 'ZeroSum':
+            self.opt = [[0,0]]
 
     def __call__(self, x, y):
         vector = [x, y] + [0 for _ in range(self._dim-2)]
-        return self.f.fun(np.array(vector))
+        return np.nan_to_num(self.f.fun(np.array(vector)))
+
