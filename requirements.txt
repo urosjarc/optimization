@@ -1,4 +1,5 @@
 gym
 matplotlib
 numpy
+sklearn
 git+git://github.com/philipmorrisintl/GOBench@master

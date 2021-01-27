@@ -22,7 +22,7 @@ def dimensions(fun: Benchmark) -> int:
     return parameters.get('dimensions')
 
 
-class Surface:
+class Space:
     def __init__(self, f: Benchmark):
         self.f: Benchmark = f()
         self._dim = dimensions(f)
@@ -33,7 +33,6 @@ class Surface:
         if self.name == 'ZeroSum':
             self.opt = [[0,0]]
 
-    def __call__(self, x, y):
-        vector = [x, y] + [0 for _ in range(self._dim-2)]
-        return np.nan_to_num(self.f.fun(np.array(vector)))
+    def __call__(self, vector):
+        return np.nan_to_num(self.f.fun(vector))
 
