@@ -1,6 +1,7 @@
 from typing import List, Callable
 import numpy as np
-
+from random import random, randint
+from src.math import Space
 
 class Layer:
     def __init__(self, size, activation: Callable[[int], int]):
@@ -15,7 +16,34 @@ class Layer:
         )
 
 class Optimizer:
-    pass
+    def __init__(self, space: Space):
+        self.space = space
+        self.min = 10**10
+        self.best = [ randint(b[0], b[1]) for b in self.space.f.bounds]
+        self.radius = self.space.f.bounds[0][1]
+
+    def nextPoint(self):
+        self.radius*=0.99
+
+        while True:
+            vector = np.array([ best+self.radius*(random()-0.5)*2 for best in self.best ])
+
+            inBounds = True
+            for i in range(len(vector)):
+                if not(self.space.f.bounds[i][0] < vector[i] < self.space.f.bounds[i][1]):
+                    inBounds = False
+                    break
+
+            if inBounds:
+                break
+
+        value = self.space(vector)
+        if value < self.min:
+            self.min = value
+            self.best = vector
+        return vector
+
+
 
 class Act:
     ReLU = lambda x: x * (x > 0)
