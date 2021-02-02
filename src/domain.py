@@ -3,6 +3,7 @@ from typing import List, Callable
 import numpy as np
 from random import random, randint
 from src.math import Space
+from itertools import combinations
 
 
 class Layer:
@@ -29,107 +30,121 @@ class Point:
     def __str__(self):
         return f'({self.x},{self.y},{self.value})'
 
-
-    def closestNeighbours(self, num=2):
-        nearest = sorted(self.neighbours, key=lambda p: self.distance(p), reverse=False)
-        return nearest[:num]
-
     def distance(self, point):
         return ((self.x - point.x) ** 2 + (self.y - point.y) ** 2) ** 0.5
 
-    def minNeighbourDistance(self):
-        minD = np.inf
-        for n in self.neighbours:
-            D = self.distance(n)
-            if D < minD:
-                minD = D
-        return minD
-
-    def connect(self, point, draw=True):
-        print('Connect', self, point)
+class Draw:
+    def __init__(self, draw=True):
+        self.draw = draw
         if draw:
-            t.penup()
-            t.goto(self.x*10, self.y*10)
-            t.pendown()
-            t.goto(point.x*10, point.y*10)
-        self.neighbours.append(point)
-        point.neighbours.append(self)
+            t = turtle.Turtle()
+            self.t = t
+            self.drawScale = 10
+            t.speed(-1)
+            turtle.bgcolor("black")
+            t.pencolor("white")
+    def circle(self, point: Point):
+        if self.draw:
+            self.t.penup()
+            self.t.goto(point.x*self.drawScale, point.y*self.drawScale)
+            self.t.pendown()
+            self.t.circle(2)
+    def triangle(self, triangle):
+        if self.draw:
+            for i in range(-1, len(triangle.points) - 1):
+                p1 = triangle.points[i]
+                p2 = triangle.points[i + 1]
+                self.t.penup()
+                self.t.goto(p1.x*self.drawScale, p1.y*self.drawScale)
+                self.t.pendown()
+                self.t.goto(p2.x*self.drawScale, p2.y*self.drawScale)
 
+    def clear(self):
+        if self.draw:
+            self.t.clear()
+
+
+class Triangle:
+    def __init__(self, points: List[Point]):
+        self.points: List[Point] = points
+        draw.triangle(self)
+
+    def meanValue(self):
+        v = 0
+        for p in self.points:
+            v += p.value
+        return v
+
+    def size(self):
+        A = self.points[0]
+        B = self.points[1]
+        C = self.points[2]
+        return abs((A.x * (B.y - C.y) + B.x * (C.y - A.y) + C.x * (A.y - B.y))/2)
 
 class GridOptimizer:
 
     def __init__(self, space: Space):
+        self.drawScale = 10
         self.space = space
+        self.triangles: List[Triangle] = []
         self.points: List[Point] = []
-        self.pointNum = 0
+        self.evaluation = 0
         self.init()
 
-    def makePoint(self, x, y, add=True):
-        t.penup()
-        t.goto(x*10, y*10)
-        t.pendown()
-        t.circle(2)
+    def init(self):
+        p1 = self.getOrMakePoint(self.space.f.bounds[0][0], self.space.f.bounds[1][1])
+        p2 = self.getOrMakePoint(self.space.f.bounds[0][0], self.space.f.bounds[1][0])
+        p3 = self.getOrMakePoint(self.space.f.bounds[0][1], self.space.f.bounds[1][0])
+        p4 = self.getOrMakePoint(self.space.f.bounds[0][1], self.space.f.bounds[1][1])
+        self.triangles += [
+            Triangle([p1, p2, p4]),
+            Triangle([p2, p3, p4])
+        ]
+
+    def getOrMakePoint(self, x, y):
+        for p in self.points:
+            if p.vector == [x, y]:
+                return p
+
         p = Point(x, y, self.space(np.array([x, y])))
-        print('MAKE', p)
-        if add:
-            self.points.append(p)
+        draw.circle(p)
+        self.points.append(p)
         return p
 
-    def makeMeanPoint(self, points: List[Point], add):
-        x = 0.0
-        y = 0.0
-        for p in points:
-            x += p.x
-            y += p.y
-        c = len(points)
-        point = self.makePoint(x / c, y / c, add)
-        return point
-
-    def init(self):
-        self.makePoint(self.space.f.bounds[0][0], self.space.f.bounds[1][0]),
-        self.makePoint(self.space.f.bounds[0][0], self.space.f.bounds[1][1]),
-        self.makePoint(self.space.f.bounds[0][1], self.space.f.bounds[1][0]),
-        self.makePoint(self.space.f.bounds[0][1], self.space.f.bounds[1][1]),
-        t.speed(-1)
-        for i in range(len(self.points)):
-            for j in range(i + 1, len(self.points)):
-                self.points[i].connect(self.points[j],draw=False)
-        t.speed(2)
-
-    def minPoint(self):
-        minPointsCandidates = [p for p in self.points]
-        mp = minPointsCandidates[0]
-
-        for p in minPointsCandidates:
-            if p.value < mp.value:
-                mp = p
-
-        return mp
-
-    def addMeanPoints(self, point: Point):
-        print("MIN", point, len(point.neighbours))
-        n1, n2 = point.closestNeighbours()
-        mean = self.makeMeanPoint([point, n1, n2], False)
-        p1, p2, p3 = self.closestPoints(mean)
-        mean.connect(p1)
-        mean.connect(p2)
-        mean.connect(p3)
-        self.points.append(mean)
-
-    def closestPoints(self, point):
-        nearest = sorted(self.points, key=lambda p: ((point.x-p.x)**2 + (point.y-p.y)**2)**0.5, reverse=False)
-        return nearest[:3]
-
     def nextPoint(self):
-        print(self.pointNum, len(self.points))
-        if self.pointNum == len(self.points):
-            minPoint = self.minPoint()
-            self.addMeanPoints(minPoint)
+        self.evaluation+= 1
+        triangle = self.getTriangleCandidate()
+        p = self.partition(triangle)
+        return p.vector
 
-        nextPoint = self.points[self.pointNum]
-        self.pointNum += 1
+    def getTriangleCandidate(self):
+        print(self.evaluation)
+        if self.evaluation % 3 == 0 or self.evaluation > 100:
+            ts = sorted(self.triangles, key=lambda t: t.meanValue(), reverse=False)
+            if self.evaluation > 200:
+                return ts[0]
+            ts = ts[:len(ts)//2]
+            return ts[randint(0, len(ts)-1)]
+        else:
+            ts = sorted(self.triangles, key=lambda t: t.size(), reverse=True)
+            ts = ts[0]
+            return ts
 
-        return nextPoint.vector
+    def partition(self, triangle):
+        self.triangles.remove(triangle)
+        points = set(triangle.points)
+        lines = list(combinations(triangle.points, 2))
+        lines.sort(key=lambda t: t[0].distance(t[1]), reverse=True)
+        p1, p2 = lines[0]
+        p3 = list(points.difference([p1, p2]))[0]
+        mX = (p1.x + p2.x) / 2.0
+        mY = (p1.y + p2.y) / 2.0
+        mPoint = self.getOrMakePoint(mX, mY)
+        self.triangles += [
+            Triangle([p3, mPoint, p1]),
+            Triangle([p3, mPoint, p2])
+        ]
+        return mPoint
 
 
 class Optimizer:
@@ -194,14 +209,10 @@ class NeuralNet:
 
         return vector
 
+draw = Draw(False)
+# from gobench import go_benchmark_functions
+# space = Space(go_benchmark_functions.Ackley01)
+# opt = GridOptimizer(space)
+# for i in range(500):
+#     opt.nextPoint()
 
-t = turtle.Turtle()
-t.speed(-1)
-turtle.bgcolor("black")
-t.pencolor("white")
-from gobench import go_benchmark_functions
-space = Space(go_benchmark_functions.Ackley01)
-opt = GridOptimizer(space)
-for i in range(500):
-    opt.nextPoint()
-#

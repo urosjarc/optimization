@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 
 funs = functions()
 for i, f in enumerate(funs):
-    if dimensions(f) == 2 and i==5:
-        plot = Plot(f)
+    if dimensions(f) == 2 and i==46:
+        from gobench import go_benchmark_functions
+        plot = Plot(go_benchmark_functions.Damavandi)
         opt = GridOptimizer(plot.space)
-        for i in range(500):
+        for i in range(300):
             plot.addPoint(*opt.nextPoint())
             plt.waitforbuttonpress()
         plt.pause(1000)
