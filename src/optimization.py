@@ -89,34 +89,26 @@ class GridOptimizer:
     def nextPoint(self):
         self.evaluation+= 1
         while(True):
-            triangle = self.getTriangleCandidate_v2()
+            triangle = self.getTriangleCandidate()
             p, cmd = self.partition(triangle)
             if cmd == "make":
                 return p.vector
 
-    def getTriangleCandidate_v2(self):
+    def getTriangleCandidate(self):
+        ts = self.triangles
         if self.evaluation < self.maxEvaluations/2:
-            ts = sorted(self.triangles, key=lambda t: t.evalDiff, reverse=True)
-            return ts[0]
-        else:
-            ts = sorted(self.triangles, key=lambda t: t.meanValue(), reverse=False)
-            ts = ts[:len(ts)//4]
+            ts = sorted(ts, key=lambda t: t.evalDiff, reverse=True)
             ts = sorted(ts, key=lambda t: t.eval, reverse=False)
-            return ts[0]
-
-
-    def getTriangleCandidate_v1(self):
-        print(self.evaluation)
-        if self.evaluation % 3 == 0 or self.evaluation > 100:
-            ts = sorted(self.triangles, key=lambda t: t.meanValue(), reverse=False)
-            if self.evaluation > 200:
-                return ts[0]
-            ts = ts[:len(ts)//2]
-            return ts[randint(0, len(ts)-1)]
+        elif self.evaluation < 3*self.maxEvaluations/4:
+            ts = sorted(ts, key=lambda t: t.meanValue(), reverse=False)
+            ts = ts[:len(ts)//10]
+            ts = sorted(ts, key=lambda t: t.evalDiff, reverse=True)
         else:
-            ts = sorted(self.triangles, key=lambda t: t.size(), reverse=True)
-            ts = ts[0]
-            return ts
+            ts = sorted(ts, key=lambda t: t.meanValue(), reverse=False)
+            ts = ts[:len(ts)//10]
+            ts = sorted(ts, key=lambda t: t.eval, reverse=False)
+
+        return ts[0]
 
     def partition(self, triangle: Triangle):
         self.triangles.remove(triangle)

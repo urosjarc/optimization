@@ -7,7 +7,7 @@ funs = functions()
 for i, f in enumerate(funs):
     if dimensions(f) == 2 and i==46:
         from gobench import go_benchmark_functions
-        plot = Plot(go_benchmark_functions.Whitley)
+        plot = Plot(go_benchmark_functions.XinSheYang03)
         plot.cmd.penDown = True
         opt = GridOptimizer(plot.space, plot.cmd, 300)
         for i in range(300):
