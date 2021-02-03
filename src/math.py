@@ -1,4 +1,5 @@
 import numpy as np
+from random import random
 from typing import List, Tuple, Callable
 import inspect
 from gobench import go_benchmark_functions
@@ -23,16 +24,20 @@ def dimensions(fun: Benchmark) -> int:
 
 
 class Space:
-    def __init__(self, f: Benchmark):
+    def __init__(self, f: Benchmark, rand=True):
         self.f: Benchmark = f()
         self._dim = dimensions(f)
         self.min = np.nan_to_num(self.f.fglob)
         self.name = str(f).split('.')[-1][:-2]
         self.opt = self.f.global_optimum
+        self.rand = rand
 
         if self.name == 'ZeroSum':
             self.opt = [[0,0]]
 
     def __call__(self, vector):
+        if self.rand:
+            vector[0] += max(self.f.bounds[0])/20 * random()
+            vector[1] += max(self.f.bounds[0])/20 * random()
         return np.nan_to_num(self.f.fun(vector))
 
