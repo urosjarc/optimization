@@ -22,6 +22,8 @@ def dimensions(fun: Benchmark) -> int:
     }
     return parameters.get('dimensions')
 
+def normalizeVector(vector):
+    return vector / np.linalg.norm(vector)
 
 class Space:
     def __init__(self, f: Benchmark, rand=True):

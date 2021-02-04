@@ -1,11 +1,10 @@
 from random import random, randint
 
 from src.app import PlotInterface
-from src.math import Space
+from src.math import Space, normalizeVector
 from itertools import combinations
 import numpy as np
 from typing import *
-
 
 
 class Point:
@@ -14,7 +13,7 @@ class Point:
         self.x = x
         self.y = y
         self.value = value
-        self.neighbours: List[Point] = []
+        self.triangles: List[Triangle] = []
 
     def __str__(self):
         return f'({self.x},{self.y},{self.value})'
@@ -22,13 +21,17 @@ class Point:
     def distance(self, point):
         return ((self.x - point.x) ** 2 + (self.y - point.y) ** 2) ** 0.5
 
+
 class Triangle:
-    def __init__(self, mainPoint: Point, points: List[Point], evalDiff=10**10, eval=0):
+    def __init__(self, mainPoint: Point, points: List[Point], evalDiff=10 ** 10, eval=0):
         self.points: List[Point] = points
         self.neighbour = None
         self.evalDiff: float = abs(evalDiff)
         self.mainPoint: Point = mainPoint
         self.eval = eval
+
+        for p in self.allPoints():
+            p.triangles.append(self)
 
     def connect(self, triangle):
         self.neighbour = triangle
@@ -41,7 +44,7 @@ class Triangle:
         v = 0
         for p in self.allPoints():
             v += p.value
-        return v
+        return v/3
 
     def center(self):
         mX = 0
@@ -50,12 +53,12 @@ class Triangle:
         for p in ap:
             mX += p.x
             mY += p.y
-        return mX/len(ap), mY/len(ap)
+        return mX / len(ap), mY / len(ap)
 
     def centerDiff(self, triangle):
         c1 = self.center()
         c2 = triangle.center()
-        return ((c1[0] - c2[0])**2 + (c1[1] - c2[1])**2)**5
+        return ((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2) ** 5
 
     def upNormal(self):
         v1 = np.array(self.mainPoint.vector + [self.mainPoint.value])
@@ -77,8 +80,8 @@ class Triangle:
 
     def size(self):
         A = self.mainPoint
-        B,C = self.points
-        return abs((A.x * (B.y - C.y) + B.x * (C.y - A.y) + C.x * (A.y - B.y))/2)
+        B, C = self.points
+        return abs((A.x * (B.y - C.y) + B.x * (C.y - A.y) + C.x * (A.y - B.y)) / 2)
 
     def newMeanPointVector(self):
         p1, p2 = self.points
@@ -89,10 +92,8 @@ class Triangle:
 
     def upNormalDiff(self):
         v1 = np.array(self.upNormal())
-        sumDiff = 0
         vt = np.array(self.neighbour.upNormal())
-        sumDiff += np.linalg.norm(vt - v1)
-        return sumDiff
+        return np.linalg.norm(vt - v1)
 
 
 class GridOptimizer:
@@ -102,15 +103,16 @@ class GridOptimizer:
         self.space = space
         self.triangles: List[Triangle] = []
         self.points: List[Point] = []
+        self.minimums = []
         self.evaluation = 0
         self.maxEvaluations = maxEvaluations
         self.init()
 
     def init(self):
-        leftdown,_ = self.getOrMakePoint(self.space.f.bounds[0][0], self.space.f.bounds[1][0])
-        leftup,_ = self.getOrMakePoint(self.space.f.bounds[0][0], self.space.f.bounds[1][1])
-        rightdown,_ = self.getOrMakePoint(self.space.f.bounds[0][1], self.space.f.bounds[1][0])
-        rightup,_ = self.getOrMakePoint(self.space.f.bounds[0][1], self.space.f.bounds[1][1])
+        leftdown, _ = self.getOrMakePoint(self.space.f.bounds[0][0], self.space.f.bounds[1][0])
+        leftup, _ = self.getOrMakePoint(self.space.f.bounds[0][0], self.space.f.bounds[1][1])
+        rightdown, _ = self.getOrMakePoint(self.space.f.bounds[0][1], self.space.f.bounds[1][0])
+        rightup, _ = self.getOrMakePoint(self.space.f.bounds[0][1], self.space.f.bounds[1][1])
         self.triangles += [
             Triangle(leftup, [leftdown, rightup]),
             Triangle(rightdown, [leftdown, rightup])
@@ -133,8 +135,8 @@ class GridOptimizer:
         return p, "make"
 
     def nextPoint(self):
-        self.evaluation+= 1
-        while(True):
+        self.evaluation += 1
+        while (True):
             triangle = self.getTriangleCandidate()
             p, cmd = self.partition(triangle)
             if cmd == "make":
@@ -142,26 +144,67 @@ class GridOptimizer:
 
     def getTriangleCandidate(self):
         ts = self.triangles
+        print(self.evaluation, self.localMinimums())
+
         if self.evaluation < 30:
             ts = sorted(ts, key=lambda t: t.eval, reverse=False)
         else:
-            ts = sorted(ts, key=lambda t: t.meanDiff() * t.evalDiff * t.upNormalDiff(), reverse=True)
+            meanDiff = normalizeVector([t.meanDiff() for t in ts])
+            evalDiff = normalizeVector([t.evalDiff for t in ts])
+            upNormalDiff = normalizeVector([t.upNormalDiff() for t in ts])
+            size = normalizeVector([t.size() for t in ts])
+            rank = upNormalDiff*4 + evalDiff*5 + meanDiff + size*8
+            higestRank = np.argsort(rank)[-1]
+            return ts[higestRank]
+
+
 
         return ts[0]
 
+    def localMinimums(self):
+        lm = 0
+        self.minimums = []
+        for p in self.points:
+            isMin = True
+            for t in p.triangles:
+                for tp in t.allPoints():
+                    if tp.value < p.value:
+                        isMin = False
+                        break
+                if not isMin:
+                    break
+            if isMin:
+                self.minimums.append(p.vector)
+                lm+=1
+
+        self.draw.localMinimum(self.minimums)
+
+        return lm
+
     def partition(self, triangle: Triangle):
-        self.triangles.remove(triangle)
+
+        # Get new point vector of splited triangle line, and create new point from that
         mX, mY, mVal = triangle.newMeanPointVector()
         mPoint, cmd = self.getOrMakePoint(mX, mY)
+
+        # Get eval difference of evaluation
         evalDiff = mPoint.value - mVal
         newTriangles = [
-            Triangle(mPoint, [triangle.mainPoint, triangle.points[0]], evalDiff=evalDiff, eval=triangle.eval+1),
-            Triangle(mPoint, [triangle.mainPoint, triangle.points[1]], evalDiff=evalDiff, eval=triangle.eval+1)
+            Triangle(mPoint, [triangle.mainPoint, triangle.points[0]], evalDiff=evalDiff, eval=triangle.eval + 1),
+            Triangle(mPoint, [triangle.mainPoint, triangle.points[1]], evalDiff=evalDiff, eval=triangle.eval + 1)
         ]
+
+        # Remove triangle from triangles, and points list
+        self.triangles.remove(triangle)
+        for p in triangle.allPoints():
+            p.triangles.remove(triangle)
+
+        # Connect neighbours
         newTriangles[0].connect(newTriangles[1])
         self.drawTriangles(newTriangles)
         self.triangles += newTriangles
         return mPoint, cmd
+
 
 class Optimizer:
     def __init__(self, space: Space):

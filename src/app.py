@@ -81,6 +81,8 @@ class Plot:
         self.scatter3D = ax.scatter([],[],[], 'o', color='black')
         plt.show()
 
+        self.cmd.init()
+
     def addPoint(self, x, y):
         self.eval += 1
         z = self.space(np.array([x, y]))
@@ -103,9 +105,19 @@ class PlotInterface:
         self.plot = plot
         self.penDown = True
 
+    def init(self):
+        self.minimums, = self.plot.d2Ax.plot([],[], marker='o',color="black", linestyle='')
+
     def poligon(self, poligon):
         if self.penDown:
             poligon.append(poligon[0])
             xs, ys = zip(*poligon)
             self.plot.d2LogAx.plot(xs,ys)
             plt.show()
+
+    def localMinimum(self, vectors):
+        x = [v[0] for v in vectors]
+        y = [v[1] for v in vectors]
+        self.minimums.set_ydata(y)
+        self.minimums.set_xdata(x)
+        plt.show()
