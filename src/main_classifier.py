@@ -9,12 +9,11 @@ for i, f in enumerate(funs):
         from gobench import go_benchmark_functions
         space = Space(go_benchmark_functions.Salomon, rand=True)
         plot = Plot(space)
-        plot.cmd.penDown = False
+        plot.cmd.penDown = True
         iter = 2000
         opt = GridOptimizer(space, plot.cmd, iter)
         for i in range(iter):
             plot.d2LogAx.set_title(i)
             plot.addPoint(*opt.nextPoint())
-            if i%10 == 0:
-                plt.pause(0.001)
+            plt.pause(0.01)
         plt.close()
