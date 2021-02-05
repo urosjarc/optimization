@@ -18,6 +18,10 @@ class Point:
     def __str__(self):
         return f'({self.x},{self.y},{self.value})'
 
+    def minTriangle(self):
+        mt = sorted(self.triangles, key=lambda t: t.size(), reverse=True)
+        return mt[0]
+
     def distance(self, point):
         return ((self.x - point.x) ** 2 + (self.y - point.y) ** 2) ** 0.5
 
@@ -45,6 +49,9 @@ class Triangle:
         for p in self.allPoints():
             v += p.value
         return v/3
+
+    def lowestPoint(self):
+        return sorted(self.allPoints(), key=lambda p: p.value, reverse=False)[0]
 
     def center(self):
         mX = 0
@@ -104,15 +111,17 @@ class GridOptimizer:
         self.triangles: List[Triangle] = []
         self.points: List[Point] = []
         self.minimums = []
+        self.minDiff = 10**10
+        self.evalMean = []
         self.evaluation = 0
         self.maxEvaluations = maxEvaluations
         self.init()
 
     def init(self):
-        leftdown, _ = self.getOrMakePoint(self.space.f.bounds[0][0], self.space.f.bounds[1][0])
-        leftup, _ = self.getOrMakePoint(self.space.f.bounds[0][0], self.space.f.bounds[1][1])
-        rightdown, _ = self.getOrMakePoint(self.space.f.bounds[0][1], self.space.f.bounds[1][0])
-        rightup, _ = self.getOrMakePoint(self.space.f.bounds[0][1], self.space.f.bounds[1][1])
+        leftdown, _ = self.getOrMakePoint(self.space.bounds[0][0], self.space.bounds[1][0])
+        leftup, _ = self.getOrMakePoint(self.space.bounds[0][0], self.space.bounds[1][1])
+        rightdown, _ = self.getOrMakePoint(self.space.bounds[0][1], self.space.bounds[1][0])
+        rightup, _ = self.getOrMakePoint(self.space.bounds[0][1], self.space.bounds[1][1])
         self.triangles += [
             Triangle(leftup, [leftdown, rightup]),
             Triangle(rightdown, [leftdown, rightup])
@@ -142,24 +151,41 @@ class GridOptimizer:
             if cmd == "make":
                 return p.vector
 
+    def getMinTriangleCandidate(self):
+        self.localMinimums()
+        min: Point = sorted(self.minimums, key=lambda p: p.value, reverse=False)
+        for m in min:
+            triangle = m.minTriangle()
+            if triangle.evalDiff > 10**-6:
+                print(self.triangles[-1].evalDiff)
+                self.draw.localMinimum([m.vector])
+                return triangle
+
     def getTriangleCandidate(self):
         ts = self.triangles
-        print(self.evaluation, self.localMinimums())
 
         if self.evaluation < 30:
             ts = sorted(ts, key=lambda t: t.eval, reverse=False)
-        else:
-            meanDiff = normalizeVector([t.meanDiff() for t in ts])
-            evalDiff = normalizeVector([t.evalDiff for t in ts])
-            upNormalDiff = normalizeVector([t.upNormalDiff() for t in ts])
-            size = normalizeVector([t.size() for t in ts])
-            rank = upNormalDiff*4 + evalDiff*5 + meanDiff + size*8
-            higestRank = np.argsort(rank)[-1]
-            return ts[higestRank]
+            return ts[0]
+        elif self.evaluation % 10 == 0:
+            t = self.getMinTriangleCandidate()
+            if t is not None:
+                return t
 
+        ts = sorted(ts, key=lambda t: t.meanValue())
+        diff = (self.maxEvaluations - self.evaluation)/self.maxEvaluations
+        ts = ts[:int(len(ts)*diff)]
 
+        meanDiff = normalizeVector([t.meanDiff() for t in ts])
+        meanValue = 1-normalizeVector([t.meanValue() for t in ts])
+        evalDiff = normalizeVector([t.evalDiff for t in ts])
+        upNormalDiff = normalizeVector([t.upNormalDiff() for t in ts])
+        size = normalizeVector([t.size() for t in ts])
+        rank = upNormalDiff*4 + evalDiff*5 + meanDiff*1 + size*2 + meanValue*2
 
-        return ts[0]
+        higestRank = np.argsort(rank)[-1]
+        return ts[higestRank]
+
 
     def localMinimums(self):
         lm = 0
@@ -174,10 +200,8 @@ class GridOptimizer:
                 if not isMin:
                     break
             if isMin:
-                self.minimums.append(p.vector)
+                self.minimums.append(p)
                 lm+=1
-
-        self.draw.localMinimum(self.minimums)
 
         return lm
 
@@ -201,8 +225,13 @@ class GridOptimizer:
 
         # Connect neighbours
         newTriangles[0].connect(newTriangles[1])
-        self.drawTriangles(newTriangles)
         self.triangles += newTriangles
+
+        # Draw updates
+        self.drawTriangles(newTriangles)
+        self.evalMean.append(np.mean([t.evalDiff for t in self.triangles if t.evalDiff < 10**10]))
+        self.draw.errs(self.evalMean)
+
         return mPoint, cmd
 
 

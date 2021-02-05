@@ -10,7 +10,7 @@ class Surface:
     def __init__(self, space: Space, step):
         self.step = step
         zLog = lambda z: np.log2(z - space.min + 1)
-        axes = [np.linspace(bound[0], bound[1], step) for bound in space.f.bounds]
+        axes = [np.linspace(bound[0], bound[1], step) for bound in space.bounds]
         self.x, self.y = axes[0], axes[1]
         self.xx, self.yy = np.meshgrid(axes[0], axes[1], sparse=True)
         self.zz = np.array([[space(np.array([xi, yi])) for xi in self.x] for yi in self.y])
@@ -24,15 +24,14 @@ class Surface:
 
 class Plot:
 
-    def __init__(self, function):
-        self.space: Space = Space(function)
+    def __init__(self, space):
+        self.space: Space = space
         self.surface: Surface = Surface(self.space, 51)
         self.cmd: PlotInterface = PlotInterface(self)
         self.eval = 0
         self.min = None
 
-        self.d2Ax = None
-        self.scatter = None
+        self.errAx = None
         self.d2LogAx = None
         self.scatterLog = None
         self.d3Ax = None
@@ -54,6 +53,11 @@ class Plot:
         self.fig = fig
         fig.suptitle(f'{self.space.name} - {len(self.space.opt)} min.')
 
+        # Drawing progress
+        ax = fig.add_subplot(gs[1,0])
+        self.errAx = ax
+        self.cmd.errLine, = ax.plot([], [], color="black")
+
         # Drawing contour bars normal
         ax = fig.add_subplot(gs[0,1])
         self.d2Ax = ax
@@ -67,7 +71,8 @@ class Plot:
         # Drawing contour bars log
         ax = fig.add_subplot(gs[1,1])
         self.d2LogAx = ax
-        cp = ax.contourf(sur.x, sur.y, sur.zzLog, levels=sur.step, cmap="jet")
+        self.cmd.minimums, = ax.plot([],[], marker='o',color="black", linestyle='')
+        cp = ax.contourf(sur.x, sur.y, sur.zzLog, levels=sur.step, cmap="gray")
         ax.scatter(sur.xMin, sur.yMin, marker = '*', color='red')
         fig.colorbar(cp)
 
@@ -75,13 +80,12 @@ class Plot:
         self.scatterLog = ax.scatter([], [], marker='x', color='red')
 
         # Drawing surface 3D
-        ax = fig.add_subplot(gs[:,0], projection='3d')
+        ax = fig.add_subplot(gs[0,0], projection='3d')
         self.d3Ax = ax
         ax.plot_surface(sur.xx, sur.yy, sur.zz, alpha=0.5, cmap="jet", linewidth=0, antialiased=True)
         self.scatter3D = ax.scatter([],[],[], 'o', color='black')
-        plt.show()
 
-        self.cmd.init()
+        plt.show()
 
     def addPoint(self, x, y):
         self.eval += 1
@@ -104,9 +108,8 @@ class PlotInterface:
     def __init__(self, plot: Plot):
         self.plot = plot
         self.penDown = True
+        self.minimums = None
 
-    def init(self):
-        self.minimums, = self.plot.d2Ax.plot([],[], marker='o',color="black", linestyle='')
 
     def poligon(self, poligon):
         if self.penDown:
@@ -115,9 +118,13 @@ class PlotInterface:
             self.plot.d2LogAx.plot(xs,ys)
             plt.show()
 
+    def errs(self, ers):
+        self.plot.errAx.plot([i for i in range(len(ers))], np.array(ers))
+        plt.show()
+
     def localMinimum(self, vectors):
         x = [v[0] for v in vectors]
         y = [v[1] for v in vectors]
-        self.minimums.set_ydata(y)
-        self.minimums.set_xdata(x)
+        self.minimums.set_ydata(y[0])
+        self.minimums.set_xdata(x[0])
         plt.show()

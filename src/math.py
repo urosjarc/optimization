@@ -29,17 +29,25 @@ class Space:
     def __init__(self, f: Benchmark, rand=True):
         self.f: Benchmark = f()
         self._dim = dimensions(f)
+        self.rand=rand
         self.min = np.nan_to_num(self.f.fglob)
         self.name = str(f).split('.')[-1][:-2]
         self.opt = self.f.global_optimum
-        self.rand = rand
+        self.bounds = []
+        self.init()
+
+    def init(self):
+        for i, b in enumerate(self.f.bounds):
+            b = list(b)
+            if self.rand:
+                diff = abs(b[0] - b[1])
+                b[0] += diff/15 * (1+random())
+            self.bounds.append(b)
+
 
         if self.name == 'ZeroSum':
             self.opt = [[0,0]]
 
     def __call__(self, vector):
-        if self.rand:
-            vector[0] += max(self.f.bounds[0])/20 * random()
-            vector[1] += max(self.f.bounds[0])/20 * random()
         return np.nan_to_num(self.f.fun(vector))
 
