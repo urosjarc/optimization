@@ -25,6 +25,11 @@ def dimensions(fun: Benchmark) -> int:
 def normalizeVector(vector):
     return vector / np.linalg.norm(vector)
 
+def angle(v1, v2):
+    v1_u = normalizeVector(v1)
+    v2_u = normalizeVector(v2)
+    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+
 class Space:
     def __init__(self, f: Benchmark, rand=True):
         self.f: Benchmark = f()
@@ -49,5 +54,5 @@ class Space:
             self.opt = [[0,0]]
 
     def __call__(self, vector):
-        return np.nan_to_num(self.f.fun(vector))
+        return np.nan_to_num(self.f.fun(np.array(vector)))
 

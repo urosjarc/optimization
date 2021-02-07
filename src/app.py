@@ -16,6 +16,12 @@ class Surface:
         self.zz = np.array([[space(np.array([xi, yi])) for xi in self.x] for yi in self.y])
         self.zzLog = zLog(self.zz)
 
+        minDiff = abs(-space.bounds[0][0]+space.bounds[0][1])/30
+        axes = np.linspace(space.opt[0][0] - minDiff, space.opt[0][1] + minDiff, step)
+        self.fx, self.fy = axes, axes
+        self.fxx, self.fyy = np.meshgrid(axes, axes, sparse=True)
+        self.fzz = np.array([[space(np.array([xi, yi])) for xi in self.fx] for yi in self.fy])
+
         self.zMin = np.array([space.min for _ in space.opt])
         self.xMin = [o[0] for o in space.opt]
         self.yMin = [o[1] for o in space.opt]
@@ -56,28 +62,28 @@ class Plot:
         # Drawing progress
         ax = fig.add_subplot(gs[1,0])
         self.errAx = ax
-        self.cmd.errLine, = ax.plot([], [], color="black")
+        self.cmd.errLine, = ax.plot([], [], 'r-')
 
         # Drawing contour bars normal
         ax = fig.add_subplot(gs[0,1])
         self.d2Ax = ax
-        cp = ax.contourf(sur.x, sur.y, sur.zz, levels=sur.step, cmap="jet")
-        ax.scatter(sur.xMin, sur.yMin, marker='*', color='red')
+        self.cmd.minimums, = ax.plot([],[], marker='o',color="green", linestyle='')
+        cp = ax.contourf(sur.fx, sur.fy, sur.fzz, levels=sur.step, cmap="gray")
+        ax.scatter(sur.xMin, sur.yMin, marker='*', color='green')
         fig.colorbar(cp)
 
         # Drawing points
-        self.scatter = ax.scatter([], [], marker='x', color='red')
+        self.scatter = ax.scatter([], [], marker=',', color='red', s=1)
 
         # Drawing contour bars log
         ax = fig.add_subplot(gs[1,1])
         self.d2LogAx = ax
-        self.cmd.minimums, = ax.plot([],[], marker='o',color="black", linestyle='')
         cp = ax.contourf(sur.x, sur.y, sur.zzLog, levels=sur.step, cmap="gray")
-        ax.scatter(sur.xMin, sur.yMin, marker = '*', color='red')
+        ax.scatter(sur.xMin, sur.yMin, marker = '*', color='green')
         fig.colorbar(cp)
 
         # Drawing log points
-        self.scatterLog = ax.scatter([], [], marker='x', color='red')
+        self.scatterLog = ax.scatter([], [], marker=',', color='red', s=1)
 
         # Drawing surface 3D
         ax = fig.add_subplot(gs[0,0], projection='3d')
@@ -109,6 +115,7 @@ class PlotInterface:
         self.plot = plot
         self.penDown = True
         self.minimums = None
+        self.errLine = None
 
 
     def poligon(self, poligon):
@@ -119,12 +126,15 @@ class PlotInterface:
             plt.show()
 
     def errs(self, ers):
-        self.plot.errAx.plot([i for i in range(len(ers))], np.array(ers))
+        self.plot.errAx.set_xlim([0, len(ers)])
+        self.plot.errAx.set_ylim([min(ers), max(ers)])
+        self.errLine.set_ydata(np.array(ers))
+        self.errLine.set_xdata(np.array([i for i in range(len(ers))]))
         plt.show()
 
     def localMinimum(self, vectors):
         x = [v[0] for v in vectors]
         y = [v[1] for v in vectors]
-        self.minimums.set_ydata(y[0])
-        self.minimums.set_xdata(x[0])
+        self.minimums.set_ydata(y)
+        self.minimums.set_xdata(x)
         plt.show()
