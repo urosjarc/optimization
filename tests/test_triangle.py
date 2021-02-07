@@ -1,6 +1,7 @@
 import unittest
+from unittest.mock import Mock, MagicMock
 
-from src.optimization.triangle import Point, Line, Triangle
+from src.optimization.triangle import Point, Line, Triangle, TriangleOptimizer
 
 
 class Test_Point(unittest.TestCase):
@@ -106,7 +107,7 @@ class Test_Triangle(unittest.TestCase):
         self.assertEqual(self.tri1.sortedLines(fromBigToLow=True), [self.lines[1], self.lines[0], self.lines[2]])
         self.assertEqual(self.tri1.sortedLines(fromBigToLow=False), [self.lines[0], self.lines[2], self.lines[1]])
 
-    def test_connectedTriangle(self):
+    def test_connectedTriangle_1(self):
         p = [Point(0, 0, 0), Point(1, 0, 0), Point(0, 1, 0)]
         p1 = [p[0], p[2]] + [Point(-1, 0, 0)]
         p2 = [p[0], Point(-1, -1, 0), Point(1, -1, 0)]
@@ -122,6 +123,64 @@ class Test_Triangle(unittest.TestCase):
         self.assertEqual(tri.connectedTriangles(), [tri1])
         self.assertEqual(tri1.connectedTriangles(), [tri])
         self.assertEqual(tri2.connectedTriangles(), [])
+
+    def test_connectedTriangle_2(self):
+        p = [Point(0, 0, 0), Point(1, 0, 0), Point(0, 1, 0)]
+        p1 = [p[0], Point(.5, 0, 0), Point(.5, -1, 0)]
+        lines = [Line(p[0], p[1]), Line(p[1], p[2]), Line(p[2], p[0])]
+        lines1 = [Line(p1[0], p1[1]), Line(p1[1], p1[2]), Line(p1[2], p1[0])]
+
+        tri = Triangle(lines)
+        tri1 = Triangle(lines1)
+
+        self.assertEqual(tri.connectedTriangles(), [tri1])
+        self.assertEqual(tri1.connectedTriangles(), [tri])
+
+class Test_TriangleOptimizer(unittest.TestCase):
+    def setUp(self):
+
+        self.drawMock = Mock()
+        self.spaceMock = Mock(return_value=3)
+        self.spaceMock.bounds=[[0,1],[0,1]]
+
+        self.to = TriangleOptimizer(self.spaceMock, self.drawMock, 100)
+        self.to.drawTriangles = Mock()
+        self.to.drawConnectedTriangles = Mock()
+
+    def test_partition(self):
+        self.assertEqual(self.to.triangles[0].volume(), 0.5)
+        self.assertEqual(self.to.triangles[1].volume(), 0.5)
+
+
+        #==================================================
+        self.to.partition(self.to.triangles[0])
+
+        self.assertEqual(len(self.to.triangles), 3)
+        cnTri = self.to.triangles[0].connectedTriangles()
+        self.assertEqual(len(cnTri), 2)
+        self.assertEqual(set(cnTri), set(self.to.triangles[1:]))
+        #==================================================
+
+
+        self.assertEqual(self.to.triangles[0].volume(), 0.5)
+        self.assertEqual(self.to.triangles[1].volume(), 0.25)
+        self.assertEqual(self.to.triangles[2].volume(), 0.25)
+
+
+        #==================================================
+        self.to.partition(self.to.triangles[1])
+
+        self.assertEqual(len(self.to.triangles), 4)
+        cnTri = self.to.triangles[-1].connectedTriangles()
+        self.assertEqual(len(cnTri), 2)
+        self.assertEqual(set(cnTri), set(self.to.triangles[1:3]))
+        #==================================================
+
+
+        self.assertEqual(self.to.triangles[0].volume(), 0.5)
+        self.assertEqual(self.to.triangles[1].volume(), 0.25)
+        self.assertEqual(self.to.triangles[2].volume(), 0.125)
+        self.assertEqual(self.to.triangles[2].volume(), 0.125)
 
 
 if __name__ == '__main__':

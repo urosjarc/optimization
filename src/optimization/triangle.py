@@ -186,7 +186,7 @@ class TriangleOptimizer:
 
     def nextPoint(self):
         self.eval += 1
-        while (True):
+        while True:
             triangle = self.getTriangleCandidate()
             p, cmd = self.partition(triangle)
             if cmd == "make":
