@@ -116,13 +116,20 @@ class PlotInterface:
         self.penDown = True
         self.minimums = None
         self.errLine = None
+        self.triangles = None
 
 
-    def poligon(self, poligon):
+    def poligon(self, poligon, permament=True):
+        if self.triangles is None:
+            self.triangles, = self.plot.d2LogAx.plot([], [], linewidth=5,color='green')
         if self.penDown:
             poligon.append(poligon[0])
             xs, ys = zip(*poligon)
-            self.plot.d2LogAx.plot(xs,ys)
+            if permament:
+                self.plot.d2LogAx.plot(xs, ys, linewidth=1,color='red')
+            else:
+                self.triangles.set_ydata(ys)
+                self.triangles.set_xdata(xs)
             plt.show()
 
     def errs(self, ers):

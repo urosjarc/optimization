@@ -1,9 +1,13 @@
 import math
+from itertools import combinations
+
+import matplotlib.pyplot as plt
 
 from src.app import PlotInterface
 from src.math import Space, normalizeVector, angle
 import numpy as np
 from typing import *
+
 
 class Point:
     def __init__(self, x, y, value):
@@ -12,20 +16,19 @@ class Point:
         self.x = x
         self.y = y
         self.value = value
+        self.triangles = []
         self.lines = []
 
     def __str__(self):
         return f'({self.x},{self.y},{self.value})'
 
     def distance(self, point):
-        return np.linalg.norm(self.vector3D-point.vector3D)
+        return np.linalg.norm(self.vector3D - point.vector3D)
+
 
 class Line:
     def __init__(self, p1: Point, p2: Point):
         self.points = [p1, p2]
-        self.triangles: List[Triangle] = []
-        self.childrens = []
-
         for p in self.points:
             p.lines.append(self)
 
@@ -40,33 +43,43 @@ class Line:
         p2 = set(line.points)
         return list(p1.intersection(p2))[0]
 
+    def isOnLine(self, point: Point):
+        dist = self.points[0].distance(point)
+        dist += self.points[1].distance(point)
+        return abs(dist - self.size()) < 10 ** -5
+
+    def coinciding(self, line):
+        p1, p2 = line.points
+        sp1, sp2 = self.points
+        return (self.isOnLine(p1) and self.isOnLine(p2)) or (line.isOnLine(sp1) and line.isOnLine(sp2))
+
+
 class Triangle:
     def __init__(self, lines, evalDiff=10 ** 10, eval=0):
-        self.splited = True
         self.lines: List[Line] = lines
         self.evalDiff: float = abs(evalDiff)
+        self.splited = False
         self.eval = eval
         self.points: List[Point] = []
 
-        for l in self.lines:
-            l.triangles.append(self)
-
+        # Get unique points
         pts = set()
         for l in self.lines:
             for p in l.points:
                 pts.add(p)
         self.points += list(pts)
 
+        # Add triangle to points lists
+        for p in self.points:
+            p.triangles.append(self)
+
     def meanValue(self):
         vals = [p.value for p in self.points]
-        return sum(vals)/3
+        return sum(vals) / 3
 
     def meanValueDiff(self):
         mV = self.meanValue()
-        diff = 0
-        for p in self.points:
-            diff += abs(p.value - mV)
-        return diff
+        return sum([abs(mV - p.value) for p in self.points])
 
     def lowestPoint(self):
         return sorted(self.points, key=lambda p: p.value, reverse=False)[0]
@@ -81,19 +94,14 @@ class Triangle:
         normal1 = np.cross(dv1, dv2)
         if normal1[-1] < 0:
             normal1 = np.cross(dv2, dv1)
-        return normal1
+        return normal1/2
 
     def fractureRatio(self):
         pass
-        # TODO: Get all connected triangles and calculate fracture on lines
-
-        # v1 = self.normalVector()
-        # degs = []
-        # for p in self.points:
-        #     for t in p.triangles:
-        #         vt = t.normalVector()
-        #         degs.append(angle(v1, vt))
-        # return np.median(degs) / math.pi
+        """
+        For every line in triangle check every connected triangle.
+        For every
+        """
 
     def volume(self):
         A, B, C = self.points
@@ -101,6 +109,24 @@ class Triangle:
 
     def sortedLines(self, fromBigToLow=True):
         return sorted(self.lines, key=lambda l: l.size(), reverse=fromBigToLow)
+
+    def connectedTriangles(self):
+        tri = []
+        for p in self.points:
+            for t in p.triangles:
+                if not t.splited and t != self and t not in tri:
+                    isConn = False
+                    for sline in self.lines:
+                        for line in t.lines:
+                            if sline.coinciding(line):
+                                isConn = True
+                                break
+                        if isConn:
+                            break
+                    if isConn:
+                        tri.append(t)
+
+        return tri
 
 
 class TriangleOptimizer:
@@ -116,9 +142,18 @@ class TriangleOptimizer:
 
     def drawTriangles(self, triangles: List[Triangle]):
         for t in triangles:
-            points = [p.vector for p in t.points]
-            self.draw.poligon(points)
+            self.draw.poligon([p.vector for p in t.points])
 
+    def drawConnectedTriangles(self, triangle: Triangle):
+        print("DRAW: ", self.eval)
+        self.draw.poligon([p.vector for p in triangle.points], permament=False)
+        plt.waitforbuttonpress()
+        cTri = triangle.connectedTriangles()
+        for t in cTri:
+            self.draw.poligon([p.vector for p in t.points], permament=False)
+            plt.waitforbuttonpress()
+        self.draw.poligon([[0, 0]], permament=False)
+        plt.waitforbuttonpress()
 
     def __init__(self, space: Space, draw: PlotInterface, maxEval):
         self.draw = draw
@@ -158,36 +193,31 @@ class TriangleOptimizer:
                 return p.vector
 
     def getMinTriangleCandidate(self):
-        minPoints = self.getLocalMinimums()
-        min: Point = sorted(minPoints, key=lambda p: p.value, reverse=False)
-        for m in min:
-            triangle = m.minTriangle()
-            if triangle.evalDiff > 10**-4:
-                print(self.triangles[-1].evalDiff)
-                self.draw.localMinimum([m.vector])
-                return triangle
+        minTri = sorted(self.triangles, key=lambda t: t.volume(), reverse=True)[0]
+        self.drawConnectedTriangles(minTri)
+        return minTri
 
     def getTriangleCandidate(self):
         ts = self.triangles
 
-        if self.eval < 30:
+        if self.eval < 10:
             ts = sorted(ts, key=lambda t: t.eval, reverse=False)
             return ts[0]
         # elif self.eval % 10 == 0:
-        #     t = self.getMinTriangleCandidate()
-        #     if t is not None:
-        #         return t
+        t = self.getMinTriangleCandidate()
+        if t is not None:
+            return t
 
         # ts = sorted(ts, key=lambda t: t.meanValue())
         # diff = (self.maxEval - self.eval) / self.maxEval
         # ts = ts[:int(len(ts)*diff)]
 
         meanDiff = normalizeVector([t.meanValueDiff() for t in ts])
-        meanValue = 1-normalizeVector([t.meanValue() for t in ts])
+        meanValue = 1 - normalizeVector([t.meanValue() for t in ts])
         evalDiff = normalizeVector([t.evalDiff for t in ts])
         # upNormalDiff = normalizeVector([t.fractureRatio() for t in ts])
-        size = normalizeVector([t.volume() for t in ts])
-        rank = evalDiff*5 + size + meanValue + meanDiff
+        volume = normalizeVector([t.volume() for t in ts])
+        rank = evalDiff * 5 + volume + meanValue + meanDiff
 
         higestRank = np.argsort(rank)[-1]
         return ts[higestRank]
@@ -209,33 +239,31 @@ class TriangleOptimizer:
         mPoint, cmd = self.getOrMakePoint(mX, mY)
         evalDiff = mPoint.value - mVal
 
-        # Remove triangle from triangles, and points list
+        # Remove triangle from triangles, and from lines triangle list
         self.triangles.remove(triangle)
         triangle.splited = True
 
         # Get other 3 points
         highPoint = line1.mutualPoint(line2)
-        bottomPoint1 = line0.mutualPoint(line2)
-        bottomPoint2 = line0.mutualPoint(line1)
+        bottomPoint1 = line0.mutualPoint(line1)
+        bottomPoint2 = line0.mutualPoint(line2)
 
-        newLines = [
+        newTrianglesLines = [
             Line(mPoint, bottomPoint1),
-            Line(bottomPoint1, highPoint),
+            line1,
             Line(highPoint, mPoint),
             Line(mPoint, bottomPoint2),
-            Line(bottomPoint2, highPoint),
+            line2,
         ]
-        line0.childrens += [newLines[0],newLines[-1]]
 
         newTriangles = [
-            Triangle(newLines[:3], evalDiff=evalDiff, eval=triangle.eval + 1),
-            Triangle(newLines[2:], evalDiff=evalDiff, eval=triangle.eval + 1)
+            Triangle(newTrianglesLines[:3], evalDiff=evalDiff, eval=triangle.eval + 1),
+            Triangle(newTrianglesLines[2:], evalDiff=evalDiff, eval=triangle.eval + 1)
         ]
 
         self.triangles += newTriangles
 
         # Draw updates
-        self.drawTriangles(newTriangles)
+        self.drawTriangles(self.triangles)
 
         return mPoint, cmd
-
