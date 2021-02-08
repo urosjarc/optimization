@@ -22,8 +22,11 @@ class Point:
     def __str__(self):
         return f'({self.x},{self.y},{self.value})'
 
-    def distance(self, point):
-        return np.linalg.norm(self.vector3D - point.vector3D)
+    def distance(self, point, onSurface):
+        if onSurface:
+            return np.linalg.norm(np.array(self.vector) - np.array(point.vector))
+        else:
+            return np.linalg.norm(self.vector3D - point.vector3D)
 
 
 class Line:
@@ -32,8 +35,8 @@ class Line:
         for p in self.points:
             p.lines.append(self)
 
-    def size(self):
-        return self.points[0].distance(self.points[1])
+    def size(self, onSurface):
+        return self.points[0].distance(self.points[1], onSurface)
 
     def center(self):
         return np.mean([p.vector3D for p in self.points], axis=0).tolist()
@@ -43,22 +46,23 @@ class Line:
         p2 = set(line.points)
         return list(p1.intersection(p2))[0]
 
-    def isOnLine(self, point: Point):
-        dist = self.points[0].distance(point)
-        dist += self.points[1].distance(point)
-        return abs(dist - self.size()) < 10 ** -5
+    def isOnLine(self, point: Point, onSurface):
+        dist = self.points[0].distance(point, onSurface)
+        dist += self.points[1].distance(point, onSurface)
+        return abs(dist - self.size(onSurface)) < 10 ** -7
 
-    def coinciding(self, line):
+    def coinciding(self, line, onSurface):
         p1, p2 = line.points
         sp1, sp2 = self.points
-        return (self.isOnLine(p1) and self.isOnLine(p2)) or (line.isOnLine(sp1) and line.isOnLine(sp2))
+        return (self.isOnLine(p1, onSurface) and self.isOnLine(p2, onSurface)) or (
+                line.isOnLine(sp1, onSurface) and line.isOnLine(sp2, onSurface)
+        )
 
 
 class Triangle:
     def __init__(self, lines, evalDiff=10 ** 10, eval=0):
         self.lines: List[Line] = lines
         self.evalDiff: float = abs(evalDiff)
-        self.splited = False
         self.eval = eval
         self.points: List[Point] = []
 
@@ -94,7 +98,7 @@ class Triangle:
         normal1 = np.cross(dv1, dv2)
         if normal1[-1] < 0:
             normal1 = np.cross(dv2, dv1)
-        return normal1/2
+        return normal1 / 2
 
     def fractureRatio(self):
         pass
@@ -107,18 +111,18 @@ class Triangle:
         A, B, C = self.points
         return abs((A.x * (B.y - C.y) + B.x * (C.y - A.y) + C.x * (A.y - B.y)) / 2)
 
-    def sortedLines(self, fromBigToLow=True):
-        return sorted(self.lines, key=lambda l: l.size(), reverse=fromBigToLow)
+    def sortedLines(self, onSurface, fromBigToLow=True):
+        return sorted(self.lines, key=lambda l: l.size(onSurface), reverse=fromBigToLow)
 
-    def connectedTriangles(self):
+    def connectedTriangles(self, onSurface):
         tri = []
         for p in self.points:
             for t in p.triangles:
-                if not t.splited and t != self and t not in tri:
+                if t != self and t not in tri:
                     isConn = False
                     for sline in self.lines:
                         for line in t.lines:
-                            if sline.coinciding(line):
+                            if sline.coinciding(line, onSurface=onSurface):
                                 isConn = True
                                 break
                         if isConn:
@@ -148,6 +152,18 @@ class TriangleOptimizer:
         print("DRAW: ", self.eval)
         self.draw.poligon([p.vector for p in triangle.points], permament=False)
         plt.waitforbuttonpress()
+        t1: Triangle = None
+        t1, t2 = self.getOrMakePoint(20, 20)[0].triangles
+
+        p1 = self.getOrMakePoint(20, 20)
+        p1 = self.getOrMakePoint(20, 20)
+
+        for l1 in t1.lines:
+            print('LINE', l1)
+            for l2 in t2.lines:
+                if l2.coinciding(l1):
+                    print('', 'FIND')
+
         cTri = triangle.connectedTriangles()
         for t in cTri:
             self.draw.poligon([p.vector for p in t.points], permament=False)
@@ -234,14 +250,15 @@ class TriangleOptimizer:
     def partition(self, triangle: Triangle):
 
         # Get new point vector of splited triangle line, and create new point from that
-        line0, line1, line2 = triangle.sortedLines(fromBigToLow=True)
+        line0, line1, line2 = triangle.sortedLines(onSurface=True, fromBigToLow=True)
         mX, mY, mVal = line0.center()
         mPoint, cmd = self.getOrMakePoint(mX, mY)
         evalDiff = mPoint.value - mVal
 
         # Remove triangle from triangles, and from lines triangle list
         self.triangles.remove(triangle)
-        triangle.splited = True
+        for p in triangle.points:
+            p.triangles.remove(triangle)
 
         # Get other 3 points
         highPoint = line1.mutualPoint(line2)
