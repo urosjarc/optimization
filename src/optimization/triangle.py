@@ -223,13 +223,13 @@ class TriangleOptimizer:
             return ts[0]
 
         evalDiff = normalizeVector([t.evalDiff for t in ts])
-        meanValue = 1 - normalizeVector([t.meanValue() for t in ts])
-        lovestValue = 1 - normalizeVector([t.lowestPoint().value for t in ts])
-        slopeRatio = normalizeVector([t.slopeRatio() for t in ts])
-        volume = normalizeVector([t.volume() for t in ts])
-        fractureRatio = normalizeVector([t.fractureRatio() for t in ts])
+        meanValue = 1 - normalizeVector([t.meanValue for t in ts])
+        lovestValue = 1 - normalizeVector([t.lowestPoint.value for t in ts])
+        slopeRatio = normalizeVector([t.slopeRatio for t in ts])
+        volume = normalizeVector([t.volume for t in ts])
+        # fractureRatio = normalizeVector([t.fractureRatio() for t in ts])
 
-        rank = evalDiff + meanValue + lovestValue + slopeRatio + volume + 3 * fractureRatio
+        rank = evalDiff + meanValue + lovestValue + slopeRatio + volume #+ #3 * fractureRatio
         higestRank = np.argsort(rank)[-1]
         return ts[higestRank]
 

@@ -12,8 +12,8 @@ opt = TriangleOptimizer(space, plot.cmd, iter)
 for i in range(iter):
     plot.d2LogAx.set_title(i)
     plot.addPoint(*opt.nextPoint())
-    plt.waitforbuttonpress()
-    # if i%20==0:
-    #     plt.pause(0.001)
+    # plt.waitforbuttonpress()
+    if i%20==0:
+        plt.pause(0.001)
 plt.pause(1000)
 plt.close()
