@@ -38,8 +38,11 @@ class Line:
     def size(self, onSurface):
         return self.points[0].distance(self.points[1], onSurface)
 
-    def center(self):
-        return np.mean([p.vector3D for p in self.points], axis=0).tolist()
+    def center(self, onSurface):
+        if onSurface:
+            return np.mean([p.vector for p in self.points], axis=0).tolist()
+        else:
+            return np.mean([p.vector3D for p in self.points], axis=0).tolist()
 
     def mutualPoint(self, line):
         p1 = set(self.points)
@@ -81,10 +84,6 @@ class Triangle:
         vals = [p.value for p in self.points]
         return sum(vals) / 3
 
-    def meanValueDiff(self):
-        mV = self.meanValue()
-        return sum([abs(mV - p.value) for p in self.points])
-
     def lowestPoint(self):
         return sorted(self.points, key=lambda p: p.value, reverse=False)[0]
 
@@ -100,12 +99,16 @@ class Triangle:
             normal1 = np.cross(dv2, dv1)
         return normal1 / 2
 
+    def slopeRatio(self):
+        normal = self.normalVector()
+        vY = np.array([0, 0, 1])
+        return angle(normal, vY) / (math.pi/2)
+
     def fractureRatio(self):
-        pass
-        """
-        For every line in triangle check every connected triangle.
-        For every
-        """
+        deg = []
+        for tri in self.connectedTriangles(onSurface=False):
+            deg.append(angle(self.normalVector(), tri.normalVector()))
+        return np.median(deg) / (math.pi/2)
 
     def volume(self):
         A, B, C = self.points
@@ -132,45 +135,12 @@ class Triangle:
 
         return tri
 
+    def newPointVector(self, onSurface):
+        bigestLine = self.sortedLines(onSurface, fromBigToLow=True)[0]
+        return bigestLine.center(onSurface)
+
 
 class TriangleOptimizer:
-
-    def getOrMakePoint(self, x, y):
-        for p in self.points:
-            if p.vector == [x, y]:
-                return p, "get"
-
-        p = Point(x, y, self.space([x, y]))
-        self.points.append(p)
-        return p, "make"
-
-    def drawTriangles(self, triangles: List[Triangle]):
-        for t in triangles:
-            self.draw.poligon([p.vector for p in t.points])
-
-    def drawConnectedTriangles(self, triangle: Triangle):
-        print("DRAW: ", self.eval)
-        self.draw.poligon([p.vector for p in triangle.points], permament=False)
-        plt.waitforbuttonpress()
-        t1: Triangle = None
-        t1, t2 = self.getOrMakePoint(20, 20)[0].triangles
-
-        p1 = self.getOrMakePoint(20, 20)
-        p1 = self.getOrMakePoint(20, 20)
-
-        for l1 in t1.lines:
-            print('LINE', l1)
-            for l2 in t2.lines:
-                if l2.coinciding(l1):
-                    print('', 'FIND')
-
-        cTri = triangle.connectedTriangles()
-        for t in cTri:
-            self.draw.poligon([p.vector for p in t.points], permament=False)
-            plt.waitforbuttonpress()
-        self.draw.poligon([[0, 0]], permament=False)
-        plt.waitforbuttonpress()
-
     def __init__(self, space: Space, draw: PlotInterface, maxEval):
         self.draw = draw
         self.space = space
@@ -200,18 +170,37 @@ class TriangleOptimizer:
         ]
         self.drawTriangles(self.triangles)
 
+    def pointExists(self, x, y):
+        for p in self.points:
+            if p.vector == [x, y]:
+                return True
+        return False
+
+    def getOrMakePoint(self, x, y):
+        for p in self.points:
+            if p.vector == [x, y]:
+                return p, "get"
+
+        p = Point(x, y, self.space([x, y]))
+        self.points.append(p)
+        return p, "make"
+
+    def drawTriangles(self, triangles: List[Triangle]):
+        for t in triangles:
+            self.draw.poligon([p.vector for p in t.points])
+
     def nextPoint(self):
         self.eval += 1
+        print(self.eval)
         while True:
             triangle = self.getTriangleCandidate()
-            p, cmd = self.partition(triangle)
+            p, cmd, neighbours = self.partition(triangle)
+            for t in neighbours:
+                self.partition(t)
             if cmd == "make":
                 return p.vector
-
-    def getMinTriangleCandidate(self):
-        minTri = sorted(self.triangles, key=lambda t: t.volume(), reverse=True)[0]
-        self.drawConnectedTriangles(minTri)
-        return minTri
+            else:
+                raise Exception("Points should be always created!")
 
     def getTriangleCandidate(self):
         ts = self.triangles
@@ -219,22 +208,15 @@ class TriangleOptimizer:
         if self.eval < 10:
             ts = sorted(ts, key=lambda t: t.eval, reverse=False)
             return ts[0]
-        # elif self.eval % 10 == 0:
-        t = self.getMinTriangleCandidate()
-        if t is not None:
-            return t
 
-        # ts = sorted(ts, key=lambda t: t.meanValue())
-        # diff = (self.maxEval - self.eval) / self.maxEval
-        # ts = ts[:int(len(ts)*diff)]
-
-        meanDiff = normalizeVector([t.meanValueDiff() for t in ts])
-        meanValue = 1 - normalizeVector([t.meanValue() for t in ts])
         evalDiff = normalizeVector([t.evalDiff for t in ts])
-        # upNormalDiff = normalizeVector([t.fractureRatio() for t in ts])
+        meanValue = 1 - normalizeVector([t.meanValue() for t in ts])
+        lovestValue = 1 - normalizeVector([t.lowestPoint().value for t in ts])
+        slopeRatio = normalizeVector([t.slopeRatio() for t in ts])
         volume = normalizeVector([t.volume() for t in ts])
-        rank = evalDiff * 5 + volume + meanValue + meanDiff
+        fractureRatio = normalizeVector([t.fractureRatio() for t in ts])
 
+        rank = evalDiff + meanValue + lovestValue + slopeRatio + volume + 3 * fractureRatio
         higestRank = np.argsort(rank)[-1]
         return ts[higestRank]
 
@@ -251,7 +233,7 @@ class TriangleOptimizer:
 
         # Get new point vector of splited triangle line, and create new point from that
         line0, line1, line2 = triangle.sortedLines(onSurface=True, fromBigToLow=True)
-        mX, mY, mVal = line0.center()
+        mX, mY, mVal = line0.center(onSurface=False)
         mPoint, cmd = self.getOrMakePoint(mX, mY)
         evalDiff = mPoint.value - mVal
 
@@ -280,7 +262,14 @@ class TriangleOptimizer:
 
         self.triangles += newTriangles
 
+        # Get triangles that can be splited without creating new point
+        neighbours = []
+        for t in triangle.connectedTriangles(onSurface=True):
+            mX, mY = t.newPointVector(onSurface=True)
+            if self.pointExists(mX, mY):
+                neighbours.append(t)
+
         # Draw updates
         self.drawTriangles(self.triangles)
 
-        return mPoint, cmd
+        return mPoint, cmd, neighbours

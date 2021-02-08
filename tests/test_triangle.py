@@ -34,7 +34,8 @@ class Test_Line(unittest.TestCase):
         self.assertEqual(self.line2.size(onSurface=False), 3 ** .5)
 
     def test_center(self):
-        self.assertEqual(self.line2.center(), [.5, .5, .5])
+        self.assertEqual(self.line2.center(onSurface=False), [.5, .5, .5])
+        self.assertEqual(self.line2.center(onSurface=True), [.5, .5])
 
     def test_mutualPoint(self):
         fakeOrigin = Point(0, 0, 0)
@@ -91,9 +92,6 @@ class Test_Triangle(unittest.TestCase):
 
     def test_meanValue(self):
         self.assertEqual(self.tri3.meanValue(), 4)
-
-    def test_meanDiff(self):
-        self.assertEqual(self.tri3.meanValueDiff(), 10)
 
     def test_lowestPoint(self):
         self.assertEqual(self.tri3.lowestPoint(), self.p2[0])
