@@ -192,19 +192,11 @@ class TriangleOptimizer:
     def nextPoint(self):
         self.eval += 1
         print(self.eval)
-        while True:
-            triangle = self.getTriangleCandidate()
-            point, cmd, neighbours = self.partition(triangle)
-            plt.waitforbuttonpress()
-            if cmd == 'get':
-                raise Exception("Fail get!")
-            for tri in neighbours:
-                npoint,_,_ = self.partition(tri)
-                plt.waitforbuttonpress()
-                if cmd=='make':
-                    raise Exception("Fail make!")
-
-            return point.vector
+        triangle = self.getTriangleCandidate()
+        point, cmd = self.partition(triangle, neighbours=True)
+        if cmd == 'get':
+            raise Exception("FAIL")
+        return point.vector
 
     def getTriangleCandidate(self):
         ts = self.triangles
@@ -233,7 +225,7 @@ class TriangleOptimizer:
         Ce je tocka ni minimum
         """
 
-    def partition(self, triangle: Triangle):
+    def partition(self, triangle: Triangle, neighbours):
 
         # Get new point vector of splited triangle line, and create new point from that
         line0, line1, line2 = triangle.sortedLines(onSurface=True, fromBigToLow=True)
@@ -265,14 +257,15 @@ class TriangleOptimizer:
 
         self.triangles += newTriangles
 
-        # Get triangles that can be splited without creating new point
-        neighbours = []
-        for t in triangle.connectedTriangles(onSurface=True):
-            mX, mY = t.newPointVector(onSurface=True)
-            if self.pointExists(mX, mY):
-                neighbours.append(t)
-
         # Draw updates
         self.drawTriangles(self.triangles)
 
-        return mPoint, cmd, neighbours
+        # Get triangles that can be splited without creating new point
+        for t in triangle.connectedTriangles(onSurface=True):
+            mX, mY = t.newPointVector(onSurface=True)
+            if self.pointExists(mX, mY):
+                p, c = self.partition(t, neighbours=True)
+                if c == 'make':
+                    raise Exception("FAIL")
+
+        return mPoint, cmd
