@@ -194,13 +194,17 @@ class TriangleOptimizer:
         print(self.eval)
         while True:
             triangle = self.getTriangleCandidate()
-            p, cmd, neighbours = self.partition(triangle)
-            for t in neighbours:
-                self.partition(t)
-            if cmd == "make":
-                return p.vector
-            else:
-                raise Exception("Points should be always created!")
+            point, cmd, neighbours = self.partition(triangle)
+            plt.waitforbuttonpress()
+            if cmd == 'get':
+                raise Exception("Fail get!")
+            for tri in neighbours:
+                npoint,_,_ = self.partition(tri)
+                plt.waitforbuttonpress()
+                if cmd=='make':
+                    raise Exception("Fail make!")
+
+            return point.vector
 
     def getTriangleCandidate(self):
         ts = self.triangles
@@ -214,9 +218,9 @@ class TriangleOptimizer:
         lovestValue = 1 - normalizeVector([t.lowestPoint().value for t in ts])
         slopeRatio = normalizeVector([t.slopeRatio() for t in ts])
         volume = normalizeVector([t.volume() for t in ts])
-        fractureRatio = normalizeVector([t.fractureRatio() for t in ts])
+        # fractureRatio = normalizeVector([t.fractureRatio() for t in ts])
 
-        rank = evalDiff + meanValue + lovestValue + slopeRatio + volume + 3 * fractureRatio
+        rank = evalDiff + meanValue + lovestValue + slopeRatio + volume# + 3 * fractureRatio
         higestRank = np.argsort(rank)[-1]
         return ts[higestRank]
 
@@ -238,7 +242,6 @@ class TriangleOptimizer:
         evalDiff = mPoint.value - mVal
 
         # Remove triangle from triangles, and from lines triangle list
-        self.triangles.remove(triangle)
         for p in triangle.points:
             p.triangles.remove(triangle)
 
