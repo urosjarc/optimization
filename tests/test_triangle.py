@@ -158,9 +158,9 @@ class Test_TriangleOptimizer(unittest.TestCase):
         #==================================================
         self.to.partition(self.to.triangles[0])
 
-        self.assertEqual(len(self.to.triangles), 3)
+        self.assertEqual(len(self.to.triangles), 4)
         cnTri = self.to.triangles[0].connectedTriangles(onSurface=True)
-        self.assertEqual(len(cnTri), 2)
+        self.assertEqual(len(cnTri), 3)
         self.assertEqual(set(cnTri), set(self.to.triangles[1:]))
         #==================================================
 

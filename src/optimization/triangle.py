@@ -193,7 +193,7 @@ class TriangleOptimizer:
         self.eval += 1
         print(self.eval)
         triangle = self.getTriangleCandidate()
-        point, cmd = self.partition(triangle, neighbours=True)
+        point, cmd = self.partition(triangle)
         if cmd == 'get':
             raise Exception("FAIL")
         return point.vector
@@ -225,7 +225,7 @@ class TriangleOptimizer:
         Ce je tocka ni minimum
         """
 
-    def partition(self, triangle: Triangle, neighbours):
+    def partition(self, triangle: Triangle):
 
         # Get new point vector of splited triangle line, and create new point from that
         line0, line1, line2 = triangle.sortedLines(onSurface=True, fromBigToLow=True)
@@ -234,8 +234,16 @@ class TriangleOptimizer:
         evalDiff = mPoint.value - mVal
 
         # Remove triangle from triangles, and from lines triangle list
+        # TODO: Handle this cluster fuck...
+        try:
+            self.triangles.remove(triangle)
+        except:
+            print("WtF")
         for p in triangle.points:
-            p.triangles.remove(triangle)
+            try:
+                p.triangles.remove(triangle)
+            except:
+                print("WTF")
 
         # Get other 3 points
         highPoint = line1.mutualPoint(line2)
@@ -264,7 +272,7 @@ class TriangleOptimizer:
         for t in triangle.connectedTriangles(onSurface=True):
             mX, mY = t.newPointVector(onSurface=True)
             if self.pointExists(mX, mY):
-                p, c = self.partition(t, neighbours=True)
+                p, c = self.partition(t)
                 if c == 'make':
                     raise Exception("FAIL")
 
