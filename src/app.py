@@ -119,7 +119,7 @@ class PlotInterface:
         self.triangles = None
 
 
-    def poligon(self, poligon, permament=True):
+    def poligon(self, poligon, permament):
         if self.triangles is None:
             self.triangles, = self.plot.d2LogAx.plot([], [], linewidth=5,color='green')
         if self.penDown:

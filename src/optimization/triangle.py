@@ -52,7 +52,7 @@ class Line:
     def isOnLine(self, point: Point, onSurface):
         dist = self.points[0].distance(point, onSurface)
         dist += self.points[1].distance(point, onSurface)
-        return abs(dist - self.size(onSurface)) < 10 ** -7
+        return abs(dist - self.size(onSurface)) == 0
 
     def coinciding(self, line, onSurface):
         p1, p2 = line.points
@@ -102,13 +102,13 @@ class Triangle:
     def slopeRatio(self):
         normal = self.normalVector()
         vY = np.array([0, 0, 1])
-        return angle(normal, vY) / (math.pi/2)
+        return angle(normal, vY) / (math.pi / 2)
 
     def fractureRatio(self):
         deg = []
         for tri in self.connectedTriangles(onSurface=False):
             deg.append(angle(self.normalVector(), tri.normalVector()))
-        return np.median(deg) / (math.pi/2)
+        return np.median(deg) / (math.pi / 2)
 
     def volume(self):
         A, B, C = self.points
@@ -168,7 +168,6 @@ class TriangleOptimizer:
             Triangle(l1[:3]),
             Triangle(l1[2:])
         ]
-        self.drawTriangles(self.triangles)
 
     def pointExists(self, x, y):
         for p in self.points:
@@ -185,17 +184,24 @@ class TriangleOptimizer:
         self.points.append(p)
         return p, "make"
 
-    def drawTriangles(self, triangles: List[Triangle]):
-        for t in triangles:
-            self.draw.poligon([p.vector for p in t.points])
+    def drawTriangles(self, triangles: List[Triangle], permament):
+        if permament:
+            for t in triangles:
+                self.draw.poligon([p.vector for p in t.points], permament=permament)
+        else:
+            vectors = []
+            for t in triangles:
+                vectors += [p.vector for p in t.points]
+            self.draw.poligon(vectors, permament=permament)
 
     def nextPoint(self):
-        self.eval += 1
         print(self.eval)
+        self.eval += 1
+
         triangle = self.getTriangleCandidate()
-        point, cmd = self.partition(triangle)
-        if cmd == 'get':
-            raise Exception("FAIL")
+        point, cmd = self.partition(triangle, neighbour=False)
+        if cmd=='get':
+            raise Exception("FUCK")
         return point.vector
 
     def getTriangleCandidate(self):
@@ -212,7 +218,7 @@ class TriangleOptimizer:
         volume = normalizeVector([t.volume() for t in ts])
         # fractureRatio = normalizeVector([t.fractureRatio() for t in ts])
 
-        rank = evalDiff + meanValue + lovestValue + slopeRatio + volume# + 3 * fractureRatio
+        rank = evalDiff + meanValue + lovestValue + slopeRatio + volume  # + 3 * fractureRatio
         higestRank = np.argsort(rank)[-1]
         return ts[higestRank]
 
@@ -225,25 +231,12 @@ class TriangleOptimizer:
         Ce je tocka ni minimum
         """
 
-    def partition(self, triangle: Triangle):
-
+    def partition(self, triangle: Triangle, neighbour):
         # Get new point vector of splited triangle line, and create new point from that
         line0, line1, line2 = triangle.sortedLines(onSurface=True, fromBigToLow=True)
         mX, mY, mVal = line0.center(onSurface=False)
         mPoint, cmd = self.getOrMakePoint(mX, mY)
         evalDiff = mPoint.value - mVal
-
-        # Remove triangle from triangles, and from lines triangle list
-        # TODO: Handle this cluster fuck...
-        try:
-            self.triangles.remove(triangle)
-        except:
-            print("WtF")
-        for p in triangle.points:
-            try:
-                p.triangles.remove(triangle)
-            except:
-                print("WTF")
 
         # Get other 3 points
         highPoint = line1.mutualPoint(line2)
@@ -263,17 +256,22 @@ class TriangleOptimizer:
             Triangle(newTrianglesLines[2:], evalDiff=evalDiff, eval=triangle.eval + 1)
         ]
 
+        # Add new triangles to the mix
         self.triangles += newTriangles
 
+        # Remove triangle from triangles, and from lines triangle list
+        self.triangles.remove(triangle)
+        for p in triangle.points:
+            p.triangles.remove(triangle)
+
         # Draw updates
-        self.drawTriangles(self.triangles)
+        self.drawTriangles(self.triangles, permament=True)
 
         # Get triangles that can be splited without creating new point
-        for t in triangle.connectedTriangles(onSurface=True):
-            mX, mY = t.newPointVector(onSurface=True)
-            if self.pointExists(mX, mY):
-                p, c = self.partition(t)
-                if c == 'make':
-                    raise Exception("FAIL")
+        if not neighbour:
+            for t in triangle.connectedTriangles(onSurface=True):
+                NmX, NmY = t.newPointVector(onSurface=True)
+                if mX == NmX and mY == NmY:
+                    self.partition(t, neighbour=True)
 
         return mPoint, cmd
