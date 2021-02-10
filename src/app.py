@@ -121,12 +121,12 @@ class PlotInterface:
 
     def poligon(self, poligon, permament):
         if self.triangles is None:
-            self.triangles, = self.plot.d2LogAx.plot([], [], linewidth=5,color='green')
+            self.triangles, = self.plot.d2LogAx.plot([], [], linewidth=2,color='green')
         if self.penDown:
             poligon.append(poligon[0])
             xs, ys = zip(*poligon)
             if permament:
-                self.plot.d2LogAx.plot(xs, ys, linewidth=1,color='red')
+                self.plot.d2LogAx.plot(xs, ys, linewidth=.01,color='red')
             else:
                 self.triangles.set_ydata(ys)
                 self.triangles.set_xdata(xs)

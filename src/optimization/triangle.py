@@ -64,6 +64,7 @@ class Line:
 
 class Triangle:
     def __init__(self, lines, evalDiff=10 ** 10, eval=0):
+        self.splited = False
         self.lines: List[Line] = lines
         self.evalDiff: float = abs(evalDiff)
         self.eval = eval
@@ -139,6 +140,9 @@ class Triangle:
         bigestLine = self.sortedLines(onSurface, fromBigToLow=True)[0]
         return bigestLine.center(onSurface)
 
+    def center(self):
+        return np.mean([p.vector3D for p in self.points], axis=0)
+
 
 class TriangleOptimizer:
     def __init__(self, space: Space, draw: PlotInterface, maxEval):
@@ -146,6 +150,7 @@ class TriangleOptimizer:
         self.space = space
         self.triangles: List[Triangle] = []
         self.points: List[Point] = []
+        self.queue: List[Triangle] = []
 
         self.eval = 0
         self.maxEval = maxEval
@@ -195,15 +200,26 @@ class TriangleOptimizer:
             self.draw.poligon(vectors, permament=permament)
 
     def nextPoint(self):
-        print(self.eval)
+
+        while True:
+            if len(self.queue) > 0:
+                triangle = self.queue[0]
+                self.queue.pop(0)
+                point, cmd = self.partition(triangle)
+                if cmd=='make':
+                    raise Exception("ERR")
+            else:
+                triangle = self.getTriangleCandidate()
+                point, cmd = self.partition(triangle)
+                if cmd=='get':
+                    raise Exception("ERR")
+                break
+
+        print("TRIANGLE:", self.eval, triangle.center())
+
         self.eval += 1
+        print(self.eval)
 
-        triangle = self.getTriangleCandidate()
-        point, cmd = self.partition(triangle, neighbour=False)
-        self.drawTriangles(self.triangles, permament=True)
-
-        if cmd=='get':
-            raise Exception("FUCK")
         return point.vector
 
     def getTriangleCandidate(self):
@@ -218,9 +234,9 @@ class TriangleOptimizer:
         lovestValue = 1 - normalizeVector([t.lowestPoint().value for t in ts])
         slopeRatio = normalizeVector([t.slopeRatio() for t in ts])
         volume = normalizeVector([t.volume() for t in ts])
-        # fractureRatio = normalizeVector([t.fractureRatio() for t in ts])
+        fractureRatio = normalizeVector([t.fractureRatio() for t in ts])
 
-        rank = evalDiff + meanValue + lovestValue + slopeRatio + volume  # + 3 * fractureRatio
+        rank = evalDiff + meanValue + lovestValue + slopeRatio + volume  + fractureRatio
         higestRank = np.argsort(rank)[-1]
         return ts[higestRank]
 
@@ -233,7 +249,19 @@ class TriangleOptimizer:
         Ce je tocka ni minimum
         """
 
-    def partition(self, triangle: Triangle, neighbour):
+    def partition(self, triangle: Triangle):
+        # Remove triangle from triangles, and from lines triangle list
+        if not triangle.splited:
+            if triangle in self.queue:
+                raise Exception(f"Triangle emerge multiple times in queue list!")
+            triangle.splited = True
+            self.triangles.remove(triangle)
+            for p in triangle.points:
+                p.triangles.remove(triangle)
+        # If triangle is allready splited he was added to self.queue list multiple times!
+        else:
+            raise Exception("Triangle was allready splited")
+
         # Get new point vector of splited triangle line, and create new point from that
         line0, line1, line2 = triangle.sortedLines(onSurface=True, fromBigToLow=True)
         mX, mY, mVal = line0.center(onSurface=False)
@@ -245,6 +273,7 @@ class TriangleOptimizer:
         bottomPoint1 = line0.mutualPoint(line1)
         bottomPoint2 = line0.mutualPoint(line2)
 
+        # Create list of new lines and triangles.
         newTrianglesLines = [
             Line(mPoint, bottomPoint1),
             line1,
@@ -252,7 +281,6 @@ class TriangleOptimizer:
             Line(mPoint, bottomPoint2),
             line2,
         ]
-
         newTriangles = [
             Triangle(newTrianglesLines[:3], evalDiff=evalDiff, eval=triangle.eval + 1),
             Triangle(newTrianglesLines[2:], evalDiff=evalDiff, eval=triangle.eval + 1)
@@ -261,18 +289,11 @@ class TriangleOptimizer:
         # Add new triangles to the mix
         self.triangles += newTriangles
 
-        # Remove triangle from triangles, and from lines triangle list
-        self.triangles.remove(triangle)
-        for p in triangle.points:
-            p.triangles.remove(triangle)
-
-        # Get triangles that can be splited without creating new point
-        if not neighbour:
-            for t in triangle.connectedTriangles(onSurface=True):
+        # Partition connected triangles and new triangles if no point will be created in the process of partitioning
+        for t in triangle.connectedTriangles(onSurface=True) + newTriangles:
+            if t not in self.queue:
                 NmX, NmY = t.newPointVector(onSurface=True)
-                if mX == NmX and mY == NmY:
-                    p, ncmd = self.partition(t, neighbour=True)
-                    if ncmd == 'make':
-                        raise Exception("FUCK")
+                if self.pointExists(NmX, NmY):
+                    self.queue.append(t)
 
         return mPoint, cmd
