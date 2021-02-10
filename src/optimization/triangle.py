@@ -200,6 +200,8 @@ class TriangleOptimizer:
 
         triangle = self.getTriangleCandidate()
         point, cmd = self.partition(triangle, neighbour=False)
+        self.drawTriangles(self.triangles, permament=True)
+
         if cmd=='get':
             raise Exception("FUCK")
         return point.vector
@@ -264,14 +266,13 @@ class TriangleOptimizer:
         for p in triangle.points:
             p.triangles.remove(triangle)
 
-        # Draw updates
-        self.drawTriangles(self.triangles, permament=True)
-
         # Get triangles that can be splited without creating new point
         if not neighbour:
             for t in triangle.connectedTriangles(onSurface=True):
                 NmX, NmY = t.newPointVector(onSurface=True)
                 if mX == NmX and mY == NmY:
-                    self.partition(t, neighbour=True)
+                    p, ncmd = self.partition(t, neighbour=True)
+                    if ncmd == 'make':
+                        raise Exception("FUCK")
 
         return mPoint, cmd
