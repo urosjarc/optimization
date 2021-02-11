@@ -4,6 +4,10 @@ from src.math import Space, normalizeVector, angle
 import numpy as np
 from typing import *
 
+# Todo: Algorithm should jump and search local minimum
+# Todo: And then found all triangles that are part of the hols when changes are minimal.
+# Todo: Those triangles should became deactivated from the search.
+# Todo: Algorithm should then explore next local minimum.
 
 class Point:
     def __init__(self, x, y, value):
