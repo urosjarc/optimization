@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from gobench import go_benchmark_functions
 import random
 
-space = Space(go_benchmark_functions.CrossLegTable, rand=True)
+space = Space(go_benchmark_functions.NewFunction01, rand=False)
 plot = Plot(space)
 plot.cmd.penDown = False
 iter = 2000

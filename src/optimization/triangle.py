@@ -228,19 +228,18 @@ class TriangleOptimizer:
 
     def getTriangleCandidate(self):
         ts = self.triangles
-        minEval = int(5 + (self.eval/self.maxEval)*13)
+        minEval = 25
 
         if self.eval < 30:
             return sorted(ts, key=lambda t: t.eval)[0]
 
 
-        ts_cut = [t for t in ts]
-        # while True:
-        #     ts_cut = [t for t in ts if t.eval < minEval]
-        #     if len(ts_cut) == 0:
-        #         minEval += minEval/10
-        #     else:
-        #         break
+        while True:
+            ts_cut = [t for t in ts if t.eval < minEval]
+            if len(ts_cut) == 0:
+                minEval += minEval/10
+            else:
+                break
 
         lowestValue = 1 - normalizeVector([t.lowestPoint().value for t in ts_cut])
 
