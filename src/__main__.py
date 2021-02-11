@@ -7,7 +7,7 @@ import random
 
 space = Space(go_benchmark_functions.Damavandi, rand=False)
 plot = Plot(space)
-plot.cmd.penDown = True
+plot.cmd.penDown = False
 iter = 2000
 random.seed(0)
 opt = TriangleOptimizer(space, plot.cmd, iter)
@@ -15,7 +15,7 @@ for i in range(iter):
     plot.d2LogAx.set_title(i)
     plot.addPoint(*opt.nextPoint())
     # plt.waitforbuttonpress()
-    if i%20==0:
+    if i%10==0:
         plt.pause(0.001)
 plt.pause(1000)
 plt.close()

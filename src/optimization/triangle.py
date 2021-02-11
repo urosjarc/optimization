@@ -1,8 +1,4 @@
 import math
-from itertools import combinations
-
-import matplotlib.pyplot as plt
-
 from src.app import PlotInterface
 from src.math import Space, normalizeVector, angle
 import numpy as np
@@ -81,6 +77,9 @@ class Triangle:
         for p in self.points:
             p.triangles.append(self)
 
+    def __str__(self):
+        return f'TRI[cen={self.center()}, eval={self.eval}, evalDiff={self.evalDiff}]'
+
     def meanValue(self):
         vals = [p.value for p in self.points]
         return sum(vals) / 3
@@ -100,14 +99,9 @@ class Triangle:
             normal1 = np.cross(dv2, dv1)
         return normal1 / 2
 
-    def slopeRatio(self):
-        normal = self.normalVector()
-        vY = np.array([0, 0, 1])
-        return angle(normal, vY) / (math.pi / 2)
-
     def fractureRatio(self):
         deg = []
-        for tri in self.connectedTriangles(onSurface=False):
+        for tri in self.coincidingTriangles(onSurface=False):
             deg.append(angle(self.normalVector(), tri.normalVector()))
         return np.median(deg) / (math.pi / 2)
 
@@ -118,22 +112,28 @@ class Triangle:
     def sortedLines(self, onSurface, fromBigToLow=True):
         return sorted(self.lines, key=lambda l: l.size(onSurface), reverse=fromBigToLow)
 
-    def connectedTriangles(self, onSurface):
+    def coincidingTriangles(self, onSurface):
         tri = []
+        for t in self.connectedTriangles():
+            isConn = False
+            for sline in self.lines:
+                for line in t.lines:
+                    if sline.coinciding(line, onSurface=onSurface):
+                        isConn = True
+                        break
+                if isConn:
+                    break
+            if isConn:
+                tri.append(t)
+
+        return tri
+
+    def connectedTriangles(self):
+        tri: List[Triangle] = []
         for p in self.points:
             for t in p.triangles:
                 if t != self and t not in tri:
-                    isConn = False
-                    for sline in self.lines:
-                        for line in t.lines:
-                            if sline.coinciding(line, onSurface=onSurface):
-                                isConn = True
-                                break
-                        if isConn:
-                            break
-                    if isConn:
-                        tri.append(t)
-
+                    tri.append(t)
         return tri
 
     def newPointVector(self, onSurface):
@@ -153,6 +153,7 @@ class TriangleOptimizer:
         self.queue: List[Triangle] = []
 
         self.eval = 0
+        self.minPoint = None
         self.maxEval = maxEval
         self.init()
 
@@ -206,48 +207,63 @@ class TriangleOptimizer:
                 triangle = self.queue[0]
                 self.queue.pop(0)
                 point, cmd = self.partition(triangle)
-                if cmd=='make':
+                if cmd == 'make':
                     raise Exception("ERR")
             else:
                 triangle = self.getTriangleCandidate()
                 point, cmd = self.partition(triangle)
-                if cmd=='get':
+                if cmd == 'get':
                     raise Exception("ERR")
                 break
 
-        print("TRIANGLE:", self.eval, triangle.center())
-
         self.eval += 1
         print(self.eval)
+        self.draw.localMinimum([p.vector for p in self.getLocalMinimums()])
 
         return point.vector
 
     def getTriangleCandidate(self):
         ts = self.triangles
+        minEval = int(5 + (self.eval/self.maxEval)*13)
 
-        if self.eval < 10:
-            ts = sorted(ts, key=lambda t: t.eval, reverse=False)
-            return ts[0]
+        if self.eval < 30:
+            return sorted(ts, key=lambda t: t.eval)[0]
 
-        evalDiff = normalizeVector([t.evalDiff for t in ts])
-        meanValue = 1 - normalizeVector([t.meanValue() for t in ts])
-        lovestValue = 1 - normalizeVector([t.lowestPoint().value for t in ts])
-        slopeRatio = normalizeVector([t.slopeRatio() for t in ts])
-        volume = normalizeVector([t.volume() for t in ts])
-        fractureRatio = normalizeVector([t.fractureRatio() for t in ts])
 
-        rank = evalDiff + meanValue + lovestValue + slopeRatio + volume  + fractureRatio
-        higestRank = np.argsort(rank)[-1]
-        return ts[higestRank]
+        ts_cut = [t for t in ts]
+        # while True:
+        #     ts_cut = [t for t in ts if t.eval < minEval]
+        #     if len(ts_cut) == 0:
+        #         minEval += minEval/10
+        #     else:
+        #         break
+
+        lowestValue = 1 - normalizeVector([t.lowestPoint().value for t in ts_cut])
+
+        higestRank = np.argsort(lowestValue)[-1]
+
+        topTri = ts_cut[higestRank]
+        conTri = [t for t in topTri.connectedTriangles()]
+
+        if len(conTri)>0:
+            return sorted(conTri, key=lambda t: t.volume(), reverse=True)[0]
+        else:
+            return topTri
 
     def getLocalMinimums(self):
-        pass
-        """
-        Za tocko poglej vse trikotnike s katerimi je povezana.
-        Za ta trikotnik poglej vse njegove tocke.
-        Za tocko poglej ce je vrednost tocke poglej ce je vrednost vecja.
-        Ce je tocka ni minimum
-        """
+        localMin = []
+        for t in self.triangles:
+            lowPoint = t.lowestPoint()
+            isLowest = True
+            for tc in t.connectedTriangles():
+                if lowPoint.value > tc.lowestPoint().value:
+                    isLowest = False
+                    break
+
+            if isLowest:
+                localMin.append(lowPoint)
+
+        return sorted(localMin, key=lambda p: p.value, reverse=False)
 
     def partition(self, triangle: Triangle):
         # Remove triangle from triangles, and from lines triangle list
@@ -290,7 +306,7 @@ class TriangleOptimizer:
         self.triangles += newTriangles
 
         # Partition connected triangles and new triangles if no point will be created in the process of partitioning
-        for t in triangle.connectedTriangles(onSurface=True) + newTriangles:
+        for t in triangle.coincidingTriangles(onSurface=True) + newTriangles:
             if t not in self.queue:
                 NmX, NmY = t.newPointVector(onSurface=True)
                 if self.pointExists(NmX, NmY):

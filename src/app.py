@@ -16,10 +16,12 @@ class Surface:
         self.zz = np.array([[space(np.array([xi, yi])) for xi in self.x] for yi in self.y])
         self.zzLog = zLog(self.zz)
 
-        minDiff = abs(-space.bounds[0][0]+space.bounds[0][1])/30
-        axes = np.linspace(space.opt[0][0] - minDiff, space.opt[0][1] + minDiff, step)
-        self.fx, self.fy = axes, axes
-        self.fxx, self.fyy = np.meshgrid(axes, axes, sparse=True)
+        XminDiff = abs(-space.bounds[0][0] + space.bounds[0][1]) / 30
+        YminDiff = abs(-space.bounds[1][0] + space.bounds[1][1]) / 30
+        Xaxe = np.linspace(space.opt[0][0] - XminDiff, space.opt[0][0] + XminDiff, step)
+        Yaxe = np.linspace(space.opt[0][1] - YminDiff, space.opt[0][1] + YminDiff, step)
+        self.fx, self.fy = Xaxe, Yaxe
+        self.fxx, self.fyy = np.meshgrid(Xaxe, Yaxe, sparse=True)
         self.fzz = np.array([[space(np.array([xi, yi])) for xi in self.fx] for yi in self.fy])
 
         self.zMin = np.array([space.min for _ in space.opt])
@@ -27,6 +29,7 @@ class Surface:
         self.yMin = [o[1] for o in space.opt]
         self.zMinLog = zLog(self.zMin)
         self.points = [[], [], []]
+
 
 class Plot:
 
@@ -60,36 +63,36 @@ class Plot:
         fig.suptitle(f'{self.space.name} - {len(self.space.opt)} min.')
 
         # Drawing progress
-        ax = fig.add_subplot(gs[1,0])
+        ax = fig.add_subplot(gs[1, 0])
         self.errAx = ax
         self.cmd.errLine, = ax.plot([], [], 'r-')
 
         # Drawing contour bars normal
-        ax = fig.add_subplot(gs[0,1])
+        ax = fig.add_subplot(gs[0, 1])
         self.d2Ax = ax
-        self.cmd.minimums, = ax.plot([],[], marker='o',color="green", linestyle='')
         cp = ax.contourf(sur.fx, sur.fy, sur.fzz, levels=sur.step, cmap="gray")
-        ax.scatter(sur.xMin, sur.yMin, marker='*', color='green')
+        ax.scatter(sur.xMin, sur.yMin, marker='*', color='yellow')
         fig.colorbar(cp)
 
         # Drawing points
         self.scatter = ax.scatter([], [], marker=',', color='red', s=1)
 
         # Drawing contour bars log
-        ax = fig.add_subplot(gs[1,1])
+        ax = fig.add_subplot(gs[1, 1])
         self.d2LogAx = ax
+        self.cmd.minimums, = ax.plot([], [], marker='*', color="blue", linestyle='')
         cp = ax.contourf(sur.x, sur.y, sur.zzLog, levels=sur.step, cmap="gray")
-        ax.scatter(sur.xMin, sur.yMin, marker = '*', color='green')
+        ax.scatter(sur.xMin, sur.yMin, marker='*', color='yellow')
         fig.colorbar(cp)
 
         # Drawing log points
         self.scatterLog = ax.scatter([], [], marker=',', color='red', s=1)
 
         # Drawing surface 3D
-        ax = fig.add_subplot(gs[0,0], projection='3d')
+        ax = fig.add_subplot(gs[0, 0], projection='3d')
         self.d3Ax = ax
         ax.plot_surface(sur.xx, sur.yy, sur.zz, alpha=0.5, cmap="jet", linewidth=0, antialiased=True)
-        self.scatter3D = ax.scatter([],[],[], 'o', color='black')
+        self.scatter3D = ax.scatter([], [], [], 'o', color='black')
 
         plt.show()
 
@@ -110,6 +113,7 @@ class Plot:
 
         self.fig.canvas.draw_idle()
 
+
 class PlotInterface:
     def __init__(self, plot: Plot):
         self.plot = plot
@@ -118,15 +122,14 @@ class PlotInterface:
         self.errLine = None
         self.triangles = None
 
-
     def poligon(self, poligon, permament):
         if self.triangles is None:
-            self.triangles, = self.plot.d2LogAx.plot([], [], linewidth=2,color='green')
+            self.triangles, = self.plot.d2LogAx.plot([], [], linewidth=2, color='green')
         if self.penDown:
             poligon.append(poligon[0])
             xs, ys = zip(*poligon)
             if permament:
-                self.plot.d2LogAx.plot(xs, ys, linewidth=.01,color='red')
+                self.plot.d2LogAx.plot(xs, ys, linewidth=.01, color='red')
             else:
                 self.triangles.set_ydata(ys)
                 self.triangles.set_xdata(xs)
@@ -142,6 +145,6 @@ class PlotInterface:
     def localMinimum(self, vectors):
         x = [v[0] for v in vectors]
         y = [v[1] for v in vectors]
-        self.minimums.set_ydata(y)
-        self.minimums.set_xdata(x)
+        self.minimums.set_ydata(np.array(y))
+        self.minimums.set_xdata(np.array(x))
         plt.show()

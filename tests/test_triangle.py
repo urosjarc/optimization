@@ -123,9 +123,9 @@ class Test_Triangle(unittest.TestCase):
         tri1 = Triangle(lines1)
         tri2 = Triangle(lines2)
 
-        self.assertEqual(tri.connectedTriangles(onSurface=True), [tri1])
-        self.assertEqual(tri1.connectedTriangles(onSurface=True), [tri])
-        self.assertEqual(tri2.connectedTriangles(onSurface=True), [])
+        self.assertEqual(tri.coincidingTriangles(onSurface=True), [tri1])
+        self.assertEqual(tri1.coincidingTriangles(onSurface=True), [tri])
+        self.assertEqual(tri2.coincidingTriangles(onSurface=True), [])
 
     def test_connectedTriangle_2(self):
         p = [Point(0, 0, 0), Point(1, 0, 0), Point(0, 1, 0)]
@@ -136,8 +136,8 @@ class Test_Triangle(unittest.TestCase):
         tri = Triangle(lines)
         tri1 = Triangle(lines1)
 
-        self.assertEqual(tri.connectedTriangles(onSurface=True), [tri1])
-        self.assertEqual(tri1.connectedTriangles(onSurface=True), [tri])
+        self.assertEqual(tri.coincidingTriangles(onSurface=True), [tri1])
+        self.assertEqual(tri1.coincidingTriangles(onSurface=True), [tri])
 
 class Test_TriangleOptimizer(unittest.TestCase):
     def setUp(self):
@@ -159,7 +159,7 @@ class Test_TriangleOptimizer(unittest.TestCase):
         self.to.partition(self.to.triangles[0])
 
         self.assertEqual(len(self.to.triangles), 4)
-        cnTri = self.to.triangles[0].connectedTriangles(onSurface=True)
+        cnTri = self.to.triangles[0].coincidingTriangles(onSurface=True)
         self.assertEqual(len(cnTri), 3)
         self.assertEqual(set(cnTri), set(self.to.triangles[1:]))
         #==================================================
@@ -174,7 +174,7 @@ class Test_TriangleOptimizer(unittest.TestCase):
         self.to.partition(self.to.triangles[1])
 
         self.assertEqual(len(self.to.triangles), 4)
-        cnTri = self.to.triangles[-1].connectedTriangles(onSurface=True)
+        cnTri = self.to.triangles[-1].coincidingTriangles(onSurface=True)
         self.assertEqual(len(cnTri), 2)
         self.assertEqual(set(cnTri), set(self.to.triangles[1:3]))
         #==================================================
