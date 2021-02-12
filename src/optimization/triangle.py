@@ -1,4 +1,6 @@
 import math
+from random import randint, random
+
 from src.app import PlotInterface
 from src.math import Space, normalizeVector, angle
 import numpy as np
@@ -116,6 +118,10 @@ class Triangle:
     def sortedLines(self, onSurface, fromBigToLow=True):
         return sorted(self.lines, key=lambda l: l.size(onSurface), reverse=fromBigToLow)
 
+    def biggestLineSize(self, onSurface):
+        bigestLine = self.sortedLines(onSurface, fromBigToLow=True)[0]
+        return bigestLine.size(onSurface)
+
     def coincidingTriangles(self, onSurface):
         tri = []
         for t in self.connectedTriangles():
@@ -150,6 +156,7 @@ class Triangle:
 
 class TriangleOptimizer:
     def __init__(self, space: Space, draw: PlotInterface, maxEval):
+        self.maxTriangleEval = 8
         self.draw = draw
         self.space = space
         self.triangles: List[Triangle] = []
@@ -227,35 +234,33 @@ class TriangleOptimizer:
         return point.vector
 
     def getTriangleCandidate(self):
-        ts = self.triangles
-        minEval = 25
+        # Return biggest triangle connected to lowest local minimum point
+        if self.eval > 0.75*self.maxEval:
+            localMinimums: List[Point] = self.getLocalMinimums()
+            if len(localMinimums) > 0:
+                localMinimums.sort(key=lambda p: p.value)
+                for minPoint in localMinimums:
+                    return sorted(minPoint.triangles, key=lambda t: t.volume(), reverse=True)[0]
 
-        if self.eval < 30:
-            return sorted(ts, key=lambda t: t.eval)[0]
-
-
+        # Explore space for next local minimum
         while True:
-            ts_cut = [t for t in ts if t.eval < minEval]
-            if len(ts_cut) == 0:
-                minEval += minEval/10
-            else:
-                break
+            trianglesCandidates = [t for t in self.triangles if t.eval < self.maxTriangleEval]
+            if len(trianglesCandidates) == 0:
+                self.maxTriangleEval = 12
+                continue
+            break
 
-        lowestValue = 1 - normalizeVector([t.lowestPoint().value for t in ts_cut])
+        trianglesCandidates.sort(key=lambda t: t.lowestPoint().value, reverse=False)
+        return trianglesCandidates[0]
 
-        higestRank = np.argsort(lowestValue)[-1]
-
-        topTri = ts_cut[higestRank]
-        conTri = [t for t in topTri.connectedTriangles()]
-
-        if len(conTri)>0:
-            return sorted(conTri, key=lambda t: t.volume(), reverse=True)[0]
-        else:
-            return topTri
 
     def getLocalMinimums(self):
         localMin = []
         for t in self.triangles:
+
+            if t.biggestLineSize(onSurface=True) < 10**-4:
+                continue
+
             lowPoint = t.lowestPoint()
             isLowest = True
             for tc in t.connectedTriangles():

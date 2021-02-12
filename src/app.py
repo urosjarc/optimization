@@ -16,8 +16,8 @@ class Surface:
         self.zz = np.array([[space(np.array([xi, yi])) for xi in self.x] for yi in self.y])
         self.zzLog = zLog(self.zz)
 
-        XminDiff = abs(-space.bounds[0][0] + space.bounds[0][1]) / 30
-        YminDiff = abs(-space.bounds[1][0] + space.bounds[1][1]) / 30
+        XminDiff = abs(-space.bounds[0][0] + space.bounds[0][1]) / 100
+        YminDiff = abs(-space.bounds[1][0] + space.bounds[1][1]) / 100
         Xaxe = np.linspace(space.opt[0][0] - XminDiff, space.opt[0][0] + XminDiff, step)
         Yaxe = np.linspace(space.opt[0][1] - YminDiff, space.opt[0][1] + YminDiff, step)
         self.fx, self.fy = Xaxe, Yaxe

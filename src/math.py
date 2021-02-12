@@ -46,7 +46,8 @@ class Space:
             b = list(b)
             if self.rand:
                 diff = abs(b[0] - b[1])
-                b[0] += diff/15 * (1+random())
+                b[0] += diff/30 * (1+random())
+                b[1] -= diff/30 * (1+random())
             self.bounds.append(b)
 
 
