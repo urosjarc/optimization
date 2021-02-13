@@ -9,24 +9,24 @@ from src.math import *
 class Surface:
     def __init__(self, space: Space, step):
         self.step = step
-        zLog = lambda z: np.log2(z - space.min + 1)
+        zLog = lambda z: np.log2(z - space.minValue + 1)
         axes = [np.linspace(bound[0], bound[1], step) for bound in space.bounds]
         self.x, self.y = axes[0], axes[1]
         self.xx, self.yy = np.meshgrid(axes[0], axes[1], sparse=True)
         self.zz = np.array([[space(np.array([xi, yi])) for xi in self.x] for yi in self.y])
         self.zzLog = zLog(self.zz)
 
-        XminDiff = abs(-space.bounds[0][0] + space.bounds[0][1]) / 20
-        YminDiff = abs(-space.bounds[1][0] + space.bounds[1][1]) / 20
-        Xaxe = np.linspace(space.opt[0][0] - XminDiff, space.opt[0][0] + XminDiff, step)
-        Yaxe = np.linspace(space.opt[0][1] - YminDiff, space.opt[0][1] + YminDiff, step)
-        self.fx, self.fy = Xaxe, Yaxe
-        self.fxx, self.fyy = np.meshgrid(Xaxe, Yaxe, sparse=True)
-        self.fzz = np.array([[space(np.array([xi, yi])) for xi in self.fx] for yi in self.fy])
+        XminDiff = abs(-space.bounds[0][0] + space.bounds[0][1]) / 1000
+        YminDiff = abs(-space.bounds[1][0] + space.bounds[1][1]) / 1000
+        Xaxe = np.linspace(space.minVector[0][0] - XminDiff, space.minVector[0][0] + XminDiff, step)
+        Yaxe = np.linspace(space.minVector[0][1] - YminDiff, space.minVector[0][1] + YminDiff, step)
+        self.xZoom, self.yZoom = Xaxe, Yaxe
+        self.xxZoom, self.yyZoom = np.meshgrid(Xaxe, Yaxe, sparse=True)
+        self.zzZoom = np.array([[space(np.array([xi, yi])) for xi in self.xZoom] for yi in self.yZoom])
 
-        self.zMin = np.array([space.min for _ in space.opt])
-        self.xMin = [o[0] for o in space.opt]
-        self.yMin = [o[1] for o in space.opt]
+        self.zMin = np.array([space.minValue for _ in space.minVector])
+        self.xMin = [o[0] for o in space.minVector]
+        self.yMin = [o[1] for o in space.minVector]
         self.zMinLog = zLog(self.zMin)
         self.points = [[], [], []]
 
@@ -42,6 +42,7 @@ class Plot:
 
         self.errAx = None
         self.d2LogAx = None
+        self.d2ZoomAx = None
         self.scatterLog = None
         self.d3Ax = None
         self.scatter3D = None
@@ -61,39 +62,34 @@ class Plot:
         fig = plt.figure(facecolor='gray')
         plt.rcParams['axes.facecolor'] = 'gray'
         self.fig = fig
-        fig.suptitle(f'{self.space.name} - {len(self.space.opt)} min.')
-
-        # Drawing progress
-        ax = fig.add_subplot(gs[1, 0])
-        self.errAx = ax
-        self.cmd.errLine, = ax.plot([], [], 'r-')
-
-        # Drawing contour bars normal
-        ax = fig.add_subplot(gs[0, 1])
-        self.d2Ax = ax
-        cp = ax.contourf(sur.fx, sur.fy, sur.fzz, levels=sur.step, cmap="gray")
-        ax.scatter(sur.xMin, sur.yMin, marker='*', color='yellow')
-        fig.colorbar(cp)
-
-        # Drawing points
-        self.scatter = ax.scatter([], [], marker=',', color='red', s=1)
+        fig.suptitle(f'{self.space.name} - {len(self.space.minVector)} min.')
 
         # Drawing contour bars log
         ax = fig.add_subplot(gs[1, 1])
         self.d2LogAx = ax
-        self.cmd.minimums, = ax.plot([], [], marker='*', color="blue", linestyle='')
-        cp = ax.contourf(sur.x, sur.y, sur.zzLog, levels=sur.step, cmap="gray")
+        ax.contourf(sur.x, sur.y, sur.zzLog, levels=sur.step, cmap="gray")
         ax.scatter(sur.xMin, sur.yMin, marker='*', color='red', s=3)
-        fig.colorbar(cp)
-
-        # Drawing log points
         self.scatterLog = ax.scatter([], [], marker=',', color='red', s=1)
+        self.cmd.minimums, = ax.plot([], [], marker='*', color="blue", linestyle='')
+
+        # Drawing contour bars normal
+        ax = fig.add_subplot(gs[0, 1])
+        self.d2ZoomAx = ax
+        ax.contourf(sur.xZoom, sur.yZoom, sur.zzZoom, levels=sur.step, cmap="gray")
+        ax.scatter(sur.xMin, sur.yMin, marker='*', color='yellow')
+        self.scatter = ax.scatter([], [], marker=',', color='red', s=1)
+        self.cmd.minimumsZoom, = ax.plot([], [], marker='*', color="blue", linestyle='')
 
         # Drawing surface 3D
         ax = fig.add_subplot(gs[0, 0], projection='3d')
         self.d3Ax = ax
         ax.set_axis_off()
         ax.plot_surface(sur.xx, sur.yy, sur.zz, alpha=1, cmap="jet", linewidth=0, antialiased=True)
+
+        # Drawing progress
+        ax = fig.add_subplot(gs[1, 0])
+        self.errAx = ax
+        self.cmd.errLine, = ax.plot([], [], 'r-')
 
         plt.show()
 
@@ -118,9 +114,11 @@ class PlotInterface:
     def __init__(self, plot: Plot):
         self.plot = plot
         self.penDown = True
-        self.minimums = None
-        self.errLine = None
+
         self.triangles = None
+        self.minimums = None
+        self.minimumsZoom = None
+        self.errLine = None
 
     def poligon(self, poligon, permament):
         if self.triangles is None:
@@ -147,4 +145,6 @@ class PlotInterface:
         y = [v[1] for v in vectors]
         self.minimums.set_ydata(np.array(y))
         self.minimums.set_xdata(np.array(x))
+        self.minimumsZoom.set_ydata(np.array(y))
+        self.minimumsZoom.set_xdata(np.array(x))
         plt.show()

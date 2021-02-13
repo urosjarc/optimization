@@ -35,9 +35,9 @@ class Space:
         self.f: Benchmark = f()
         self._dim = dimensions(f)
         self.rand=rand
-        self.min = np.nan_to_num(self.f.fglob)
+        self.minValue = np.nan_to_num(self.f.fglob)
         self.name = str(f).split('.')[-1][:-2]
-        self.opt = self.f.global_optimum
+        self.minVector = self.f.global_optimum
         self.bounds = []
         self.init()
 
@@ -52,7 +52,7 @@ class Space:
 
 
         if self.name == 'ZeroSum':
-            self.opt = [[0,0]]
+            self.minVector = [[0, 0]]
 
     def __call__(self, vector):
         return np.nan_to_num(self.f.fun(np.array(vector)))
