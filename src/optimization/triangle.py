@@ -1,4 +1,5 @@
 import math
+from random import randint
 
 from src.math import Space, normalizeVector, angle
 import numpy as np
@@ -166,7 +167,7 @@ class TriangleOptimizer:
         self.minPoint = None
         self.maxEval = maxEval
         self.eval = 0
-        self.maxLocalMinLineSize = 10**-8
+        self.maxLocalMinLineSize = 10**-1
         self.init()
 
     def init(self):
@@ -229,12 +230,15 @@ class TriangleOptimizer:
                     raise Exception("ERR")
                 return point.vector
 
-        triangles = self.getTrianglesConnectedToActiveLocalMin()
-        if len(triangles) > 0:
-            for t in triangles:
-                if t not in self.queue_minConnectedTriangles:
-                    self.queue_minConnectedTriangles.append(t)
-            return self.nextPoint()
+        if self.eval % 2 == 0:
+            triangles = self.getTrianglesConnectedToActiveLocalMin()
+            if len(triangles) > 0:
+                for t in triangles:
+                    if t not in self.queue_minConnectedTriangles:
+                        self.queue_minConnectedTriangles.append(t)
+                return self.nextPoint()
+            else:
+                self.maxLocalMinLineSize /= 10
 
         triangle = self.getBestRankedTriangle()
         point, cmd = self.partition(triangle)
@@ -251,13 +255,17 @@ class TriangleOptimizer:
         return []
 
     def getBestRankedTriangle(self):
-        triangles = [t for t in self.triangles if t.eval < 12]
+        while True:
+            maxEval = randint(5, 20)
+            triangles = [t for t in self.triangles if t.eval < maxEval]
+            if len(triangles) > 0:
+                break
 
         evalDiff = normalizeVector([t.evalDiff for t in triangles])
         volume = normalizeVector([t.volume() for t in triangles])
         meanValue = 1-normalizeVector([t.meanValue() for t in triangles])
 
-        rank = volume + evalDiff + meanValue*2
+        rank = volume + evalDiff + meanValue*5
 
         bestRank = np.argsort(rank)[-1]
         return triangles[bestRank]

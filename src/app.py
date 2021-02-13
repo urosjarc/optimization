@@ -8,7 +8,7 @@ from src.optimization.triangle import Triangle
 
 
 class Surface:
-    def __init__(self, space: Space, step):
+    def __init__(self, space: Space, step, zoom):
         self.step = step
         zLog = lambda z: np.log2(z - space.minValue + 1)
         axes = [np.linspace(bound[0], bound[1], step) for bound in space.bounds]
@@ -17,8 +17,8 @@ class Surface:
         self.zz = np.array([[space(np.array([xi, yi])) for xi in self.x] for yi in self.y])
         self.zzLog = zLog(self.zz)
 
-        XminDiff = abs(-space.bounds[0][0] + space.bounds[0][1]) / 150000
-        YminDiff = abs(-space.bounds[1][0] + space.bounds[1][1]) / 150000
+        XminDiff = abs(-space.bounds[0][0] + space.bounds[0][1]) / zoom
+        YminDiff = abs(-space.bounds[1][0] + space.bounds[1][1]) / zoom
         Xaxe = np.linspace(space.minVector[0][0] - XminDiff, space.minVector[0][0] + XminDiff, step)
         Yaxe = np.linspace(space.minVector[0][1] - YminDiff, space.minVector[0][1] + YminDiff, step)
         self.xZoom, self.yZoom = Xaxe, Yaxe
@@ -34,9 +34,9 @@ class Surface:
 
 class Plot:
 
-    def __init__(self, space):
+    def __init__(self, space, zoom):
         self.space: Space = space
-        self.surface: Surface = Surface(self.space, 51)
+        self.surface: Surface = Surface(self.space, 201, zoom)
         self.cmd: PlotInterface = PlotInterface(self)
         self.eval = 0
         self.min = None
@@ -69,7 +69,7 @@ class Plot:
         ax = fig.add_subplot(gs[1, 1])
         self.d2LogAx = ax
         ax.contourf(sur.x, sur.y, sur.zzLog, levels=sur.step, cmap="gray")
-        ax.scatter(sur.xMin, sur.yMin, marker='*', color='red', s=3)
+        ax.scatter(sur.xMin, sur.yMin, marker='*', color='yellow')
         self.scatterLog = ax.scatter([], [], marker=',', color='red', s=1)
         self.cmd.minimums, = ax.plot([], [], marker='*', color="blue", linestyle='')
 
