@@ -1,5 +1,5 @@
 import math
-from random import randint
+from random import randint, random
 
 from src.app import PlotInterface
 from src.math import Space, normalizeVector, angle, pointInTriangle
@@ -30,7 +30,7 @@ class Point:
         else:
             return np.linalg.norm(self.vector3D - point.vector3D)
 
-    def connectedTriangles(self):
+    def connectedTriangles(self, searchSpace):
         forceSum = np.array([0., 0.])
         vector = np.array(self.vector)
         for t in self.triangles:
@@ -40,13 +40,21 @@ class Point:
         forceSum = normalizeVector(forceSum)*10**-12
         nextPosition = vector + forceSum
 
+        # Test if next position is in search space
+        for i in range(len(searchSpace)):
+            low, high = searchSpace[i]
+            ax = nextPosition[i]
+            if not(low < ax < high):
+                return self.triangles
+
+        # Test if point is in connected triangles
         for t in self.triangles:
             p1,p2,p3 = t.points
             isIn = pointInTriangle(nextPosition, p1.vector, p2.vector, p3.vector)
             if isIn:
                 return self.triangles
 
-        # Find in which triangle this point is in
+        # In which triangle is this next position?
         queue = [self.triangles[0]]
         queueIndex = 0
         while queueIndex < len(queue):
@@ -63,7 +71,7 @@ class Point:
                     if t not in queue:
                         queue += p.triangles
 
-        return self.triangles
+        raise Exception("Point is in border but I didn't find triangle... This is bad!")
 
 class Line:
     def __init__(self, p1: Point, p2: Point):
@@ -76,9 +84,9 @@ class Line:
 
     def center(self, onSurface):
         if onSurface:
-            return np.mean([p.vector for p in self.points], axis=0).tolist()
+            return np.mean([p.vector for p in self.points], axis=0)
         else:
-            return np.mean([p.vector3D for p in self.points], axis=0).tolist()
+            return np.mean([p.vector3D for p in self.points], axis=0)
 
     def mutualPoint(self, line):
         p1 = set(self.points)
@@ -155,9 +163,9 @@ class Triangle:
         bigestLine = self.sortedLines(onSurface, fromBigToLow=True)[0]
         return bigestLine.size(onSurface)
 
-    def coincidingTriangles(self, onSurface):
+    def coincidingTriangles(self, onSurface, searchSpace):
         tri = []
-        for t in self.connectedTriangles():
+        for t in self.connectedTriangles(searchSpace):
             isConn = False
             for sline in self.lines:
                 for line in t.lines:
@@ -171,11 +179,10 @@ class Triangle:
 
         return tri
 
-    # Todo This should be fixed.
-    def connectedTriangles(self):
+    def connectedTriangles(self, searchSpace):
         tri: List[Triangle] = []
         for p in self.points:
-            for t in p.triangles:
+            for t in p.connectedTriangles(searchSpace):
                 if t != self and t not in tri:
                     tri.append(t)
         return tri
@@ -267,11 +274,11 @@ class TriangleOptimizer:
                     raise Exception("ERR")
                 return point.vector
 
-        if self.eval % 2 == 0:
+        if self.eval % 3 != 0:
             localMinimums = self.getLowestActiveMinimums()
             if len(localMinimums) > 0:
                 bestMinimum = localMinimums[0]
-                triangles = bestMinimum.connectedTriangles()
+                triangles = bestMinimum.connectedTriangles(self.space.bounds)
                 self.draw.drawTriangles(triangles, permament=False)
                 for t in triangles:
                     if t not in self.queue_minConnectedTriangles:
@@ -283,6 +290,7 @@ class TriangleOptimizer:
         if cmd == 'get':
             raise Exception("ERR")
         return point.vector
+
 
     def getBestRankedTriangle(self):
         while True:
@@ -309,7 +317,7 @@ class TriangleOptimizer:
 
             lowPoint = t.lowestPoint()
             isLowest = True
-            for tc in t.connectedTriangles():
+            for tc in t.connectedTriangles(self.space.bounds):
                 if lowPoint.value > tc.lowestPoint().value:
                     isLowest = False
                     break
@@ -362,7 +370,7 @@ class TriangleOptimizer:
         self.triangles += newTriangles
 
         # Partition connected triangles and new triangles if no point will be created in the process of partitioning
-        for t in triangle.coincidingTriangles(onSurface=True) + newTriangles:
+        for t in triangle.coincidingTriangles(onSurface=True, searchSpace=self.space.bounds) + newTriangles:
             if t not in self.queue_cheepTriangles:
                 NmX, NmY = t.newPointVector(onSurface=True)
                 if self.pointExists(NmX, NmY):
