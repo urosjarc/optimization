@@ -246,12 +246,12 @@ class TriangleOptimizer:
             for minPoint in localMinimums:
                 return sorted(minPoint.triangles, key=lambda t: t.volume(), reverse=True)[0]
         else:
-            triangles = [t for t in self.triangles if t.eval < 15]
+            triangles = [t for t in self.triangles if t.eval < 12]
             print(len(triangles))
             evalDiff = normalizeVector([t.evalDiff for t in triangles])
             volume = normalizeVector([t.volume() for t in triangles])
-            meanValue = normalizeVector([t.meanValue() for t in triangles])
-            rank = volume + evalDiff + meanValue
+            meanValue = 1-normalizeVector([t.meanValue() for t in triangles])
+            rank = volume + evalDiff + meanValue*2
             bestRank = np.argsort(rank)[-1]
             return triangles[bestRank]
 
