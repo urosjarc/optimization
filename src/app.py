@@ -4,6 +4,7 @@ import numpy as np
 from matplotlib.axes import Axes
 
 from src.math import *
+from src.optimization.triangle import Triangle
 
 
 class Surface:
@@ -16,8 +17,8 @@ class Surface:
         self.zz = np.array([[space(np.array([xi, yi])) for xi in self.x] for yi in self.y])
         self.zzLog = zLog(self.zz)
 
-        XminDiff = abs(-space.bounds[0][0] + space.bounds[0][1]) / 1000
-        YminDiff = abs(-space.bounds[1][0] + space.bounds[1][1]) / 1000
+        XminDiff = abs(-space.bounds[0][0] + space.bounds[0][1]) / 150000
+        YminDiff = abs(-space.bounds[1][0] + space.bounds[1][1]) / 150000
         Xaxe = np.linspace(space.minVector[0][0] - XminDiff, space.minVector[0][0] + XminDiff, step)
         Yaxe = np.linspace(space.minVector[0][1] - YminDiff, space.minVector[0][1] + YminDiff, step)
         self.xZoom, self.yZoom = Xaxe, Yaxe
@@ -132,6 +133,16 @@ class PlotInterface:
                 self.triangles.set_ydata(ys)
                 self.triangles.set_xdata(xs)
             plt.show()
+
+    def drawTriangles(self, triangles: List[Triangle], permament):
+        if permament:
+            for t in triangles:
+                self.poligon([p.vector for p in t.points], permament=permament)
+        else:
+            vectors = []
+            for t in triangles:
+                vectors += [p.vector for p in t.points]
+            self.poligon(vectors, permament=permament)
 
     def errs(self, ers):
         self.plot.errAx.set_xlim([0, len(ers)])

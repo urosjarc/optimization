@@ -39,6 +39,7 @@ class Space:
         self.name = str(f).split('.')[-1][:-2]
         self.minVector = self.f.global_optimum
         self.bounds = []
+        self.eval = 0
         self.init()
 
     def init(self):
@@ -55,5 +56,6 @@ class Space:
             self.minVector = [[0, 0]]
 
     def __call__(self, vector):
+        self.eval += 1
         return np.nan_to_num(self.f.fun(np.array(vector)))
 

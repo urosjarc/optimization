@@ -1,7 +1,5 @@
 import math
-from random import randint, random
 
-from src.app import PlotInterface
 from src.math import Space, normalizeVector, angle
 import numpy as np
 from typing import *
@@ -155,17 +153,20 @@ class Triangle:
 
 
 class TriangleOptimizer:
-    def __init__(self, space: Space, draw: PlotInterface, maxEval):
+    def __init__(self, space: Space, draw, maxEval):
         self.draw = draw
         self.space = space
         self.triangles: List[Triangle] = []
         self.points: List[Point] = []
-        self.queue: List[Triangle] = []
 
-        self.eval = 0
+        self.queue_borderPoints: List[Point] = []
+        self.queue_cheepTriangles: List[Triangle] = []
+        self.queue_minConnectedTriangles: List[Triangle] = []
+
         self.minPoint = None
         self.maxEval = maxEval
-        self.maxLocalMinLineSize = 10**-3
+        self.eval = 0
+        self.maxLocalMinLineSize = 10**-8
         self.init()
 
     def init(self):
@@ -173,6 +174,8 @@ class TriangleOptimizer:
         leftup, _ = self.getOrMakePoint(self.space.bounds[0][0], self.space.bounds[1][1])
         rightdown, _ = self.getOrMakePoint(self.space.bounds[0][1], self.space.bounds[1][0])
         rightup, _ = self.getOrMakePoint(self.space.bounds[0][1], self.space.bounds[1][1])
+
+        self.queue_borderPoints = [leftdown, leftup, rightdown, rightup]
 
         l1 = [
             Line(leftup, leftdown),
@@ -201,61 +204,65 @@ class TriangleOptimizer:
         self.points.append(p)
         return p, "make"
 
-    def drawTriangles(self, triangles: List[Triangle], permament):
-        if permament:
-            for t in triangles:
-                self.draw.poligon([p.vector for p in t.points], permament=permament)
-        else:
-            vectors = []
-            for t in triangles:
-                vectors += [p.vector for p in t.points]
-            self.draw.poligon(vectors, permament=permament)
-
     def nextPoint(self):
+        self.eval += 1
+        print(self.eval)
 
-        while True:
-            if len(self.queue) > 0:
-                triangle = self.queue[0]
-                self.queue.pop(0)
-                point, cmd = self.partition(triangle)
-                if cmd == 'make':
-                    raise Exception("ERR")
-            else:
-                triangle = self.getTriangleCandidate()
+        if len(self.queue_borderPoints) > 0:
+            point = self.queue_borderPoints[0]
+            self.queue_borderPoints.pop(0)
+            return point.vector
+
+        while len(self.queue_cheepTriangles) > 0:
+            triangle = self.queue_cheepTriangles[0]
+            self.queue_cheepTriangles.pop(0)
+            point, cmd = self.partition(triangle)
+            if cmd == 'make':
+                raise Exception("ERR")
+
+        while len(self.queue_minConnectedTriangles) > 0:
+            triangle = self.queue_minConnectedTriangles[0]
+            self.queue_minConnectedTriangles.pop(0)
+            if not triangle.splited:
                 point, cmd = self.partition(triangle)
                 if cmd == 'get':
                     raise Exception("ERR")
-                break
+                return point.vector
 
-        self.eval += 1
-        print(self.eval)
-        self.draw.localMinimum([p.vector for p in self.getLocalMinimums()])
+        triangles = self.getTrianglesConnectedToActiveLocalMin()
+        if len(triangles) > 0:
+            for t in triangles:
+                if t not in self.queue_minConnectedTriangles:
+                    self.queue_minConnectedTriangles.append(t)
+            return self.nextPoint()
 
+        triangle = self.getBestRankedTriangle()
+        point, cmd = self.partition(triangle)
+        if cmd == 'get':
+            raise Exception("ERR")
         return point.vector
 
-    def getTriangleCandidate(self):
-        # On every 10th evaluation split bigest triangle that is connected to global minimum.
-        if self.eval % 20 == 0:
-            point = sorted(self.points, key=lambda t: t.value)[0]
-            return sorted(point.triangles, key=lambda t: t.eval, reverse=False)[0]
-
-        # Return biggest triangle connected to lowest local minimum point
-        localMinimums: List[Point] = self.getLocalMinimums()
+    def getTrianglesConnectedToActiveLocalMin(self):
+        localMinimums: List[Point] = self.getLowestActiveMinimums()
         if len(localMinimums) > 0:
             localMinimums.sort(key=lambda p: p.value)
             for minPoint in localMinimums:
-                return sorted(minPoint.triangles, key=lambda t: t.volume(), reverse=True)[0]
-        else:
-            triangles = [t for t in self.triangles if t.eval < 12]
-            print(len(triangles))
-            evalDiff = normalizeVector([t.evalDiff for t in triangles])
-            volume = normalizeVector([t.volume() for t in triangles])
-            meanValue = 1-normalizeVector([t.meanValue() for t in triangles])
-            rank = volume + evalDiff + meanValue*2
-            bestRank = np.argsort(rank)[-1]
-            return triangles[bestRank]
+                return minPoint.triangles
+        return []
 
-    def getLocalMinimums(self):
+    def getBestRankedTriangle(self):
+        triangles = [t for t in self.triangles if t.eval < 12]
+
+        evalDiff = normalizeVector([t.evalDiff for t in triangles])
+        volume = normalizeVector([t.volume() for t in triangles])
+        meanValue = 1-normalizeVector([t.meanValue() for t in triangles])
+
+        rank = volume + evalDiff + meanValue*2
+
+        bestRank = np.argsort(rank)[-1]
+        return triangles[bestRank]
+
+    def getLowestActiveMinimums(self):
         localMin = []
         for t in self.triangles:
 
@@ -272,13 +279,15 @@ class TriangleOptimizer:
             if isLowest:
                 localMin.append(lowPoint)
 
-        return sorted(localMin, key=lambda p: p.value, reverse=False)
+        activeMinimums = sorted(localMin, key=lambda p: p.value, reverse=False)
+        self.draw.localMinimum([p.vector for p in activeMinimums])
+        return activeMinimums
 
     def partition(self, triangle: Triangle):
         # Remove triangle from triangles, and from lines triangle list
         if not triangle.splited:
-            if triangle in self.queue:
-                raise Exception(f"Triangle emerge multiple times in queue list!")
+            if triangle in self.queue_cheepTriangles:
+                raise Exception(f"Triangle emerge multiple times in queue list, but is allready splited!")
             triangle.splited = True
             self.triangles.remove(triangle)
             for p in triangle.points:
@@ -316,9 +325,9 @@ class TriangleOptimizer:
 
         # Partition connected triangles and new triangles if no point will be created in the process of partitioning
         for t in triangle.coincidingTriangles(onSurface=True) + newTriangles:
-            if t not in self.queue:
+            if t not in self.queue_cheepTriangles:
                 NmX, NmY = t.newPointVector(onSurface=True)
                 if self.pointExists(NmX, NmY):
-                    self.queue.append(t)
+                    self.queue_cheepTriangles.append(t)
 
         return mPoint, cmd
