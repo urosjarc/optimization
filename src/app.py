@@ -1,10 +1,9 @@
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-import numpy as np
-from matplotlib.axes import Axes
+from matplotlib.collections import PatchCollection
 
 from src.math import *
-from src.optimization.triangle import Triangle
+from matplotlib.patches import Polygon
 
 
 class Surface:
@@ -121,28 +120,33 @@ class PlotInterface:
         self.minimumsZoom = None
         self.errLine = None
 
-    def poligon(self, poligon, permament):
-        if self.triangles is None:
-            self.triangles, = self.plot.d2LogAx.plot([], [], linewidth=2, color='green')
-        if self.penDown:
-            poligon.append(poligon[0])
-            xs, ys = zip(*poligon)
-            if permament:
-                self.plot.d2LogAx.plot(xs, ys, linewidth=.01, color='red')
-            else:
-                self.triangles.set_ydata(ys)
-                self.triangles.set_xdata(xs)
-            plt.show()
+        self.poligons = []
+        self.patchCollections = []
 
-    def drawTriangles(self, triangles: List[Triangle], permament):
-        if permament:
-            for t in triangles:
-                self.poligon([p.vector for p in t.points], permament=permament)
-        else:
-            vectors = []
-            for t in triangles:
-                vectors += [p.vector for p in t.points]
-            self.poligon(vectors, permament=permament)
+    def drawTriangles(self, triangles, permament):
+        patches = []
+        for t in triangles:
+            polygon = Polygon([p.vector for p in t.points], True)
+            patches.append(polygon)
+        for p in self.patchCollections:
+            p.remove()
+        self.patchCollections = []
+        p = PatchCollection(patches, alpha=.8)
+        self.patchCollections.append(p)
+        self.plot.d2LogAx.add_collection(p)
+        plt.show()
+
+    def drawPoligon(self, vectors, permament):
+        patches = []
+        polygon = Polygon([v for v in vectors], True)
+        patches.append(polygon)
+        for p in self.patchCollections:
+            p.remove()
+        self.patchCollections = []
+        p = PatchCollection(patches, alpha=.8)
+        self.patchCollections.append(p)
+        self.plot.d2LogAx.add_collection(p)
+        plt.show()
 
     def errs(self, ers):
         self.plot.errAx.set_xlim([0, len(ers)])

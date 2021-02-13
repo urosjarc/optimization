@@ -1,7 +1,8 @@
 import math
 from random import randint
 
-from src.math import Space, normalizeVector, angle
+from src.app import PlotInterface
+from src.math import Space, normalizeVector, angle, pointInTriangle
 import numpy as np
 from typing import *
 
@@ -17,7 +18,7 @@ class Point:
         self.x = x
         self.y = y
         self.value = value
-        self.triangles = []
+        self.triangles: List[Triangle] = []
         self.lines = []
 
     def __str__(self):
@@ -29,6 +30,40 @@ class Point:
         else:
             return np.linalg.norm(self.vector3D - point.vector3D)
 
+    def connectedTriangles(self):
+        forceSum = np.array([0., 0.])
+        vector = np.array(self.vector)
+        for t in self.triangles:
+            center = t.center(onSurface=True)
+            force = vector - center
+            forceSum += force
+        forceSum = normalizeVector(forceSum)*10**-12
+        nextPosition = vector + forceSum
+
+        for t in self.triangles:
+            p1,p2,p3 = t.points
+            isIn = pointInTriangle(nextPosition, p1.vector, p2.vector, p3.vector)
+            if isIn:
+                return self.triangles
+
+        # Find in which triangle this point is in
+        queue = [self.triangles[0]]
+        queueIndex = 0
+        while queueIndex < len(queue):
+            triInQueue = queue[queueIndex]
+            queueIndex += 1
+
+            p1,p2,p3 = triInQueue.points
+            isIn = pointInTriangle(nextPosition, p1.vector, p2.vector, p3.vector)
+            if isIn:
+                return self.triangles + [triInQueue]
+
+            for p in triInQueue.points:
+                for t in p.triangles:
+                    if t not in queue:
+                        queue += p.triangles
+
+        return self.triangles
 
 class Line:
     def __init__(self, p1: Point, p2: Point):
@@ -61,7 +96,6 @@ class Line:
         return (self.isOnLine(p1, onSurface) and self.isOnLine(p2, onSurface)) or (
                 line.isOnLine(sp1, onSurface) and line.isOnLine(sp2, onSurface)
         )
-
 
 class Triangle:
     def __init__(self, lines, evalDiff=10 ** 10, eval=0):
@@ -137,6 +171,7 @@ class Triangle:
 
         return tri
 
+    # Todo This should be fixed.
     def connectedTriangles(self):
         tri: List[Triangle] = []
         for p in self.points:
@@ -149,12 +184,14 @@ class Triangle:
         bigestLine = self.sortedLines(onSurface, fromBigToLow=True)[0]
         return bigestLine.center(onSurface)
 
-    def center(self):
+    def center(self, onSurface):
+        if onSurface:
+            return np.mean([np.array(p.vector) for p in self.points], axis=0)
         return np.mean([p.vector3D for p in self.points], axis=0)
 
 
 class TriangleOptimizer:
-    def __init__(self, space: Space, draw, maxEval):
+    def __init__(self, space: Space, draw: PlotInterface, maxEval):
         self.draw = draw
         self.space = space
         self.triangles: List[Triangle] = []
@@ -167,7 +204,7 @@ class TriangleOptimizer:
         self.minPoint = None
         self.maxEval = maxEval
         self.eval = 0
-        self.maxLocalMinLineSize = 10**-1
+        self.maxLocalMinLineSize = 10**-3
         self.init()
 
     def init(self):
@@ -231,28 +268,21 @@ class TriangleOptimizer:
                 return point.vector
 
         if self.eval % 2 == 0:
-            triangles = self.getTrianglesConnectedToActiveLocalMin()
-            if len(triangles) > 0:
+            localMinimums = self.getLowestActiveMinimums()
+            if len(localMinimums) > 0:
+                bestMinimum = localMinimums[0]
+                triangles = bestMinimum.connectedTriangles()
+                self.draw.drawTriangles(triangles, permament=False)
                 for t in triangles:
                     if t not in self.queue_minConnectedTriangles:
                         self.queue_minConnectedTriangles.append(t)
                 return self.nextPoint()
-            else:
-                self.maxLocalMinLineSize /= 10
 
         triangle = self.getBestRankedTriangle()
         point, cmd = self.partition(triangle)
         if cmd == 'get':
             raise Exception("ERR")
         return point.vector
-
-    def getTrianglesConnectedToActiveLocalMin(self):
-        localMinimums: List[Point] = self.getLowestActiveMinimums()
-        if len(localMinimums) > 0:
-            localMinimums.sort(key=lambda p: p.value)
-            for minPoint in localMinimums:
-                return minPoint.triangles
-        return []
 
     def getBestRankedTriangle(self):
         while True:
