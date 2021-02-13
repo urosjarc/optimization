@@ -165,7 +165,7 @@ class TriangleOptimizer:
         self.eval = 0
         self.minPoint = None
         self.maxEval = maxEval
-        self.maxLocalMinLineSize = 10**-2
+        self.maxLocalMinLineSize = 10**-3
         self.init()
 
     def init(self):
