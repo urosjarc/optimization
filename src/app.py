@@ -16,8 +16,8 @@ class Surface:
         self.zz = np.array([[space(np.array([xi, yi])) for xi in self.x] for yi in self.y])
         self.zzLog = zLog(self.zz)
 
-        XminDiff = abs(-space.bounds[0][0] + space.bounds[0][1]) / 100
-        YminDiff = abs(-space.bounds[1][0] + space.bounds[1][1]) / 100
+        XminDiff = abs(-space.bounds[0][0] + space.bounds[0][1]) / 20
+        YminDiff = abs(-space.bounds[1][0] + space.bounds[1][1]) / 20
         Xaxe = np.linspace(space.opt[0][0] - XminDiff, space.opt[0][0] + XminDiff, step)
         Yaxe = np.linspace(space.opt[0][1] - YminDiff, space.opt[0][1] + YminDiff, step)
         self.fx, self.fy = Xaxe, Yaxe
@@ -58,7 +58,8 @@ class Plot:
         # Drawing main figure
         plt.ion()
         gs = gridspec.GridSpec(2, 2)
-        fig = plt.figure()
+        fig = plt.figure(facecolor='gray')
+        plt.rcParams['axes.facecolor'] = 'gray'
         self.fig = fig
         fig.suptitle(f'{self.space.name} - {len(self.space.opt)} min.')
 
@@ -82,7 +83,7 @@ class Plot:
         self.d2LogAx = ax
         self.cmd.minimums, = ax.plot([], [], marker='*', color="blue", linestyle='')
         cp = ax.contourf(sur.x, sur.y, sur.zzLog, levels=sur.step, cmap="gray")
-        ax.scatter(sur.xMin, sur.yMin, marker='*', color='yellow')
+        ax.scatter(sur.xMin, sur.yMin, marker='*', color='red', s=3)
         fig.colorbar(cp)
 
         # Drawing log points
@@ -91,8 +92,8 @@ class Plot:
         # Drawing surface 3D
         ax = fig.add_subplot(gs[0, 0], projection='3d')
         self.d3Ax = ax
-        ax.plot_surface(sur.xx, sur.yy, sur.zz, alpha=0.5, cmap="jet", linewidth=0, antialiased=True)
-        self.scatter3D = ax.scatter([], [], [], 'o', color='black')
+        ax.set_axis_off()
+        ax.plot_surface(sur.xx, sur.yy, sur.zz, alpha=1, cmap="jet", linewidth=0, antialiased=True)
 
         plt.show()
 
@@ -109,7 +110,6 @@ class Plot:
 
         self.scatter.set_offsets(np.c_[self.surface.points[0], self.surface.points[1]])
         self.scatterLog.set_offsets(np.c_[self.surface.points[0], self.surface.points[1]])
-        self.scatter3D._offsets3d = self.surface.points
 
         self.fig.canvas.draw_idle()
 

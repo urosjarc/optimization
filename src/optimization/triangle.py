@@ -156,7 +156,6 @@ class Triangle:
 
 class TriangleOptimizer:
     def __init__(self, space: Space, draw: PlotInterface, maxEval):
-        self.maxTriangleEval = 8
         self.draw = draw
         self.space = space
         self.triangles: List[Triangle] = []
@@ -166,6 +165,7 @@ class TriangleOptimizer:
         self.eval = 0
         self.minPoint = None
         self.maxEval = maxEval
+        self.maxLocalMinLineSize = 10**-2
         self.init()
 
     def init(self):
@@ -234,31 +234,32 @@ class TriangleOptimizer:
         return point.vector
 
     def getTriangleCandidate(self):
+        # On every 10th evaluation split bigest triangle that is connected to global minimum.
+        if self.eval % 20 == 0:
+            point = sorted(self.points, key=lambda t: t.value)[0]
+            return sorted(point.triangles, key=lambda t: t.eval, reverse=False)[0]
+
         # Return biggest triangle connected to lowest local minimum point
-        if self.eval > 0.75*self.maxEval:
-            localMinimums: List[Point] = self.getLocalMinimums()
-            if len(localMinimums) > 0:
-                localMinimums.sort(key=lambda p: p.value)
-                for minPoint in localMinimums:
-                    return sorted(minPoint.triangles, key=lambda t: t.volume(), reverse=True)[0]
-
-        # Explore space for next local minimum
-        while True:
-            trianglesCandidates = [t for t in self.triangles if t.eval < self.maxTriangleEval]
-            if len(trianglesCandidates) == 0:
-                self.maxTriangleEval = 12
-                continue
-            break
-
-        trianglesCandidates.sort(key=lambda t: t.lowestPoint().value, reverse=False)
-        return trianglesCandidates[0]
-
+        localMinimums: List[Point] = self.getLocalMinimums()
+        if len(localMinimums) > 0:
+            localMinimums.sort(key=lambda p: p.value)
+            for minPoint in localMinimums:
+                return sorted(minPoint.triangles, key=lambda t: t.volume(), reverse=True)[0]
+        else:
+            triangles = [t for t in self.triangles if t.eval < 15]
+            print(len(triangles))
+            evalDiff = normalizeVector([t.evalDiff for t in triangles])
+            volume = normalizeVector([t.volume() for t in triangles])
+            meanValue = normalizeVector([t.meanValue() for t in triangles])
+            rank = volume + evalDiff + meanValue
+            bestRank = np.argsort(rank)[-1]
+            return triangles[bestRank]
 
     def getLocalMinimums(self):
         localMin = []
         for t in self.triangles:
 
-            if t.biggestLineSize(onSurface=True) < 10**-4:
+            if t.biggestLineSize(onSurface=True) < self.maxLocalMinLineSize:
                 continue
 
             lowPoint = t.lowestPoint()
