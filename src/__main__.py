@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from gobench import go_benchmark_functions
 import random
 
-random.seed(0)
-space = Space(go_benchmark_functions.Damavandi, rand=False)
+random.seed(1)
+space = Space(go_benchmark_functions.Griewank, rand=True)
 plot = Plot(space, zoom=100)
 plot.cmd.penDown = True
 iter = 3000

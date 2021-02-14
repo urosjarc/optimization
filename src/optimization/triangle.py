@@ -1,5 +1,6 @@
 import math
 from random import randint, random
+from statistics import median
 
 from src.app import PlotInterface
 from src.math import Space, normalizeVector, angle, pointInTriangle
@@ -70,7 +71,8 @@ class Point:
                     if t not in queue:
                         queue += p.triangles
 
-        raise Exception("Point is in border but I didn't find triangle... This is bad!")
+        # raise Exception("Point is in border but I didn't find triangle... This is bad!")
+        return self.triangles
 
 
 class Line:
@@ -212,8 +214,8 @@ class TriangleOptimizer:
         self.minPoint = None
         self.maxEval = maxEval
         self.eval = 0
-        self.maxLocalMinLineSize = 10 ** -3
-        self.minTriangleEval = 5
+        self.localMinimums = []
+        self.maxLocalMinLineSize = 10 ** -2
         self.init()
 
     def init(self):
@@ -294,18 +296,23 @@ class TriangleOptimizer:
         return point.vector
 
     def getBestRankedTriangle(self):
-        while True:
-            triangles = [t for t in self.triangles if t.eval < (self.minTriangleEval+random()*(20-self.minTriangleEval))]
-            if len(triangles) > 0:
-                break
-            else:
-                self.minTriangleEval += 1
+        triangles = self.triangles
+        print(len(self.localMinimums))
+        if len(self.localMinimums) > 10:
+            triangles = [t for t in triangles if t.eval < randint(5, 13)]
+            return sorted(triangles, key=lambda t: t.meanValue())[0]
 
-        evalDiff = normalizeVector([t.evalDiff for t in triangles])
-        volume = normalizeVector([t.volume() for t in triangles])
-        meanValue = 1 - normalizeVector([t.meanValue() for t in triangles])
+        info = {'evalDiff': [], 'meanValue': [], 'eval': []}
+        for t in triangles:
+            info['evalDiff'].append(t.evalDiff)
+            info['meanValue'].append(t.meanValue())
+            info['eval'].append(t.eval)
 
-        rank = volume + evalDiff + meanValue * 2
+        highEvalDiff = normalizeVector(info['evalDiff'])
+        lowEval = 1-normalizeVector(info['eval'])
+        lowValue = 1-normalizeVector(info['meanValue'])
+
+        rank = highEvalDiff + lowEval + lowValue
 
         bestRank = np.argsort(rank)[-1]
         return triangles[bestRank]
@@ -314,10 +321,12 @@ class TriangleOptimizer:
         localMin = []
         for t in self.triangles:
 
+            lowPoint = t.lowestPoint()
             if t.biggestLineSize(onSurface=True) < self.maxLocalMinLineSize:
+                if lowPoint not in self.localMinimums:
+                    self.localMinimums.append(lowPoint)
                 continue
 
-            lowPoint = t.lowestPoint()
             isLowest = True
             for tc in t.connectedTriangles(self.space.bounds, simple=True):
                 if lowPoint.value > tc.lowestPoint().value:
@@ -372,7 +381,8 @@ class TriangleOptimizer:
         self.triangles += newTriangles
 
         # Partition connected triangles and new triangles if no point will be created in the process of partitioning
-        for t in triangle.coincidingTriangles(onSurface=True, searchSpace=self.space.bounds, simple=True) + newTriangles:
+        for t in triangle.coincidingTriangles(onSurface=True, searchSpace=self.space.bounds,
+                                              simple=True) + newTriangles:
             if t not in self.queue_cheepTriangles:
                 NmX, NmY = t.newPointVector(onSurface=True)
                 if self.pointExists(NmX, NmY):
