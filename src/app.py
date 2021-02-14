@@ -70,7 +70,6 @@ class Plot:
         ax.contourf(sur.x, sur.y, sur.zzLog, levels=sur.step, cmap="gray")
         ax.scatter(sur.xMin, sur.yMin, marker='*', color='yellow')
         self.scatterLog = ax.scatter([], [], marker=',', color='red', s=1)
-        self.cmd.minimums, = ax.plot([], [], marker='*', color="blue", linestyle='')
 
         # Drawing contour bars normal
         ax = fig.add_subplot(gs[0, 1])
@@ -78,7 +77,6 @@ class Plot:
         ax.contourf(sur.xZoom, sur.yZoom, sur.zzZoom, levels=sur.step, cmap="gray")
         ax.scatter(sur.xMin, sur.yMin, marker='*', color='yellow')
         self.scatter = ax.scatter([], [], marker=',', color='red', s=1)
-        self.cmd.minimumsZoom, = ax.plot([], [], marker='*', color="blue", linestyle='')
 
         # Drawing surface 3D
         ax = fig.add_subplot(gs[0, 0], projection='3d')
@@ -89,9 +87,9 @@ class Plot:
         # Drawing progress
         ax = fig.add_subplot(gs[1, 0])
         self.errAx = ax
-        self.cmd.errLine, = ax.plot([], [], 'r-')
 
         plt.show()
+        self.cmd.init()
 
     def addPoint(self, x, y):
         self.eval += 1
@@ -117,11 +115,18 @@ class PlotInterface:
 
         self.triangles = None
         self.minimums = None
+        self.unactivePoints = None
         self.minimumsZoom = None
         self.errLine = None
 
         self.poligons = []
         self.patchCollections = []
+
+    def init(self):
+        self.unactivePoints = self.plot.d2LogAx.scatter([], [], marker=',', color='black')
+        self.minimums = self.plot.d2LogAx.scatter([], [], marker='*', color="blue")
+        self.errLine, = self.plot.errAx.plot([], [], 'r-')
+        self.minimumsZoom = self.plot.d2ZoomAx.scatter([], [], marker='*', color="blue")
 
     def drawTriangles(self, triangles, permament):
         patches = []
@@ -155,11 +160,17 @@ class PlotInterface:
         self.errLine.set_xdata(np.array([i for i in range(len(ers))]))
         plt.show()
 
-    def localMinimum(self, vectors):
+    def localMinimums(self, vectors, colour=[]):
         x = [v[0] for v in vectors]
         y = [v[1] for v in vectors]
-        self.minimums.set_ydata(np.array(y))
-        self.minimums.set_xdata(np.array(x))
-        self.minimumsZoom.set_ydata(np.array(y))
-        self.minimumsZoom.set_xdata(np.array(x))
+        self.minimums.set_offsets(np.c_[x, y])
+        # self.minimums.set_color(['gray' for v in vectors])
+        self.minimumsZoom.set_offsets(np.c_[x, y])
         plt.show()
+
+    def deactivatedPoints(self, vectors):
+        x = [v[0] for v in vectors]
+        y = [v[1] for v in vectors]
+        self.unactivePoints.set_offsets(np.c_[x, y])
+        plt.show()
+

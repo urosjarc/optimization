@@ -10,6 +10,7 @@ from typing import *
 
 class Point:
     def __init__(self, x, y, value):
+        self.active = True
         self.vector = [x, y]
         self.vector3D = np.array([x, y, value])
         self.x = x
@@ -344,7 +345,7 @@ class TriangleOptimizer:
                 localMin.append(lowPoint)
 
         activeMinimums = sorted(localMin, key=lambda p: p.value, reverse=False)
-        self.draw.localMinimum([p.vector for p in activeMinimums])
+        self.draw.localMinimums([p.vector for p in activeMinimums])
         return activeMinimums
 
     def partition(self, triangle: Triangle):
