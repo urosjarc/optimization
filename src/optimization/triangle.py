@@ -6,10 +6,6 @@ from src.math import Space, normalizeVector, angle, pointInTriangle
 import numpy as np
 from typing import *
 
-# Todo: Algorithm should jump and search local minimum
-# Todo: And then found all triangles that are part of the hols when changes are minimal.
-# Todo: Those triangles should became deactivated from the search.
-# Todo: Algorithm should then explore next local minimum.
 
 class Point:
     def __init__(self, x, y, value):
@@ -30,26 +26,29 @@ class Point:
         else:
             return np.linalg.norm(self.vector3D - point.vector3D)
 
-    def connectedTriangles(self, searchSpace):
+    def connectedTriangles(self, searchSpace, simple):
+        if simple:
+            return self.triangles
+
         forceSum = np.array([0., 0.])
         vector = np.array(self.vector)
         for t in self.triangles:
             center = t.center(onSurface=True)
             force = vector - center
             forceSum += force
-        forceSum = normalizeVector(forceSum)*10**-12
+        forceSum = normalizeVector(forceSum) * 10 ** -12
         nextPosition = vector + forceSum
 
         # Test if next position is in search space
         for i in range(len(searchSpace)):
             low, high = searchSpace[i]
             ax = nextPosition[i]
-            if not(low < ax < high):
+            if not (low < ax < high):
                 return self.triangles
 
         # Test if point is in connected triangles
         for t in self.triangles:
-            p1,p2,p3 = t.points
+            p1, p2, p3 = t.points
             isIn = pointInTriangle(nextPosition, p1.vector, p2.vector, p3.vector)
             if isIn:
                 return self.triangles
@@ -61,7 +60,7 @@ class Point:
             triInQueue = queue[queueIndex]
             queueIndex += 1
 
-            p1,p2,p3 = triInQueue.points
+            p1, p2, p3 = triInQueue.points
             isIn = pointInTriangle(nextPosition, p1.vector, p2.vector, p3.vector)
             if isIn:
                 return self.triangles + [triInQueue]
@@ -72,6 +71,7 @@ class Point:
                         queue += p.triangles
 
         raise Exception("Point is in border but I didn't find triangle... This is bad!")
+
 
 class Line:
     def __init__(self, p1: Point, p2: Point):
@@ -104,6 +104,7 @@ class Line:
         return (self.isOnLine(p1, onSurface) and self.isOnLine(p2, onSurface)) or (
                 line.isOnLine(sp1, onSurface) and line.isOnLine(sp2, onSurface)
         )
+
 
 class Triangle:
     def __init__(self, lines, evalDiff=10 ** 10, eval=0):
@@ -163,9 +164,9 @@ class Triangle:
         bigestLine = self.sortedLines(onSurface, fromBigToLow=True)[0]
         return bigestLine.size(onSurface)
 
-    def coincidingTriangles(self, onSurface, searchSpace):
+    def coincidingTriangles(self, onSurface, searchSpace, simple):
         tri = []
-        for t in self.connectedTriangles(searchSpace):
+        for t in self.connectedTriangles(searchSpace, simple):
             isConn = False
             for sline in self.lines:
                 for line in t.lines:
@@ -179,10 +180,10 @@ class Triangle:
 
         return tri
 
-    def connectedTriangles(self, searchSpace):
+    def connectedTriangles(self, searchSpace, simple):
         tri: List[Triangle] = []
         for p in self.points:
-            for t in p.connectedTriangles(searchSpace):
+            for t in p.connectedTriangles(searchSpace, simple):
                 if t != self and t not in tri:
                     tri.append(t)
         return tri
@@ -211,7 +212,8 @@ class TriangleOptimizer:
         self.minPoint = None
         self.maxEval = maxEval
         self.eval = 0
-        self.maxLocalMinLineSize = 10**-3
+        self.maxLocalMinLineSize = 10 ** -3
+        self.minTriangleEval = 5
         self.init()
 
     def init(self):
@@ -278,7 +280,7 @@ class TriangleOptimizer:
             localMinimums = self.getLowestActiveMinimums()
             if len(localMinimums) > 0:
                 bestMinimum = localMinimums[0]
-                triangles = bestMinimum.connectedTriangles(self.space.bounds)
+                triangles = bestMinimum.connectedTriangles(self.space.bounds, simple=False)
                 self.draw.drawTriangles(triangles, permament=False)
                 for t in triangles:
                     if t not in self.queue_minConnectedTriangles:
@@ -291,19 +293,19 @@ class TriangleOptimizer:
             raise Exception("ERR")
         return point.vector
 
-
     def getBestRankedTriangle(self):
         while True:
-            maxEval = randint(5, 20)
-            triangles = [t for t in self.triangles if t.eval < maxEval]
+            triangles = [t for t in self.triangles if t.eval < (self.minTriangleEval+random()*(20-self.minTriangleEval))]
             if len(triangles) > 0:
                 break
+            else:
+                self.minTriangleEval += 1
 
         evalDiff = normalizeVector([t.evalDiff for t in triangles])
         volume = normalizeVector([t.volume() for t in triangles])
-        meanValue = 1-normalizeVector([t.meanValue() for t in triangles])
+        meanValue = 1 - normalizeVector([t.meanValue() for t in triangles])
 
-        rank = volume + evalDiff + meanValue*5
+        rank = volume + evalDiff + meanValue * 2
 
         bestRank = np.argsort(rank)[-1]
         return triangles[bestRank]
@@ -317,7 +319,7 @@ class TriangleOptimizer:
 
             lowPoint = t.lowestPoint()
             isLowest = True
-            for tc in t.connectedTriangles(self.space.bounds):
+            for tc in t.connectedTriangles(self.space.bounds, simple=True):
                 if lowPoint.value > tc.lowestPoint().value:
                     isLowest = False
                     break
@@ -370,7 +372,7 @@ class TriangleOptimizer:
         self.triangles += newTriangles
 
         # Partition connected triangles and new triangles if no point will be created in the process of partitioning
-        for t in triangle.coincidingTriangles(onSurface=True, searchSpace=self.space.bounds) + newTriangles:
+        for t in triangle.coincidingTriangles(onSurface=True, searchSpace=self.space.bounds, simple=True) + newTriangles:
             if t not in self.queue_cheepTriangles:
                 NmX, NmY = t.newPointVector(onSurface=True)
                 if self.pointExists(NmX, NmY):
