@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 from gobench import go_benchmark_functions
 import random
 
-random.seed(1)
-space = Space(go_benchmark_functions.Griewank, rand=True)
+# random.seed(1)
+space = Space(go_benchmark_functions.XinSheYang03, rand=True)
 plot = Plot(space, zoom=100)
 plot.cmd.penDown = True
-iter = 3000
+iter = 2000
 opt = TriangleOptimizer(space, plot.cmd, iter)
 for i in range(iter):
     plot.d2LogAx.set_title(i)

@@ -215,7 +215,7 @@ class TriangleOptimizer:
         self.maxEval = maxEval
         self.eval = 0
         self.localMinimums = []
-        self.maxLocalMinLineSize = 10 ** -2
+        self.maxLocalMinLineSize = 10 ** -4
         self.init()
 
     def init(self):
@@ -255,13 +255,15 @@ class TriangleOptimizer:
 
     def nextPoint(self):
         self.eval += 1
-        print(self.eval)
+        print(f'EVAL: {self.eval}, MINS: {len(self.localMinimums)}')
 
+        # Return border points on start
         if len(self.queue_borderPoints) > 0:
             point = self.queue_borderPoints[0]
             self.queue_borderPoints.pop(0)
             return point.vector
 
+        # Return cheep triangles that doesn't need new point evaluation
         while len(self.queue_cheepTriangles) > 0:
             triangle = self.queue_cheepTriangles[0]
             self.queue_cheepTriangles.pop(0)
@@ -269,6 +271,7 @@ class TriangleOptimizer:
             if cmd == 'make':
                 raise Exception("ERR")
 
+        # Return triangles connected to local minimum.
         while len(self.queue_minConnectedTriangles) > 0:
             triangle = self.queue_minConnectedTriangles[0]
             self.queue_minConnectedTriangles.pop(0)
@@ -278,6 +281,7 @@ class TriangleOptimizer:
                     raise Exception("ERR")
                 return point.vector
 
+        # Add triangles connected to local minimum to queue list.
         if self.eval % 3 != 0:
             localMinimums = self.getLowestActiveMinimums()
             if len(localMinimums) > 0:
@@ -289,6 +293,7 @@ class TriangleOptimizer:
                         self.queue_minConnectedTriangles.append(t)
                 return self.nextPoint()
 
+        # Explore space
         triangle = self.getBestRankedTriangle()
         point, cmd = self.partition(triangle)
         if cmd == 'get':
@@ -297,10 +302,7 @@ class TriangleOptimizer:
 
     def getBestRankedTriangle(self):
         triangles = self.triangles
-        print(len(self.localMinimums))
-        if len(self.localMinimums) > 10:
-            triangles = [t for t in triangles if t.eval < randint(5, 13)]
-            return sorted(triangles, key=lambda t: t.meanValue())[0]
+        triangles = [t for t in triangles if t.eval < randint(7, 13)]
 
         info = {'evalDiff': [], 'meanValue': [], 'eval': []}
         for t in triangles:
@@ -324,7 +326,12 @@ class TriangleOptimizer:
             lowPoint = t.lowestPoint()
             if t.biggestLineSize(onSurface=True) < self.maxLocalMinLineSize:
                 if lowPoint not in self.localMinimums:
-                    self.localMinimums.append(lowPoint)
+                    mins = [lowPoint.distance(p, onSurface=True) for p in self.localMinimums]
+                    if len(mins) > 0:
+                        if min(mins) > self.maxLocalMinLineSize:
+                            self.localMinimums.append(lowPoint)
+                    else:
+                        self.localMinimums.append(lowPoint)
                 continue
 
             isLowest = True
