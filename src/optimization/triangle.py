@@ -1,6 +1,6 @@
 import math
 from random import randint, random
-from statistics import median
+from statistics import median, mean
 
 from src.app import PlotInterface
 from src.math import Space, normalizeVector, angle, pointInTriangle
@@ -10,7 +10,6 @@ from typing import *
 
 class Point:
     def __init__(self, x, y, value):
-        self.active = True
         self.vector = [x, y]
         self.vector3D = np.array([x, y, value])
         self.x = x
@@ -216,8 +215,8 @@ class TriangleOptimizer:
         self.maxEval = maxEval
         self.eval = 0
         self.localMinimums = []
-        self.maxLocalMinLineSize = 10 ** -4
         self.init()
+        self.maxLocalMinLineSize = self.triangles[0].biggestLineSize(onSurface=True)/10000.0
 
     def init(self):
         leftdown, _ = self.getOrMakePoint(self.space.bounds[0][0], self.space.bounds[1][0])
@@ -255,13 +254,13 @@ class TriangleOptimizer:
         return p, "make"
 
     def nextPoint(self):
-        self.eval += 1
         print(f'EVAL: {self.eval}, MINS: {len(self.localMinimums)}')
 
         # Return border points on start
         if len(self.queue_borderPoints) > 0:
             point = self.queue_borderPoints[0]
             self.queue_borderPoints.pop(0)
+            self.eval += 1
             return point.vector
 
         # Return cheep triangles that doesn't need new point evaluation
@@ -280,11 +279,12 @@ class TriangleOptimizer:
                 point, cmd = self.partition(triangle)
                 if cmd == 'get':
                     raise Exception("ERR")
+                self.eval += 1
                 return point.vector
 
         # Add triangles connected to local minimum to queue list.
         if self.eval % 3 != 0:
-            localMinimums = self.getLowestActiveMinimums()
+            localMinimums = self.getActiveMinimums()
             if len(localMinimums) > 0:
                 bestMinimum = localMinimums[0]
                 triangles = bestMinimum.connectedTriangles(self.space.bounds, simple=False)
@@ -299,11 +299,16 @@ class TriangleOptimizer:
         point, cmd = self.partition(triangle)
         if cmd == 'get':
             raise Exception("ERR")
+        self.eval += 1
         return point.vector
 
     def getBestRankedTriangle(self):
-        triangles = self.triangles
-        triangles = [t for t in triangles if t.eval < randint(7, 13)]
+        maxEval = randint(8, 13)
+        while True:
+            triangles = [t for t in self.triangles if t.eval < maxEval]
+            if len(triangles) > 0:
+                break
+            maxEval += 1
 
         info = {'evalDiff': [], 'meanValue': [], 'eval': []}
         for t in triangles:
@@ -320,10 +325,9 @@ class TriangleOptimizer:
         bestRank = np.argsort(rank)[-1]
         return triangles[bestRank]
 
-    def getLowestActiveMinimums(self):
+    def getActiveMinimums(self):
         localMin = []
         for t in self.triangles:
-
             lowPoint = t.lowestPoint()
             if t.biggestLineSize(onSurface=True) < self.maxLocalMinLineSize:
                 if lowPoint not in self.localMinimums:
@@ -344,9 +348,8 @@ class TriangleOptimizer:
             if isLowest:
                 localMin.append(lowPoint)
 
-        activeMinimums = sorted(localMin, key=lambda p: p.value, reverse=False)
-        self.draw.localMinimums([p.vector for p in activeMinimums])
-        return activeMinimums
+        self.draw.localMinimums([p.vector for p in localMin])
+        return sorted(localMin, key=lambda p: p.value, reverse=False)
 
     def partition(self, triangle: Triangle):
         # Remove triangle from triangles, and from lines triangle list
@@ -381,8 +384,8 @@ class TriangleOptimizer:
             line2,
         ]
         newTriangles = [
-            Triangle(newTrianglesLines[:3], evalDiff=evalDiff, eval=triangle.eval + 1),
-            Triangle(newTrianglesLines[2:], evalDiff=evalDiff, eval=triangle.eval + 1)
+            Triangle(newTrianglesLines[:3], eval=triangle.eval + 1),
+            Triangle(newTrianglesLines[2:], eval=triangle.eval + 1)
         ]
 
         # Add new triangles to the mix
