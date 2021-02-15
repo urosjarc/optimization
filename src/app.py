@@ -160,17 +160,10 @@ class PlotInterface:
         self.errLine.set_xdata(np.array([i for i in range(len(ers))]))
         plt.show()
 
-    def localMinimums(self, vectors, colour=[]):
+    def localMinimums(self, vectors):
         x = [v[0] for v in vectors]
         y = [v[1] for v in vectors]
         self.minimums.set_offsets(np.c_[x, y])
-        # self.minimums.set_color(['gray' for v in vectors])
         self.minimumsZoom.set_offsets(np.c_[x, y])
-        plt.show()
-
-    def deactivatedPoints(self, vectors):
-        x = [v[0] for v in vectors]
-        y = [v[1] for v in vectors]
-        self.unactivePoints.set_offsets(np.c_[x, y])
         plt.show()
 

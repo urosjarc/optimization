@@ -211,12 +211,14 @@ class TriangleOptimizer:
         self.queue_cheepTriangles: List[Triangle] = []
         self.queue_minConnectedTriangles: List[Triangle] = []
 
-        self.minPoint = None
         self.maxEval = maxEval
         self.eval = 0
-        self.localMinimums = []
+
         self.init()
-        self.maxLocalMinLineSize = self.triangles[0].biggestLineSize(onSurface=True)/10000.0
+
+        self.minPoint = None
+        self.maxLocalMinLineSize = self.triangles[0].biggestLineSize(onSurface=True) * 10 ** -3
+        self.maxGlobalMinLineSize = self.triangles[0].biggestLineSize(onSurface=True) * 10 ** -6
 
     def init(self):
         leftdown, _ = self.getOrMakePoint(self.space.bounds[0][0], self.space.bounds[1][0])
@@ -254,7 +256,7 @@ class TriangleOptimizer:
         return p, "make"
 
     def nextPoint(self):
-        print(f'EVAL: {self.eval}, MINS: {len(self.localMinimums)}')
+        print(f'EVAL: {self.eval}')
 
         # Return border points on start
         if len(self.queue_borderPoints) > 0:
@@ -283,8 +285,13 @@ class TriangleOptimizer:
                 return point.vector
 
         # Add triangles connected to local minimum to queue list.
-        if self.eval % 3 != 0:
-            localMinimums = self.getActiveMinimums()
+        if self.eval % 5 == 0:
+            maxLineSize = self.maxLocalMinLineSize
+            if self.eval % 20 != 0:
+                maxLineSize = self.maxGlobalMinLineSize
+            localMinimums = self.getMinimums(maxLineSize)
+            self.draw.localMinimums([p.vector for p in localMinimums])
+
             if len(localMinimums) > 0:
                 bestMinimum = localMinimums[0]
                 triangles = bestMinimum.connectedTriangles(self.space.bounds, simple=False)
@@ -303,7 +310,7 @@ class TriangleOptimizer:
         return point.vector
 
     def getBestRankedTriangle(self):
-        maxEval = randint(8, 13)
+        maxEval = randint(8, 14)
         while True:
             triangles = [t for t in self.triangles if t.eval < maxEval]
             if len(triangles) > 0:
@@ -317,26 +324,19 @@ class TriangleOptimizer:
             info['eval'].append(t.eval)
 
         highEvalDiff = normalizeVector(info['evalDiff'])
-        lowEval = 1-normalizeVector(info['eval'])
-        lowValue = 1-normalizeVector(info['meanValue'])
+        lowEval = 1 - normalizeVector(info['eval'])
+        lowValue = 1 - normalizeVector(info['meanValue'])
 
-        rank = highEvalDiff + lowEval + lowValue
+        rank = 3*highEvalDiff + lowEval + lowValue
 
         bestRank = np.argsort(rank)[-1]
         return triangles[bestRank]
 
-    def getActiveMinimums(self):
+    def getMinimums(self, maxLineSizeOfConnectedTriangle):
         localMin = []
         for t in self.triangles:
             lowPoint = t.lowestPoint()
-            if t.biggestLineSize(onSurface=True) < self.maxLocalMinLineSize:
-                if lowPoint not in self.localMinimums:
-                    mins = [lowPoint.distance(p, onSurface=True) for p in self.localMinimums]
-                    if len(mins) > 0:
-                        if min(mins) > self.maxLocalMinLineSize:
-                            self.localMinimums.append(lowPoint)
-                    else:
-                        self.localMinimums.append(lowPoint)
+            if t.biggestLineSize(onSurface=True) < maxLineSizeOfConnectedTriangle:
                 continue
 
             isLowest = True
@@ -348,7 +348,6 @@ class TriangleOptimizer:
             if isLowest:
                 localMin.append(lowPoint)
 
-        self.draw.localMinimums([p.vector for p in localMin])
         return sorted(localMin, key=lambda p: p.value, reverse=False)
 
     def partition(self, triangle: Triangle):
@@ -384,8 +383,8 @@ class TriangleOptimizer:
             line2,
         ]
         newTriangles = [
-            Triangle(newTrianglesLines[:3], eval=triangle.eval + 1),
-            Triangle(newTrianglesLines[2:], eval=triangle.eval + 1)
+            Triangle(newTrianglesLines[:3], evalDiff=evalDiff, eval=triangle.eval + 1),
+            Triangle(newTrianglesLines[2:], evalDiff=evalDiff, eval=triangle.eval + 1)
         ]
 
         # Add new triangles to the mix
