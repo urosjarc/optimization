@@ -10,10 +10,10 @@ class Test_Point(unittest.TestCase):
         self.p2 = Point(1, 1, 1)
 
     def test_distance(self):
-        self.assertEqual(self.p1.distance(self.p2, onSurface=False), 3 ** .5)
-        self.assertEqual(self.p2.distance(self.p1, onSurface=False), 3 ** .5)
-        self.assertEqual(self.p1.distance(self.p2, onSurface=True), 2 ** .5)
-        self.assertEqual(self.p2.distance(self.p1, onSurface=True), 2 ** .5)
+        self.assertEqual(self.p1.pointDistance(self.p2, onSurface=False), 3 ** .5)
+        self.assertEqual(self.p2.pointDistance(self.p1, onSurface=False), 3 ** .5)
+        self.assertEqual(self.p1.pointDistance(self.p2, onSurface=True), 2 ** .5)
+        self.assertEqual(self.p2.pointDistance(self.p1, onSurface=True), 2 ** .5)
 
 
 class Test_Line(unittest.TestCase):

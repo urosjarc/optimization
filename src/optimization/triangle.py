@@ -21,11 +21,17 @@ class Point:
     def __str__(self):
         return f'({self.x},{self.y},{self.value})'
 
-    def distance(self, point, onSurface):
+    def pointDistance(self, point, onSurface):
         if onSurface:
-            return np.linalg.norm(np.array(self.vector) - np.array(point.vector))
+            return abs(np.linalg.norm(np.array(self.vector) - np.array(point.vector)))
         else:
-            return np.linalg.norm(self.vector3D - point.vector3D)
+            return abs(np.linalg.norm(self.vector3D - point.vector3D))
+
+    def vectorDistance(self, vector, onSurface):
+        if onSurface:
+            return abs(np.linalg.norm(np.array(self.vector) - np.array(vector)))
+        else:
+            return abs(np.linalg.norm(self.vector3D - vector))
 
     def connectedTriangles(self, searchSpace, simple):
         if simple:
@@ -82,7 +88,7 @@ class Line:
             p.lines.append(self)
 
     def size(self, onSurface):
-        return self.points[0].distance(self.points[1], onSurface)
+        return self.points[0].pointDistance(self.points[1], onSurface)
 
     def center(self, onSurface):
         if onSurface:
@@ -96,8 +102,8 @@ class Line:
         return list(p1.intersection(p2))[0]
 
     def isOnLine(self, point: Point, onSurface):
-        dist = self.points[0].distance(point, onSurface)
-        dist += self.points[1].distance(point, onSurface)
+        dist = self.points[0].pointDistance(point, onSurface)
+        dist += self.points[1].pointDistance(point, onSurface)
         return abs(dist - self.size(onSurface)) == 0
 
     def coinciding(self, line, onSurface):
@@ -160,7 +166,7 @@ class Triangle:
         return abs((A.x * (B.y - C.y) + B.x * (C.y - A.y) + C.x * (A.y - B.y)) / 2)
 
     def sortedLines(self, onSurface, fromBigToLow=True):
-        return sorted(self.lines, key=lambda l: l.size(onSurface), reverse=fromBigToLow)
+        return sorted(self.lines, key=lambda l: abs(l.size(onSurface)), reverse=fromBigToLow)
 
     def biggestLineSize(self, onSurface):
         bigestLine = self.sortedLines(onSurface, fromBigToLow=True)[0]
@@ -199,6 +205,35 @@ class Triangle:
             return np.mean([np.array(p.vector) for p in self.points], axis=0)
         return np.mean([p.vector3D for p in self.points], axis=0)
 
+class Miner:
+    def __init__(self, point, searchSpace):
+        self.startingPoint: Point = point
+        self.currentPoint: Point = point
+        self.distance = 0
+        self.searchSpace = searchSpace
+        self.searchedPoints: List[Point] = [point]
+        self.connectedTris: List[Triangle] = []
+
+    def nextPoint(self):
+        points = []
+        for tri in self.connectedTris:
+            for p in tri.points:
+                if p != self.currentPoint and p not in self.searchedPoints:
+                    nextDistance = self.startingPoint.pointDistance(p, onSurface=True)
+                    if nextDistance > self.distance:
+                        points.append(p)
+
+        points.sort(key=lambda p: p.value)
+        self.currentPoint = points[0]
+        self.searchedPoints.append(self.currentPoint)
+
+        self.distance = self.startingPoint.pointDistance(self.currentPoint, onSurface=True)
+        return self.currentPoint
+
+    def connectedTriangles(self):
+        self.connectedTris = self.currentPoint.connectedTriangles(searchSpace=self.searchSpace, simple=False)
+        return self.connectedTris
+
 
 class TriangleOptimizer:
     def __init__(self, space: Space, draw: PlotInterface, maxEval):
@@ -210,9 +245,12 @@ class TriangleOptimizer:
         self.queue_borderPoints: List[Point] = []
         self.queue_cheepTriangles: List[Triangle] = []
         self.queue_minConnectedTriangles: List[Triangle] = []
+        self.queue_minersTriangles: List[Triangle] = []
 
         self.maxEval = maxEval
         self.eval = 0
+
+        self.miners : List[Miner] = []
 
         self.init()
 
@@ -255,6 +293,22 @@ class TriangleOptimizer:
         self.points.append(p)
         return p, "make"
 
+    def createMiners(self, localMinimums, maxRange):
+        noCreatedMinerMinimums = []
+        for min in localMinimums:
+            isCreated = False
+            for miner in self.miners:
+                if miner.startingPoint.pointDistance(min, onSurface=True) < maxRange:
+                    isCreated = True
+                    break
+
+            if not isCreated:
+                noCreatedMinerMinimums.append(min)
+
+        for min in noCreatedMinerMinimums:
+            miner = Miner(min, searchSpace=self.space.bounds)
+            self.miners.append(miner)
+
     def nextPoint(self):
         print(f'EVAL: {self.eval}')
 
@@ -273,7 +327,7 @@ class TriangleOptimizer:
             if cmd == 'make':
                 raise Exception("ERR")
 
-        # Return triangles connected to local minimum.
+        # Return triangles connected to local minimum
         while len(self.queue_minConnectedTriangles) > 0:
             triangle = self.queue_minConnectedTriangles[0]
             self.queue_minConnectedTriangles.pop(0)
@@ -284,22 +338,45 @@ class TriangleOptimizer:
                 self.eval += 1
                 return point.vector
 
-        # Add triangles connected to local minimum to queue list.
-        if self.eval % 5 == 0:
-            maxLineSize = self.maxLocalMinLineSize
-            if self.eval % 20 != 0:
-                maxLineSize = self.maxGlobalMinLineSize
-            localMinimums = self.getMinimums(maxLineSize)
-            self.draw.localMinimums([p.vector for p in localMinimums])
+        # Return triangles connected to miner.
+        while len(self.queue_minersTriangles) > 0:
+            triangle = self.queue_minersTriangles[0]
+            self.queue_minersTriangles.pop(0)
+            if not triangle.splited:
+                point, cmd = self.partition(triangle)
+                if cmd == 'get':
+                    raise Exception("ERR")
+                self.eval += 1
+                return point.vector
 
-            if len(localMinimums) > 0:
-                bestMinimum = localMinimums[0]
+        # Add triangles connected to local minimum to queue list and create miners for global minimums
+        if self.eval % 5 == 0:
+            maxLineSize = self.maxGlobalMinLineSize if self.eval % 20 == 0 else self.maxLocalMinLineSize
+            activeMins, unactiveMins = self.getMinimums(maxLineSize)
+            # Draw active local minimums
+            if maxLineSize == self.maxLocalMinLineSize:
+                self.draw.localMinimums([p.vector for p in activeMins])
+                self.createMiners(unactiveMins, maxLineSize*2)
+
+            # Add lowest point triangles to queue list.
+            if len(activeMins) > 0:
+                bestMinimum = activeMins[0]
                 triangles = bestMinimum.connectedTriangles(self.space.bounds, simple=False)
-                self.draw.drawTriangles(triangles, permament=False)
+                self.draw.drawTriangles(triangles)
                 for t in triangles:
                     if t not in self.queue_minConnectedTriangles:
                         self.queue_minConnectedTriangles.append(t)
-                return self.nextPoint()
+
+        # Partition triangles connected to miners and move miners to next point
+        if self.eval % 20 == 0:
+            print('MINERS', len(self.miners))
+            for miner in self.miners:
+                tris = miner.connectedTriangles()
+                for tri in tris:
+                    if tri not in self.queue_minersTriangles and tri.eval < 17:
+                        self.queue_minersTriangles.append(tri)
+                miner.nextPoint()
+            self.draw.miners([m.currentPoint.vector for m in self.miners])
 
         # Explore space
         triangle = self.getBestRankedTriangle()
@@ -327,16 +404,24 @@ class TriangleOptimizer:
         lowEval = 1 - normalizeVector(info['eval'])
         lowValue = 1 - normalizeVector(info['meanValue'])
 
-        rank = 3*highEvalDiff + lowEval + lowValue
+        rank = highEvalDiff + lowEval + 3*lowValue
 
         bestRank = np.argsort(rank)[-1]
         return triangles[bestRank]
 
     def getMinimums(self, maxLineSizeOfConnectedTriangle):
-        localMin = []
+        activeMinimums = []
+        unactiveMinimums = []
         for t in self.triangles:
             lowPoint = t.lowestPoint()
             if t.biggestLineSize(onSurface=True) < maxLineSizeOfConnectedTriangle:
+                isNewMin = True
+                for umin in unactiveMinimums:
+                    if umin.pointDistance(lowPoint, onSurface=True) < maxLineSizeOfConnectedTriangle*2:
+                        isNewMin = False
+                        break
+                if isNewMin:
+                    unactiveMinimums.append(lowPoint)
                 continue
 
             isLowest = True
@@ -346,9 +431,15 @@ class TriangleOptimizer:
                     break
 
             if isLowest:
-                localMin.append(lowPoint)
+                isNewMin = True
+                for amin in activeMinimums:
+                    if lowPoint.pointDistance(amin, onSurface=True) < maxLineSizeOfConnectedTriangle:
+                        isNewMin = False
+                        break
+                if isNewMin:
+                    activeMinimums.append(lowPoint)
 
-        return sorted(localMin, key=lambda p: p.value, reverse=False)
+        return sorted(activeMinimums, key=lambda p: p.value, reverse=False), unactiveMinimums
 
     def partition(self, triangle: Triangle):
         # Remove triangle from triangles, and from lines triangle list

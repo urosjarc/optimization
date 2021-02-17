@@ -3,7 +3,7 @@ from matplotlib import gridspec
 from matplotlib.collections import PatchCollection
 
 from src.math import *
-from matplotlib.patches import Polygon
+from matplotlib.patches import Polygon, Circle
 
 
 class Surface:
@@ -120,31 +120,22 @@ class PlotInterface:
         self.errLine = None
 
         self.poligons = []
+        self.circleCollections = []
         self.patchCollections = []
 
     def init(self):
-        self.unactivePoints = self.plot.d2LogAx.scatter([], [], marker=',', color='black')
+        self.prediction = self.plot.d2LogAx.scatter([], [], marker=',', color='black')
         self.minimums = self.plot.d2LogAx.scatter([], [], marker='*', color="blue")
         self.errLine, = self.plot.errAx.plot([], [], 'r-')
         self.minimumsZoom = self.plot.d2ZoomAx.scatter([], [], marker='*', color="blue")
+        self.miner = self.plot.d2LogAx.scatter([], [], marker='*', color="black")
+        self.miner_zoom = self.plot.d2ZoomAx.scatter([], [], marker='*', color="black")
 
-    def drawTriangles(self, triangles, permament):
+    def drawTriangles(self, triangles):
         patches = []
         for t in triangles:
             polygon = Polygon([p.vector for p in t.points], True)
             patches.append(polygon)
-        for p in self.patchCollections:
-            p.remove()
-        self.patchCollections = []
-        p = PatchCollection(patches, alpha=.8)
-        self.patchCollections.append(p)
-        self.plot.d2LogAx.add_collection(p)
-        plt.show()
-
-    def drawPoligon(self, vectors, permament):
-        patches = []
-        polygon = Polygon([v for v in vectors], True)
-        patches.append(polygon)
         for p in self.patchCollections:
             p.remove()
         self.patchCollections = []
@@ -165,5 +156,24 @@ class PlotInterface:
         y = [v[1] for v in vectors]
         self.minimums.set_offsets(np.c_[x, y])
         self.minimumsZoom.set_offsets(np.c_[x, y])
+        plt.show()
+
+    def miners(self, vectors):
+        x = [v[0] for v in vectors]
+        y = [v[1] for v in vectors]
+        self.miner.set_offsets(np.c_[x, y])
+        self.miner_zoom.set_offsets(np.c_[x, y])
+        plt.show()
+
+    def minimumPrediction(self, vectors, radius):
+        x, y = vectors[0]
+        self.prediction.set_offsets(np.c_[x, y])
+
+        circle = Circle(vectors[0], radius=radius)
+        for p in self.circleCollections:
+            p.remove()
+        p = PatchCollection([circle], alpha=.8)
+        self.circleCollections = [p]
+        self.plot.d2LogAx.add_collection(p)
         plt.show()
 
