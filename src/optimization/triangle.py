@@ -1,6 +1,5 @@
 import math
-from random import randint, random
-from statistics import median, mean
+from random import randint
 
 from src.app import PlotInterface
 from src.math import Space, normalizeVector, angle, pointInTriangle
@@ -205,36 +204,6 @@ class Triangle:
             return np.mean([np.array(p.vector) for p in self.points], axis=0)
         return np.mean([p.vector3D for p in self.points], axis=0)
 
-class Miner:
-    def __init__(self, point, searchSpace):
-        self.startingPoint: Point = point
-        self.currentPoint: Point = point
-        self.distance = 0
-        self.searchSpace = searchSpace
-        self.searchedPoints: List[Point] = [point]
-        self.connectedTris: List[Triangle] = []
-
-    def nextPoint(self):
-        points = []
-        for tri in self.connectedTris:
-            for p in tri.points:
-                if p != self.currentPoint and p not in self.searchedPoints:
-                    nextDistance = self.startingPoint.pointDistance(p, onSurface=True)
-                    if nextDistance > self.distance:
-                        points.append(p)
-
-        points.sort(key=lambda p: p.value)
-        self.currentPoint = points[0]
-        self.searchedPoints.append(self.currentPoint)
-
-        self.distance = self.startingPoint.pointDistance(self.currentPoint, onSurface=True)
-        return self.currentPoint
-
-    def connectedTriangles(self):
-        self.connectedTris = self.currentPoint.connectedTriangles(searchSpace=self.searchSpace, simple=False)
-        return self.connectedTris
-
-
 class TriangleOptimizer:
     def __init__(self, space: Space, draw: PlotInterface, maxEval):
         self.draw = draw
@@ -255,7 +224,7 @@ class TriangleOptimizer:
         self.init()
 
         self.minPoint = None
-        self.maxLocalMinLineSize = self.triangles[0].biggestLineSize(onSurface=True) * 10 ** -3
+        self.maxLocalMinLineSize = self.triangles[0].biggestLineSize(onSurface=True) * 5 * 10 ** -4
         self.maxGlobalMinLineSize = self.triangles[0].biggestLineSize(onSurface=True) * 10 ** -6
 
     def init(self):
@@ -293,22 +262,6 @@ class TriangleOptimizer:
         self.points.append(p)
         return p, "make"
 
-    def createMiners(self, localMinimums, maxRange):
-        noCreatedMinerMinimums = []
-        for min in localMinimums:
-            isCreated = False
-            for miner in self.miners:
-                if miner.startingPoint.pointDistance(min, onSurface=True) < maxRange:
-                    isCreated = True
-                    break
-
-            if not isCreated:
-                noCreatedMinerMinimums.append(min)
-
-        for min in noCreatedMinerMinimums:
-            miner = Miner(min, searchSpace=self.space.bounds)
-            self.miners.append(miner)
-
     def nextPoint(self):
         print(f'EVAL: {self.eval}')
 
@@ -338,17 +291,6 @@ class TriangleOptimizer:
                 self.eval += 1
                 return point.vector
 
-        # Return triangles connected to miner.
-        while len(self.queue_minersTriangles) > 0:
-            triangle = self.queue_minersTriangles[0]
-            self.queue_minersTriangles.pop(0)
-            if not triangle.splited:
-                point, cmd = self.partition(triangle)
-                if cmd == 'get':
-                    raise Exception("ERR")
-                self.eval += 1
-                return point.vector
-
         # Add triangles connected to local minimum to queue list and create miners for global minimums
         if self.eval % 5 == 0:
             maxLineSize = self.maxGlobalMinLineSize if self.eval % 20 == 0 else self.maxLocalMinLineSize
@@ -356,7 +298,6 @@ class TriangleOptimizer:
             # Draw active local minimums
             if maxLineSize == self.maxLocalMinLineSize:
                 self.draw.localMinimums([p.vector for p in activeMins])
-                self.createMiners(unactiveMins, maxLineSize*2)
 
             # Add lowest point triangles to queue list.
             if len(activeMins) > 0:
@@ -366,17 +307,6 @@ class TriangleOptimizer:
                 for t in triangles:
                     if t not in self.queue_minConnectedTriangles:
                         self.queue_minConnectedTriangles.append(t)
-
-        # Partition triangles connected to miners and move miners to next point
-        if self.eval % 20 == 0:
-            print('MINERS', len(self.miners))
-            for miner in self.miners:
-                tris = miner.connectedTriangles()
-                for tri in tris:
-                    if tri not in self.queue_minersTriangles and tri.eval < 17:
-                        self.queue_minersTriangles.append(tri)
-                miner.nextPoint()
-            self.draw.miners([m.currentPoint.vector for m in self.miners])
 
         # Explore space
         triangle = self.getBestRankedTriangle()

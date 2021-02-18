@@ -6,7 +6,7 @@ from gobench import go_benchmark_functions
 import random
 
 # random.seed(1)
-space = Space(go_benchmark_functions.Damavandi, rand=True)
+space = Space(go_benchmark_functions.XinSheYang01, rand=True)
 plot = Plot(space, zoom=100)
 plot.cmd.penDown = True
 iter = 2000
