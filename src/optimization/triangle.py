@@ -1,5 +1,5 @@
 import math
-from random import randint
+from random import randint, choices
 
 from src.app import PlotInterface
 from src.math import Space, normalizeVector, angle, pointInTriangle
@@ -216,14 +216,17 @@ class TriangleOptimizer:
         self.queue_minConnectedTriangles: List[Triangle] = []
         self.queue_minersTriangles: List[Triangle] = []
 
-        self.maxEval = maxEval
-        self.eval = 0
+        self.searchChoice = {
+            'search_global_min': 0.2,
+            'search_local_min': 0.3,
+            'search_best_tri': 0.5
+        }
 
-        self.miners : List[Miner] = []
+        self.evalMax = maxEval
+        self.eval = 0
 
         self.init()
 
-        self.minPoint = None
         self.maxLocalMinLineSize = self.triangles[0].biggestLineSize(onSurface=True) * 5 * 10 ** -4
         self.maxGlobalMinLineSize = self.triangles[0].biggestLineSize(onSurface=True) * 10 ** -6
 
@@ -280,7 +283,7 @@ class TriangleOptimizer:
             if cmd == 'make':
                 raise Exception("ERR")
 
-        # Return triangles connected to local minimum
+        # Return triangles connected to local minimums
         while len(self.queue_minConnectedTriangles) > 0:
             triangle = self.queue_minConnectedTriangles[0]
             self.queue_minConnectedTriangles.pop(0)
@@ -291,30 +294,37 @@ class TriangleOptimizer:
                 self.eval += 1
                 return point.vector
 
-        # Add triangles connected to local minimum to queue list and create miners for global minimums
-        if self.eval % 5 == 0:
-            maxLineSize = self.maxGlobalMinLineSize if self.eval % 20 == 0 else self.maxLocalMinLineSize
-            activeMins, unactiveMins = self.getMinimums(maxLineSize)
-            # Draw active local minimums
-            if maxLineSize == self.maxLocalMinLineSize:
-                self.draw.localMinimums([p.vector for p in activeMins])
-
-            # Add lowest point triangles to queue list.
-            if len(activeMins) > 0:
-                bestMinimum = activeMins[0]
-                triangles = bestMinimum.connectedTriangles(self.space.bounds, simple=False)
-                self.draw.drawTriangles(triangles)
-                for t in triangles:
-                    if t not in self.queue_minConnectedTriangles:
-                        self.queue_minConnectedTriangles.append(t)
+        searchChoice = choices(list(self.searchChoice.keys()), weights=list(self.searchChoice.values()))[0]
 
         # Explore space
-        triangle = self.getBestRankedTriangle()
-        point, cmd = self.partition(triangle)
-        if cmd == 'get':
-            raise Exception("ERR")
-        self.eval += 1
-        return point.vector
+        if searchChoice == 'search_best_tri':
+            triangle = self.getBestRankedTriangle()
+            point, cmd = self.partition(triangle)
+            if cmd == 'get':
+                raise Exception("ERR")
+            self.eval += 1
+            return point.vector
+        elif searchChoice == 'search_local_min':
+            self.addMinConnectedTrianglesToQueue(self.maxLocalMinLineSize)
+            return self.nextPoint()
+        elif searchChoice == 'search_global_min':
+            self.addMinConnectedTrianglesToQueue(self.maxGlobalMinLineSize)
+            return self.nextPoint()
+
+    def addMinConnectedTrianglesToQueue(self, maxLineSize):
+        activeMins, unactiveMins = self.getMinimums(maxLineSize)
+        if maxLineSize == self.maxLocalMinLineSize and self.eval % 10 == 0:
+            self.draw.localMinimums([p.vector for p in activeMins])
+
+        # Add lowest point triangles to queue list.
+        if len(activeMins) > 0:
+            bestMinimum = activeMins[0]
+            triangles = bestMinimum.connectedTriangles(self.space.bounds, simple=False)
+            if self.eval % 10 == 0:
+                self.draw.drawTriangles(triangles)
+            for t in triangles:
+                if t not in self.queue_minConnectedTriangles:
+                    self.queue_minConnectedTriangles.append(t)
 
     def getBestRankedTriangle(self):
         maxEval = randint(8, 14)
