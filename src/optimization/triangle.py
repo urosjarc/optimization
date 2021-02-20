@@ -1,8 +1,6 @@
 import math
 from random import randint, choices
-
-from src.app import PlotInterface
-from src.math import Space, normalizeVector, angle, pointInTriangle
+from src.math.linalg import normalizeVector, angle, pointInTriangle
 import numpy as np
 from typing import *
 
@@ -205,8 +203,7 @@ class Triangle:
         return np.mean([p.vector3D for p in self.points], axis=0)
 
 class TriangleOptimizer:
-    def __init__(self, space: Space, draw: PlotInterface, maxEval):
-        self.draw = draw
+    def __init__(self, space: Space, maxEval):
         self.space = space
         self.triangles: List[Triangle] = []
         self.points: List[Point] = []
@@ -238,7 +235,7 @@ class TriangleOptimizer:
 
         self.queue_borderPoints = [leftdown, leftup, rightdown, rightup]
 
-        l1 = [
+        lines = [
             Line(leftup, leftdown),
             Line(leftdown, rightdown),
             Line(rightdown, leftup),
@@ -246,8 +243,8 @@ class TriangleOptimizer:
             Line(rightup, rightdown),
         ]
         self.triangles += [
-            Triangle(l1[:3]),
-            Triangle(l1[2:])
+            Triangle(lines[:3]),
+            Triangle(lines[2:])
         ]
 
     def pointExists(self, x, y):
@@ -313,15 +310,11 @@ class TriangleOptimizer:
 
     def addMinConnectedTrianglesToQueue(self, maxLineSize):
         activeMins, unactiveMins = self.getMinimums(maxLineSize)
-        if maxLineSize == self.maxLocalMinLineSize and self.eval % 10 == 0:
-            self.draw.localMinimums([p.vector for p in activeMins])
 
         # Add lowest point triangles to queue list.
         if len(activeMins) > 0:
             bestMinimum = activeMins[0]
             triangles = bestMinimum.connectedTriangles(self.space.bounds, simple=False)
-            if self.eval % 10 == 0:
-                self.draw.drawTriangles(triangles)
             for t in triangles:
                 if t not in self.queue_minConnectedTriangles:
                     self.queue_minConnectedTriangles.append(t)

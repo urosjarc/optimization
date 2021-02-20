@@ -39,7 +39,7 @@ class NeuralNet:
             this.weights = np.random.rand(next.size, this.size)
             this.biases = np.random.rand(next.size)
 
-    def train(self, optimizer: Optimizer):
+    def train(self, optimizer):
         pass
 
     def calculate(self, vector):

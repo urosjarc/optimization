@@ -1,6 +1,6 @@
 from random import random, randint
 
-from src.math import Space
+from src.math.linalg import Space
 import numpy as np
 
 
