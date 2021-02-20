@@ -7,6 +7,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.graph_objects as go
+from dash.dependencies import Input, Output
 from gobench import go_benchmark_functions
 from gobench.go_benchmark_functions import Benchmark
 
@@ -58,17 +59,28 @@ app.layout = html.Div(children=[
 
     html.Div(children=[
         dcc.Graph(
-            id='countour2D_zoom',
+            id='countour2d_zoom',
             figure=countour2D_zoom,
             style={'float': 'right', 'width': '50%', 'height': '100%'}
         ),
         dcc.Graph(
-            id='countour2D',
+            id='countour2d',
             figure=countour2D,
             style={'float': 'left', 'width': '50%', 'height': '100%'},
         )
     ], style={'height': '90vh'})
 ])
 
+@app.callback(
+    Output('countour2d', 'figure'),
+    Input('function-name', 'value'),
+    Input('dimensionality', 'value'),
+    Input('drawing-style', 'value'))
+def update_graph(functionName, dimensionality, drawingStyle):
+    print(functionName, dimensionality, drawingStyle)
+    countour2D = go.Figure()
+    countour2D.add_contour(x=surface.x, y=surface.y, z=surface.zz)
+    countour2D.add_scatter(x=[1, 2, 3], y=[1, 2, 3])
+    return countour2D
 if __name__ == '__main__':
     app.run_server(debug=True)
