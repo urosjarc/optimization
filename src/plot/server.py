@@ -1,13 +1,15 @@
 import sys
+import json
 
-from dash import dash
+import dash
 from dash.dependencies import Input, Output
 from dash.exceptions import DashException
 from plotly.graph_objs import Figure
 
 from src.math.optimization import Function
-from src.optimization.triangle import TriangleOptimizer, Point
+from src.optimization.random import RandomOptimizer
 from src.plot import content
+from src.plot.graph import Surface
 
 this = sys.modules[__name__]
 this.app = dash.Dash(__name__)
@@ -17,13 +19,17 @@ this.app.layout = content.layout
 @app.callback(
     Output('graph', 'figure'),
     Output('graph_zoom', 'figure'),
+    Output('interval', 'interval'),
     Input('log', 'value'),
     Input('function-name', 'value'),
     Input('dimensionality', 'value'),
-    Input('start', 'n_clicks')
+    Input('start', 'n_clicks'),
+    Input('stop', 'n_clicks'),
+    Input('intervalTime', 'value'),
+    Input('interval', 'n_intervals')
 )
-def callback(log, functionName, dimensionality, start):
-    S = content.surface
+def callback(log, functionName, dimensionality, start, stop, intervalTime, nIntervals):
+    S: Surface = content.surface
 
     if S.name != functionName:
         f = content.functionsDict.get(functionName, False)
@@ -36,11 +42,11 @@ def callback(log, functionName, dimensionality, start):
     if start > content.startCount:
         content.startCount = start
         content.start = True
-        content.optimizer = TriangleOptimizer(content.function, maxEval=2000)
-    if start > content.startCount:
-        content.startCount = start
+        content.optimizer = RandomOptimizer(content.function, maxEval=2000)
+    if stop > content.stopCount:
+        content.stopCount = stop
         content.start = False
-        print("STOP")
+        content.points = [[],[],[]]
 
     if content.start:
         px, py, pz = content.optimizer.nextPoint()
@@ -55,21 +61,25 @@ def callback(log, functionName, dimensionality, start):
         zZoom = S.zZoomLog
 
     if dimensionality == '2D':
-        countour2D = Figure()
-        countour2D.add_scatter(x=content.points[0], y=content.points[1])
-        countour2D.add_contour(x=S.x, y=S.y, z=z, showscale=False)
-        countour2D_zoom = Figure()
-        countour2D_zoom.add_scatter(x=content.points[0], y=content.points[1])
-        countour2D_zoom.add_contour(x=S.xZoom, y=S.yZoom, z=zZoom, showscale=False)
-        return countour2D, countour2D_zoom
+        graph = Figure()
+        graph.add_scatter(x=content.points[0], y=content.points[1], mode='markers')
+        graph.add_scatter(x=S.xMin, y=S.yMin, mode='markers', fillcolor='red')
+        graph.add_contour(x=S.x, y=S.y, z=z, showscale=False)
+        graph_zoom = Figure(layout_xaxis_range=content.surface.zoomBounds[0], layout_yaxis_range=content.surface.zoomBounds[1])
+        graph_zoom.add_scatter(x=content.points[0], y=content.points[1], mode='markers')
+        graph_zoom.add_scatter(x=S.xMin, y=S.yMin, mode='markers', fillcolor='red')
+        graph_zoom.add_contour(x=S.xZoom, y=S.yZoom, z=zZoom, showscale=False)
     else:
-        surface3D = Figure()
-        surface3D.add_scatter3d(x=content.points[0], y=content.points[1], z=content.points[2])
-        surface3D.add_surface(x=S.x, y=S.y, z=z, showscale=False)
-        surface3D_zoom = Figure()
-        surface3D_zoom.add_scatter3d(x=content.points[0], y=content.points[1], z=content.points[2])
-        surface3D_zoom.add_surface(x=S.xZoom, y=S.yZoom, z=zZoom, showscale=False)
-        return surface3D, surface3D_zoom
+        graph = Figure()
+        graph.add_scatter3d(x=content.points[0], y=content.points[1], z=content.points[2], mode='markers')
+        graph.add_scatter3d(x=S.xMin, y=S.yMin, z=S.zMin, mode='markers',surfacecolor='red')
+        graph.add_surface(x=S.x, y=S.y, z=z, showscale=False)
+        graph_zoom = Figure()
+        # graph_zoom.add_scatter3d(x=content.points[0], y=content.points[1], z=content.points[2], mode='markers')
+        graph_zoom.add_scatter3d(x=S.xMin, y=S.yMin, z=S.zMin, mode='markers', surfacecolor='red')
+        graph_zoom.add_surface(x=S.xZoom, y=S.yZoom, z=zZoom, showscale=False)
+
+    return graph, graph_zoom, intervalTime
 
 
 if __name__ == '__main__':

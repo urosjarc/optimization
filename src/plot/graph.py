@@ -22,7 +22,11 @@ class Surface:
         self.zMin = None
         self.zMinLog = None
 
+        self.bounds = None
+        self.zoomBounds = None
+
     def init(self, function: Function):
+        self.bounds = function.bounds
         self.name = function.name
 
         zLog = lambda z: np.log2(z - function.minValue + 1)
@@ -33,8 +37,12 @@ class Surface:
 
         XminDiff = abs(-function.bounds[0][0] + function.bounds[0][1]) / self.zoom
         YminDiff = abs(-function.bounds[1][0] + function.bounds[1][1]) / self.zoom
-        Xaxe = np.linspace(function.minVector[0][0] - XminDiff, function.minVector[0][0] + XminDiff, self.step).tolist()
-        Yaxe = np.linspace(function.minVector[0][1] - YminDiff, function.minVector[0][1] + YminDiff, self.step).tolist()
+        self.zoomBounds = [
+            [function.minVector[0][0] - XminDiff, function.minVector[0][0] + XminDiff],
+            [function.minVector[0][1] - YminDiff, function.minVector[0][1] + YminDiff]
+        ]
+        Xaxe = np.linspace(*self.zoomBounds[0], self.step).tolist()
+        Yaxe = np.linspace(*self.zoomBounds[1], self.step).tolist()
         self.xZoom, self.yZoom = Xaxe, Yaxe
         self.zZoom = [[function(np.array([xi, yi])) for xi in self.xZoom] for yi in self.yZoom]
         self.zZoomLog = zLog(self.zZoom)

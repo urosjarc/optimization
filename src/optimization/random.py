@@ -1,18 +1,18 @@
 from random import random, randint
 
-from src.math.linalg import Space
 import numpy as np
+
+from src.math.optimization import Function
 
 
 class RandomOptimizer:
-    def __init__(self, space: Space, draw, maxEvaluations):
+    def __init__(self, space: Function, maxEval):
         self.space = space
-        self.draw = draw
-        self.maxEvaluations = maxEvaluations
+        self.maxEvaluations = maxEval
         self.evaluation = 0
         self.min = 10 ** 10
-        self.best = [randint(b[0], b[1]) for b in self.space.f.bounds]
-        self.radius = self.space.f.bounds[0][1]
+        self.best = [randint(b[0], b[1]) for b in self.space.benchmark.bounds]
+        self.radius = self.space.benchmark.bounds[0][1]
 
     def nextPoint(self):
         self.radius *= 0.99999
@@ -22,7 +22,7 @@ class RandomOptimizer:
 
             inBounds = True
             for i in range(len(vector)):
-                if not (self.space.f.bounds[i][0] < vector[i] < self.space.f.bounds[i][1]):
+                if not (self.space.benchmark.bounds[i][0] < vector[i] < self.space.benchmark.bounds[i][1]):
                     inBounds = False
                     break
 
@@ -33,4 +33,4 @@ class RandomOptimizer:
         if value < self.min:
             self.min = value
             self.best = vector
-        return vector
+        return vector.tolist() + [value]
