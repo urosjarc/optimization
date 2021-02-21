@@ -6,13 +6,11 @@ from gobench.go_benchmark_functions import Benchmark
 import numpy as np
 
 
-def functions(name=None):
+def functions():
     funs = {}
     for funName, fun in go_benchmark_functions.__dict__.items():
         if inspect.isclass(fun):
             if issubclass(fun, Benchmark) and funName not in ['Benchmark']:
-                if name == funName:
-                    return fun
                 funs[funName] = fun
     return funs
 

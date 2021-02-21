@@ -4,6 +4,8 @@ from src.math.linalg import normalizeVector, angle, pointInTriangle
 import numpy as np
 from typing import *
 
+from src.math.optimization import Function
+
 
 class Point:
     def __init__(self, x, y, value):
@@ -202,8 +204,9 @@ class Triangle:
             return np.mean([np.array(p.vector) for p in self.points], axis=0)
         return np.mean([p.vector3D for p in self.points], axis=0)
 
+
 class TriangleOptimizer:
-    def __init__(self, space: Space, maxEval):
+    def __init__(self, space: Function, maxEval):
         self.space = space
         self.triangles: List[Triangle] = []
         self.points: List[Point] = []
@@ -270,7 +273,7 @@ class TriangleOptimizer:
             point = self.queue_borderPoints[0]
             self.queue_borderPoints.pop(0)
             self.eval += 1
-            return point.vector
+            return point.vector3D
 
         # Return cheep triangles that doesn't need new point evaluation
         while len(self.queue_cheepTriangles) > 0:
@@ -289,7 +292,7 @@ class TriangleOptimizer:
                 if cmd == 'get':
                     raise Exception("ERR")
                 self.eval += 1
-                return point.vector
+                return point.vector3D
 
         searchChoice = choices(list(self.searchChoice.keys()), weights=list(self.searchChoice.values()))[0]
 
@@ -300,7 +303,7 @@ class TriangleOptimizer:
             if cmd == 'get':
                 raise Exception("ERR")
             self.eval += 1
-            return point.vector
+            return point.vector3D
         elif searchChoice == 'search_local_min':
             self.addMinConnectedTrianglesToQueue(self.maxLocalMinLineSize)
             return self.nextPoint()
@@ -337,7 +340,7 @@ class TriangleOptimizer:
         lowEval = 1 - normalizeVector(info['eval'])
         lowValue = 1 - normalizeVector(info['meanValue'])
 
-        rank = highEvalDiff + lowEval + 3*lowValue
+        rank = highEvalDiff + lowEval + 3 * lowValue
 
         bestRank = np.argsort(rank)[-1]
         return triangles[bestRank]
@@ -350,7 +353,7 @@ class TriangleOptimizer:
             if t.biggestLineSize(onSurface=True) < maxLineSizeOfConnectedTriangle:
                 isNewMin = True
                 for umin in unactiveMinimums:
-                    if umin.pointDistance(lowPoint, onSurface=True) < maxLineSizeOfConnectedTriangle*2:
+                    if umin.pointDistance(lowPoint, onSurface=True) < maxLineSizeOfConnectedTriangle * 2:
                         isNewMin = False
                         break
                 if isNewMin:
