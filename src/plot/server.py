@@ -7,6 +7,7 @@ from dash.exceptions import DashException
 from plotly import graph_objs as go
 
 from src.math.optimization import Function
+
 from src.optimization.triangle import TriangleOptimizer
 from src.plot import content
 from src.plot.graph import Surface
@@ -72,19 +73,21 @@ def callback(functionName, log, start, intervalTime, n_intervals, evaluations):
     figure2D.add_scatter(x=points[0], y=points[1], mode='markers', uirevision=functionName),
     figure2D.add_scatter(x=S.xMin, y=S.yMin, mode='markers', fillcolor='red', uirevision=functionName),
     figure2D.add_contour(x=S.x, y=S.y, z=z, showscale=False, uirevision=functionName)
-    tx = []
-    ty = []
-    for t in content.optimizer.triangles:
-        tpx = []
-        tpy = []
-        for p in t.points:
-            tpx.append(p.x)
-            tpy.append(p.y)
-        tpx +=[t.points[0].x, None]
-        tpy +=[t.points[0].y, None]
-        tx += tpx
-        ty += tpy
-    figure2D.add_scatter(x=tx, y=ty,fill="toself", uirevision=functionName)
+
+    if content.optimizer is not None:
+        tx = []
+        ty = []
+        for t in content.optimizer.triangles:
+            tpx = []
+            tpy = []
+            for p in t.points:
+                tpx.append(p.x)
+                tpy.append(p.y)
+            tpx +=[t.points[0].x, None]
+            tpy +=[t.points[0].y, None]
+            tx += tpx
+            ty += tpy
+        figure2D.add_scatter(x=tx, y=ty,fill="toself", uirevision=functionName)
 
     figure2D_zoom = go.Figure(layout=go.Layout(uirevision=functionName, showlegend=False),
                               layout_xaxis_range=S.zoomBounds[0], layout_yaxis_range=S.zoomBounds[1])
