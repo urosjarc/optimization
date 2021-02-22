@@ -6,15 +6,17 @@ import dash_html_components as html
 from src.math.optimization import functions, function_dim, Function
 from src.plot.graph import Surface
 
-surface: Surface = Surface(step=101, zoom=10)
+surface: Surface = Surface(step=51, zoom=10)
 function: Function = None
 optimizer = None
 points = [[], [], []]
 
 functionsDict = {name: fun for name, fun in functions().items() if function_dim(fun) == 2}
+dimensionality = '3D'
+log = 'Normal'
 startCount = 0
 stopCount = 0
-start = False
+running = False
 
 layout = html.Div(children=[
 
@@ -33,45 +35,35 @@ layout = html.Div(children=[
             n_clicks=0,
             style={'float': 'left', 'margin-left': '20px', 'margin-top': '7px'}
         ),
-        html.Button(
-            "Stop",
-            id='stop',
-            n_clicks=0,
-            style={'float': 'left', 'margin-left': '20px', 'margin-top': '7px'}
-        ),
-        dcc.RadioItems(
-            id='dimensionality',
-            options=[{'label': i, 'value': i} for i in ['3D', '2D']],
-            value='3D',
-            style={'float': 'left', 'margin-left': '20px', 'margin-top': '7px'}
-        ),
         dcc.RadioItems(
             id='log',
             options=[{'label': i, 'value': i} for i in ['Normal', 'Log']],
-            value='Normal',
+            value=log,
             style={'float': 'left', 'margin-left': '20px', 'margin-top': '7px'}
         ),
         dcc.RadioItems(
             id='intervalTime',
-            value=3600*1000,
+            value=3600 * 1000,
             style={'float': 'left', 'margin-left': '20px', 'margin-top': '7px'},
             options=[
-                {'label': '2sec', 'value': 2000},
-                {'label': '1sec', 'value': 1000},
-                {'label': '.5sec', 'value': 500},
-                {'label': '.25sec', 'value': 250},
-                {'label': 'stop', 'value': 60 * 60 * 1000}  # or just every hour
+                {'label': 'Play', 'value': 1000},
+                {'label': 'Pause', 'value': 60 * 60 * 1000}  # or just every hour
             ]),
-    ], style={'display': 'inline-block', 'margin-left': '35%'}),
+        dcc.Dropdown(
+            id='evaluations',
+            options=[{'label': str(val)+'E', 'value': str(val)} for val in [1, 10, 20, 50, 100]],
+            value='10',
+            style={'width': '200px', 'float': 'left', 'margin-left': '20px'}
+        ),
+
+        html.Div(id="info", children=['Evaluation: 0'], style={'width': '200px', 'float': 'right', 'margin-top': '7px'}),
+
+    ], style={'position': 'fixed', 'padding': '10px', 'left': '0', 'width': '100%', 'top': '0', 'z-index': '999', 'background-color': '#cccccc'}),
 
     html.Div(children=[
-        dcc.Graph(
-            id='graph_zoom',
-            style={'float': 'right', 'width': '50%', 'height': '100%'}
-        ),
-        dcc.Graph(
-            id='graph',
-            style={'float': 'left', 'width': '50%', 'height': '100%'},
-        )
-    ], style={'height': '90vh'}),
+        dcc.Graph(id='graph2D', style={'float': 'right', 'height': '90vh', 'width': '50%'}),
+        dcc.Graph(id='graph3D', style={'float': 'left', 'height': '90vh', 'width': '50%'}),
+        dcc.Graph(id='graph2D_zoom', style={'float': 'right', 'height': '90vh', 'width': '50%'}),
+        dcc.Graph(id='graph3D_zoom', style={'float': 'left', 'height': '90vh', 'width': '50%'})
+    ])
 ])

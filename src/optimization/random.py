@@ -15,6 +15,7 @@ class RandomOptimizer:
         self.radius = self.space.benchmark.bounds[0][1]
 
     def nextPoint(self):
+        self.evaluation += 1
         self.radius *= 0.99999
 
         while True:
