@@ -7,7 +7,7 @@ from dash.exceptions import DashException
 from plotly import graph_objs as go
 
 from src.math.optimization import Function
-from src.optimization.random import RandomOptimizer
+from src.optimization.triangle import TriangleOptimizer
 from src.plot import content
 from src.plot.graph import Surface
 
@@ -41,7 +41,7 @@ def callback(functionName, log, start, intervalTime, n_intervals, evaluations):
         if f:
             content.function = Function(f, randomize=False)
             S.init(content.function)
-            content.points = [[],[],[]]
+            content.points = [[], [], []]
         else:
             raise DashException("Function not found!")
 
@@ -49,7 +49,7 @@ def callback(functionName, log, start, intervalTime, n_intervals, evaluations):
         content.startCount = start
         content.running = True
         intervalTime = 1000
-        content.optimizer = RandomOptimizer(content.function, maxEval=2000)
+        content.optimizer = TriangleOptimizer(content.function, maxEval=2000)
         content.points = [[], [], []]
 
     if content.running and intervalTime == 1000:
@@ -67,30 +67,47 @@ def callback(functionName, log, start, intervalTime, n_intervals, evaluations):
         zZoom = S.zZoomLog
         points = S.log(points)
 
-    figure2D = go.Figure(layout=go.Layout(uirevision=functionName, showlegend=False), layout_xaxis_range=S.bounds[0], layout_yaxis_range=S.bounds[1])
+    figure2D = go.Figure(layout=go.Layout(uirevision=functionName, showlegend=False), layout_xaxis_range=S.bounds[0],
+                         layout_yaxis_range=S.bounds[1])
     figure2D.add_scatter(x=points[0], y=points[1], mode='markers', uirevision=functionName),
     figure2D.add_scatter(x=S.xMin, y=S.yMin, mode='markers', fillcolor='red', uirevision=functionName),
     figure2D.add_contour(x=S.x, y=S.y, z=z, showscale=False, uirevision=functionName)
+    tx = []
+    ty = []
+    for t in content.optimizer.triangles:
+        tpx = []
+        tpy = []
+        for p in t.points:
+            tpx.append(p.x)
+            tpy.append(p.y)
+        tpx +=[t.points[0].x, None]
+        tpy +=[t.points[0].y, None]
+        tx += tpx
+        ty += tpy
+    figure2D.add_scatter(x=tx, y=ty,fill="toself", uirevision=functionName)
 
-    figure2D_zoom = go.Figure(layout=go.Layout(uirevision=functionName, showlegend=False), layout_xaxis_range=S.zoomBounds[0], layout_yaxis_range=S.zoomBounds[1])
+    figure2D_zoom = go.Figure(layout=go.Layout(uirevision=functionName, showlegend=False),
+                              layout_xaxis_range=S.zoomBounds[0], layout_yaxis_range=S.zoomBounds[1])
     figure2D_zoom.add_scatter(x=points[0], y=points[1], mode='markers', uirevision=functionName),
     figure2D_zoom.add_scatter(x=S.xMin, y=S.yMin, mode='markers', fillcolor='red', uirevision=functionName),
     figure2D_zoom.add_contour(x=S.xZoom, y=S.yZoom, z=zZoom, showscale=False, uirevision=functionName)
 
-    figure3D = go.Figure(layout=go.Layout(uirevision=functionName, showlegend=False), layout_xaxis_range=S.bounds[0], layout_yaxis_range=S.bounds[1])
+    figure3D = go.Figure(layout=go.Layout(uirevision=functionName, showlegend=False), layout_xaxis_range=S.bounds[0],
+                         layout_yaxis_range=S.bounds[1])
     figure3D.add_scatter3d(x=points[0], y=points[1], z=points[2], mode='markers', uirevision=functionName),
     figure3D.add_scatter3d(x=S.xMin, y=S.yMin, z=S.zMin, mode='markers', surfacecolor='red', uirevision=functionName),
     figure3D.add_surface(x=S.x, y=S.y, z=z, showscale=False, uirevision=functionName)
 
     figure3D_zoom = go.Figure(layout=go.Layout(uirevision=functionName, showlegend=False))
     figure3D_zoom.add_scatter3d(x=points[0], y=points[1], z=points[2], mode='markers', uirevision=functionName),
-    figure3D_zoom.add_scatter3d(x=S.xMin, y=S.yMin, z=S.zMin, mode='markers', surfacecolor='red', uirevision=functionName),
+    figure3D_zoom.add_scatter3d(x=S.xMin, y=S.yMin, z=S.zMin, mode='markers', surfacecolor='red',
+                                uirevision=functionName),
     figure3D_zoom.add_surface(x=S.xZoom, y=S.yZoom, z=zZoom, showscale=False, uirevision=functionName)
     figure3D_zoom.update_layout(
-        scene = dict(
-            xaxis = dict(range=S.zoomBounds[0]),
-            yaxis = dict(range=S.zoomBounds[1]),
-            zaxis = dict(range=[np.min(S.zZoom), np.max(S.zZoom)])),
+        scene=dict(
+            xaxis=dict(range=S.zoomBounds[0]),
+            yaxis=dict(range=S.zoomBounds[1]),
+            zaxis=dict(range=[np.min(S.zZoom), np.max(S.zZoom)])),
     )
 
     info = 'Evaluation: 0'

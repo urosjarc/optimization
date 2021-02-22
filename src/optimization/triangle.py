@@ -223,7 +223,7 @@ class TriangleOptimizer:
         }
 
         self.evalMax = maxEval
-        self.eval = 0
+        self.evaluation = 0
 
         self.init()
 
@@ -266,13 +266,13 @@ class TriangleOptimizer:
         return p, "make"
 
     def nextPoint(self):
-        print(f'EVAL: {self.eval}')
+        print(f'EVAL: {self.evaluation}')
 
         # Return border points on start
         if len(self.queue_borderPoints) > 0:
             point = self.queue_borderPoints[0]
             self.queue_borderPoints.pop(0)
-            self.eval += 1
+            self.evaluation += 1
             return point.vector3D
 
         # Return cheep triangles that doesn't need new point evaluation
@@ -291,7 +291,7 @@ class TriangleOptimizer:
                 point, cmd = self.partition(triangle)
                 if cmd == 'get':
                     raise Exception("ERR")
-                self.eval += 1
+                self.evaluation += 1
                 return point.vector3D
 
         searchChoice = choices(list(self.searchChoice.keys()), weights=list(self.searchChoice.values()))[0]
@@ -302,7 +302,7 @@ class TriangleOptimizer:
             point, cmd = self.partition(triangle)
             if cmd == 'get':
                 raise Exception("ERR")
-            self.eval += 1
+            self.evaluation += 1
             return point.vector3D
         elif searchChoice == 'search_local_min':
             self.addMinConnectedTrianglesToQueue(self.maxLocalMinLineSize)
