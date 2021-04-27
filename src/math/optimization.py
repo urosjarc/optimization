@@ -1,14 +1,14 @@
 import inspect
 from random import random
 
-from gobench import go_benchmark_functions
-from gobench.go_benchmark_functions import Benchmark
+from src import functions as testFunctions
+from src.functions import Benchmark
 import numpy as np
 
 
 def functions():
     funs = {}
-    for funName, fun in go_benchmark_functions.__dict__.items():
+    for funName, fun in testFunctions.__dict__.items():
         if inspect.isclass(fun):
             if issubclass(fun, Benchmark) and funName not in ['Benchmark']:
                 funs[funName] = fun
