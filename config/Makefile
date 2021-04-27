@@ -1,4 +1,4 @@
-VIRTUAL_ENV = virtualenv
+VIRTUAL_ENV = venv
 PATH := $(VIRTUAL_ENV)/bin:$(PATH)
 
 .DEFAULT_GOAL := help
