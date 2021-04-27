@@ -17,7 +17,7 @@ this.app = dash.Dash(__name__)
 this.app.layout = content.layout
 
 
-@app.callback(
+@this.app.callback(
     Output('graph2D', 'figure'),
     Output('graph2D_zoom', 'figure'),
     Output('graph3D', 'figure'),

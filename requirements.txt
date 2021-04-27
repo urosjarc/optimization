@@ -2,4 +2,3 @@ gym
 numpy
 plotly
 dash
-git+git://github.com/philipmorrisintl/GOBench@master

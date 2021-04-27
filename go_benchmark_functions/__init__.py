@@ -2,7 +2,7 @@
 from __future__ import division, print_function, absolute_import
 """
 ==============================================================================
-`functions` --  Problems for testing global optimization routines
+`go_benchmark_functions` --  Problems for testing global optimization routines
 ==============================================================================
 
 This module provides a comprehensive set of problems for benchmarking global
