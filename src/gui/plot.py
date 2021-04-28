@@ -1,5 +1,7 @@
 from src.math.linalg import *
 from src.math.space import Function
+from OpenGL.GL import *
+
 
 class Surface:
     def __init__(self, step, zoom):
@@ -55,3 +57,33 @@ class Surface:
         self.yMin = [o[1] for o in function.minVector]
         self.zMin = [function.minValue for _ in function.minVector]
         self.zMinLog = self.logZ(self.zMin)
+
+
+class Scene:
+
+    def __init__(self):
+        self.positionData = np.zeros((4, 2), dtype=np.float32)
+        self.colorData = np.zeros((4, 4), dtype=np.float32)
+
+        self.numVectors = 0
+        self.posOffset = 0
+        self.colOffset = 0
+        self.colorDim = 4
+        self.positionDim = 2
+
+        self.positionBuffer = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, self.positionBuffer)
+        glBufferData(GL_ARRAY_BUFFER, self.positionData.nbytes, self.positionData, GL_STATIC_DRAW)
+
+        self.colorBuffer = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, self.colorBuffer)
+        glBufferData(GL_ARRAY_BUFFER, self.colorData.nbytes, self.colorData, GL_STATIC_DRAW)
+
+    def setBuffers(self, position: np.array, color: np.array):
+        self.positionData = position
+        glBindBuffer(GL_ARRAY_BUFFER, self.positionBuffer)
+        glBufferData(GL_ARRAY_BUFFER, self.positionData.nbytes, self.positionData, GL_STATIC_DRAW)
+
+        self.colorData = color
+        glBindBuffer(GL_ARRAY_BUFFER, self.colorBuffer)
+        glBufferData(GL_ARRAY_BUFFER, self.colorData.nbytes, self.colorData, GL_STATIC_DRAW)

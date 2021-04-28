@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDouble
 
 from src import utils
 from src.gui.plot import Surface
-from src.gui.widgets import Plot2D, Plot3D
+from src.gui.widgets import GLWidget
 from src.math.space import functions
 
 
@@ -28,10 +28,10 @@ class MainWindow(QtWidgets.QMainWindow):
         super(MainWindow, self).__init__() # Call the inherited classes __init__ method
         uic.loadUi(utils.getPath(__file__, 'ui/MainWindow.ui'), self) # Load the .ui file
 
-        self.normal2D = Plot2D(self)
-        self.normal3D = Plot3D(self)
-        self.zoom2D = Plot2D(self)
-        self.zoom3D = Plot3D(self)
+        self.normal2D = GLWidget(self)
+        self.normal3D = GLWidget(self)
+        self.zoom2D = GLWidget(self)
+        self.zoom3D = GLWidget(self)
 
         self.zoomBL.addWidget(self.zoom3D)
         self.zoomBL.addWidget(self.zoom2D)
