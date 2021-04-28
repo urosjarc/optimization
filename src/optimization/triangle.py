@@ -4,7 +4,7 @@ from src.math.linalg import normalizeVector, angle, pointInTriangle
 import numpy as np
 from typing import *
 
-from src.math.optimization import Function
+from src.math.space import Function
 
 
 class Point:

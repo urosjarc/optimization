@@ -1,4 +1,8 @@
 gym
 numpy
-plotly
-dash
+
+pyqt5
+pyqt5-stubs
+
+pyopengl
+PyOpenGL-accelerate
