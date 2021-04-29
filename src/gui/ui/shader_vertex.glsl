@@ -1,16 +1,16 @@
-#version 100
+#version 460
 
-attribute vec2 aVertexPosition;
-attribute vec4 aVertexColor;
+in vec2 in_position;
+in vec4 in_color;
 
-uniform mat4 uModelViewMatrix;
-uniform mat4 uProjectionMatrix;
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
 
-varying lowp vec4 vColor;
+out lowp vec4 v_color;
 
 void main()
 {
-//    gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aVertexPosition, 0.0, 1.0);
-    gl_Position = vec4(aVertexPosition, 0.0, 1.0);
-    vColor = aVertexColor;
+//    gl_Position = projectionMatrix * modelViewMatrix * vec4(in_position, 0.0, 1.0);
+    gl_Position = vec4(in_position, 0.0, 1.0);
+    v_color = in_color;
 }

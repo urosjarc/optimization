@@ -1,3 +1,5 @@
+from typing import List
+
 from src.math.linalg import *
 from src.math.space import Function
 from OpenGL.GL import *
@@ -61,25 +63,41 @@ class Surface:
 
 class Scene:
 
-    def __init__(self):
-        self.positionData = np.zeros((4, 2), dtype=np.float32)
-        self.colorData = np.zeros((4, 4), dtype=np.float32)
+    colorDim = 4
+    positionDim = 2
+
+    def __init__(self, maxNumVertexes=10**5):
+
+        self.positionData = None
+        self.colorData = None
 
         self.numVectors = 0
         self.posOffset = 0
         self.colOffset = 0
-        self.colorDim = 4
-        self.positionDim = 2
 
         self.positionBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.positionBuffer)
-        glBufferData(GL_ARRAY_BUFFER, self.positionData.nbytes, self.positionData, GL_STATIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * maxNumVertexes, dtype=np.float32), GL_STATIC_DRAW)
 
         self.colorBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.colorBuffer)
-        glBufferData(GL_ARRAY_BUFFER, self.colorData.nbytes, self.colorData, GL_STATIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, np.empty(self.colorDim * maxNumVertexes, dtype=np.float32), GL_STATIC_DRAW)
 
-    def setBuffers(self, position: np.array, color: np.array):
+    def setBuffers(self, position: List[float], color: List[float]):
+
+        position = np.array(position, dtype=np.float32)
+        color = np.array(color, dtype=np.float32)
+
+        posNum = position.size//self.positionDim
+        colNum = color.size//self.colorDim
+
+        if posNum != colNum:
+            raise Exception(f"Length of position and color array doesn't match: {posNum} != {colNum}")
+
+        self.numVectors = posNum
+        self.posOffset = position.nbytes
+        self.colOffset = color.nbytes
+
         self.positionData = position
         glBindBuffer(GL_ARRAY_BUFFER, self.positionBuffer)
         glBufferData(GL_ARRAY_BUFFER, self.positionData.nbytes, self.positionData, GL_STATIC_DRAW)
