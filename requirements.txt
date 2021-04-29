@@ -1,5 +1,6 @@
 gym
 numpy
+pyrr
 
 pyqt5
 pyqt5-stubs

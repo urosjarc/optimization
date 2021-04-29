@@ -1,8 +1,10 @@
 from typing import Dict, List
 
-from PyQt5.QtOpenGL import QGLWidget
+from pyrr import Matrix44, Vector3
 from OpenGL.GL import *
 from OpenGL.GL import shaders
+from PyQt5.QtOpenGL import QGLWidget
+
 from src import utils
 from src.gui.plot import Scene
 
@@ -52,9 +54,14 @@ class GLWidget(QGLWidget):
         glEnableVertexAttribArray(self.locations['in_position'])
         glEnableVertexAttribArray(self.locations['in_color'])
 
+        projectionMatrix = Matrix44.identity()
+        modelViewMatrix = Matrix44.identity() * Matrix44.from_scale(Vector3([.2, .2, .2]))
+        glUniformMatrix4fv(self.locations['projectionMatrix'], 1, GL_FALSE, projectionMatrix)
+        glUniformMatrix4fv(self.locations['modelViewMatrix'], 1, GL_FALSE, modelViewMatrix)
+
         # Anable depth testing in z-buffer, replace old value in z-buffer if value is less or equal to old one.
         glEnable(GL_DEPTH_TEST)
-        glDepthFunc( GL_LEQUAL)
+        glDepthFunc(GL_LEQUAL)
 
         # Configure what will happend at glClear call
         glClearColor(1, 1, 1, 1)
@@ -69,33 +76,20 @@ class GLWidget(QGLWidget):
             self.__renderScene(scene)
 
     def __renderScene(self, scene: Scene):
-        type = GL_FLOAT
-        normalize = False
-        stride = 0 # Number of bytes between values
-        offset = ctypes.c_void_p(0)
 
         # Explain data form stored in binded buffers
         glBindBuffer(GL_ARRAY_BUFFER, scene.positionBuffer)
-        glVertexAttribPointer(
-            self.locations['in_position'], scene.positionDim,
-            type, normalize, stride, offset)
-
+        glVertexAttribPointer(self.locations['in_position'], scene.positionDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
         glBindBuffer(GL_ARRAY_BUFFER, scene.colorBuffer)
-        glVertexAttribPointer(
-            self.locations['in_color'], scene.colorDim,
-            type, normalize, stride, offset)
+        glVertexAttribPointer(self.locations['in_color'], scene.colorDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
 
         # Draw number of elements binded in buffer arrays
         glDrawArrays(GL_TRIANGLES, 0, scene.numVectors)
 
     def resizeGL(self, width, height):
-        if width + height != 0:
-            glViewport(0, 0, width, height)
+        if width + height == 0:
+            return
 
-            glMatrixMode(GL_PROJECTION)
-            glLoadIdentity()
-            glOrtho(0.0, width, 0.0, height, -1.0, 1.0)
+        glViewport(0, 0, width, height)
 
-            glMatrixMode(GL_MODELVIEW)
-            glLoadIdentity()
-
+        # Update projections
