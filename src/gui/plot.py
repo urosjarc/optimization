@@ -120,9 +120,9 @@ class View:
         self.rot_local_z += local_z
 
     def translate(self, dglobal_x=0, dglobal_y=0, dglobal_z=0):
-        self.globalLocation[0] = dglobal_x
-        self.globalLocation[1] = dglobal_y
-        self.globalLocation[2] = dglobal_z
+        self.globalLocation[0] += dglobal_x
+        self.globalLocation[1] += dglobal_y
+        self.globalLocation[2] += dglobal_z
 
     def setZoom(self, zoom):
         self.zoom = zoom
@@ -130,18 +130,19 @@ class View:
     def projectionMatrix(self, width, height):
         return Matrix44.perspective_projection(45, width / height, 0.1, 100.0)
 
-    def modelViewMatrix(self):
-
+    def viewMatrix(self):
         scale = Vector3([self.zoom, self.zoom, self.zoom])
         translate = Vector3(self.globalLocation)
-        zVector = Vector3([0,0,1])
 
+        mat = Matrix44.from_scale(scale)
+        mat *= Matrix44.from_translation(translate)
+        return mat
+
+    def modelMatrix(self):
+        zVector = Vector3([0,0,1])
         rotation = Quaternion.from_x_rotation(np.deg2rad(self.rot_global_x))
         zVector = rotation.matrix44 * zVector
         rotation *= Quaternion.from_axis_rotation(zVector, np.deg2rad(self.rot_local_z))
+        rotation.normalize()
 
-        mat = Matrix44.identity()
-        mat *= Matrix44.from_scale(scale)
-        mat *= Matrix44.from_translation(translate)
-        mat *= rotation.matrix44
-        return mat
+        return rotation.matrix44
