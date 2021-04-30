@@ -1,5 +1,7 @@
 from typing import List
 
+from pyrr import Matrix44, Quaternion, Vector3
+
 from src.math.linalg import *
 from src.math.space import Function
 from OpenGL.GL import *
@@ -64,7 +66,7 @@ class Surface:
 class Scene:
 
     colorDim = 4
-    positionDim = 2
+    positionDim = 3
 
     def __init__(self, maxNumVertexes=10**5):
 
@@ -105,3 +107,41 @@ class Scene:
         self.colorData = color
         glBindBuffer(GL_ARRAY_BUFFER, self.colorBuffer)
         glBufferData(GL_ARRAY_BUFFER, self.colorData.nbytes, self.colorData, GL_STATIC_DRAW)
+
+class View:
+    def __init__(self):
+        self.rot_global_x = 0
+        self.rot_local_z = 0
+        self.globalLocation = [0,0,0]
+        self.zoom = 1
+
+    def rotate(self, global_x, local_z):
+        self.rot_global_x += global_x
+        self.rot_local_z += local_z
+
+    def translate(self, dglobal_x=0, dglobal_y=0, dglobal_z=0):
+        self.globalLocation[0] = dglobal_x
+        self.globalLocation[1] = dglobal_y
+        self.globalLocation[2] = dglobal_z
+
+    def setZoom(self, zoom):
+        self.zoom = zoom
+
+    def projectionMatrix(self, width, height):
+        return Matrix44.perspective_projection(45, width / height, 0.1, 100.0)
+
+    def modelViewMatrix(self):
+
+        scale = Vector3([self.zoom, self.zoom, self.zoom])
+        translate = Vector3(self.globalLocation)
+        zVector = Vector3([0,0,1])
+
+        rotation = Quaternion.from_x_rotation(np.deg2rad(self.rot_global_x))
+        zVector = rotation.matrix44 * zVector
+        rotation *= Quaternion.from_axis_rotation(zVector, np.deg2rad(self.rot_local_z))
+
+        mat = Matrix44.identity()
+        mat *= Matrix44.from_scale(scale)
+        mat *= Matrix44.from_translation(translate)
+        mat *= rotation.matrix44
+        return mat

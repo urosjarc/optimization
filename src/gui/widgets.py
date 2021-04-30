@@ -1,12 +1,13 @@
 from typing import Dict, List
 
-from pyrr import Matrix44, Vector3
+from PyQt5.QtGui import QMouseEvent
+from PyQt5.QtCore import Qt
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from PyQt5.QtOpenGL import QGLWidget
 
 from src import utils
-from src.gui.plot import Scene
+from src.gui.plot import Scene, View
 
 
 class GLWidget(QGLWidget):
@@ -14,22 +15,32 @@ class GLWidget(QGLWidget):
     def __init__(self, parent):
         QGLWidget.__init__(self, parent)
 
+        self.setMouseTracking(True)
+        self.mouse = [None, None]
+
+        self.view = View()
+        self.view.translate(dglobal_z=-5)
         self.scenes: List[Scene] = []
         self.programLocations: Dict[str, GLuint]
 
-    def __initScenes(self):
-        scene = Scene()
-        scene.setBuffers(
-            position=[
-                -1, +1,
-                +1, -1,
-                -1, -1
-            ], color=[
-                1, 0, 0, 1,
-                0, 1, 0, 1,
-                0, 0, 1, 1
-            ])
-        self.scenes.append(scene)
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        btns = event.buttons()
+        if btns == Qt.LeftButton:
+            dx = self.mouse[0] - event.x()
+            dy = self.mouse[1] - event.y()
+            self.view.rotate(global_x=dy, local_z=dx)
+            glUniformMatrix4fv(self.locations['modelViewMatrix'], 1, GL_FALSE, self.view.modelViewMatrix())
+            self.updateGL()
+        elif btns == Qt.RightButton:
+            dx = (self.mouse[0] - event.x())/100
+            dy = (self.mouse[1] - event.y())/100
+            print(dx, dy, self.view.globalLocation)
+            self.view.translate(dglobal_x=dx, dglobal_y=dy)
+            glUniformMatrix4fv(self.locations['modelViewMatrix'], 1, GL_FALSE, self.view.modelViewMatrix())
+            self.updateGL()
+
+        self.mouse = [event.x(), event.y()]
 
     def initializeGL(self):
         # Activate program and use it
@@ -54,10 +65,8 @@ class GLWidget(QGLWidget):
         glEnableVertexAttribArray(self.locations['in_position'])
         glEnableVertexAttribArray(self.locations['in_color'])
 
-        projectionMatrix = Matrix44.identity()
-        modelViewMatrix = Matrix44.identity() * Matrix44.from_scale(Vector3([.2, .2, .2]))
-        glUniformMatrix4fv(self.locations['projectionMatrix'], 1, GL_FALSE, projectionMatrix)
-        glUniformMatrix4fv(self.locations['modelViewMatrix'], 1, GL_FALSE, modelViewMatrix)
+        # Setup model view matrix !!! projection matrix is setup in resizing event!
+        glUniformMatrix4fv(self.locations['modelViewMatrix'], 1, GL_FALSE, self.view.modelViewMatrix())
 
         # Anable depth testing in z-buffer, replace old value in z-buffer if value is less or equal to old one.
         glEnable(GL_DEPTH_TEST)
@@ -75,6 +84,42 @@ class GLWidget(QGLWidget):
         for scene in self.scenes:
             self.__renderScene(scene)
 
+    def resizeGL(self, width, height):
+        if width + height == 0:
+            return
+
+        # Update size of viewport
+        glViewport(0, 0, width, height)
+
+        # Setup projection matrix
+        projectionMatrix = self.view.projectionMatrix(width, height)
+        glUniformMatrix4fv(self.locations['projectionMatrix'], 1, GL_FALSE, projectionMatrix)
+
+    def __initScenes(self):
+        scene = Scene()
+        scene.setBuffers(
+            position=[
+                -1, +1, 0,
+                +1, -1, 0,
+                -1, -1, 0,
+            ], color=[
+                1, 0, 0, 1,
+                0, 1, 0, 1,
+                0, 0, 1, 1
+            ])
+        scene1 = Scene()
+        scene1.setBuffers(
+            position=[
+                -.1, .1, +1,
+                +.1, -.1, -1,
+                -.1, .1, 0,
+            ], color=[
+                1, 0, 0, 1,
+                0, 1, 0, 1,
+                0, 0, 1, 1
+            ])
+        self.scenes += [scene, scene1]
+
     def __renderScene(self, scene: Scene):
 
         # Explain data form stored in binded buffers
@@ -85,11 +130,3 @@ class GLWidget(QGLWidget):
 
         # Draw number of elements binded in buffer arrays
         glDrawArrays(GL_TRIANGLES, 0, scene.numVectors)
-
-    def resizeGL(self, width, height):
-        if width + height == 0:
-            return
-
-        glViewport(0, 0, width, height)
-
-        # Update projections
