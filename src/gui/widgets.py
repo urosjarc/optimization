@@ -8,7 +8,7 @@ from OpenGL.GL import shaders
 from PyQt5.QtOpenGL import QGLWidget
 
 from src import utils
-from src.gui.plot import Scene, View
+from src.gui.plot import Scene, View, Shape
 
 
 class GLWidget(QGLWidget):
@@ -17,11 +17,11 @@ class GLWidget(QGLWidget):
         QGLWidget.__init__(self, parent)
 
         self.setMouseTracking(True)
-        self.mouse = [None, None]
+        self.mouse: List = None
 
         self.view = View()
         self.view.translate(dglobal_z=-5)
-        self.scenes: List[Scene] = []
+        self.scene: Scene = Scene()
         self.programLocations: Dict[str, GLuint]
 
     def initializeGL(self):
@@ -60,27 +60,26 @@ class GLWidget(QGLWidget):
         glClearColor(1, 1, 1, 1)
         glClearDepth(1.0)
 
-        # Add scene to GLWidgets
-        scene = Scene()
-        scene.setBuffers(position=[-1, +1, 0, +1, -1, 0, -1, -1, 0], color=[1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1])
-        self.scenes.append(scene)
+        # Init widget scene
+        self.scene.initBuffers()
+        shape = Shape()
+        shape.addSphere([0,0,0], 1, [1,0,0,1])
+        self.scene.appendBuffers(shape)
+
+        self.fitToScreen()
 
     def paintGL(self):
         # Clear color buffer and depth z-buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        for scene in self.scenes:
-            self.__renderScene(scene)
-
-    def __renderScene(self, scene: Scene):
 
         # Explain data form stored in binded buffers
-        glBindBuffer(GL_ARRAY_BUFFER, scene.positionBuffer)
-        glVertexAttribPointer(self.locations['in_position'], scene.positionDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
-        glBindBuffer(GL_ARRAY_BUFFER, scene.colorBuffer)
-        glVertexAttribPointer(self.locations['in_color'], scene.colorDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
+        glBindBuffer(GL_ARRAY_BUFFER, self.scene.positionBuffer)
+        glVertexAttribPointer(self.locations['in_position'], self.scene.positionDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
+        glBindBuffer(GL_ARRAY_BUFFER, self.scene.colorBuffer)
+        glVertexAttribPointer(self.locations['in_color'], self.scene.colorDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
 
         # Draw number of elements binded in buffer arrays
-        glDrawArrays(GL_TRIANGLES, 0, scene.numVectors)
+        glDrawArrays(GL_TRIANGLES, 0, self.scene.numVectors)
 
     def resizeGL(self, width, height):
         if width + height == 0:
@@ -95,7 +94,7 @@ class GLWidget(QGLWidget):
     def mouseMoveEvent(self, event: QMouseEvent):
         btns = event.buttons()
 
-        if btns != Qt.NoButton:
+        if btns != Qt.NoButton and self.mouse is not None:
             dx = self.mouse[0] - event.x()
             dy = self.mouse[1] - event.y()
 
@@ -111,14 +110,14 @@ class GLWidget(QGLWidget):
         self.mouse = [event.x(), event.y()]
 
     def mouseDoubleClickEvent(self, event: QMouseEvent):
-        self.resetView()
+        self.fitToScreen()
+        self.updateGL()
 
     def wheelEvent(self, event: QWheelEvent):
         btns = event.buttons()
 
         if btns == Qt.MidButton:
             self.resetView()
-            self.updateGL()
         elif btns == Qt.NoButton:
             dz = event.angleDelta().y() / 100
             self.view.translate(dglobal_z=dz)
@@ -135,10 +134,10 @@ class GLWidget(QGLWidget):
         projectionMatrix = self.view.projectionMatrix(width, height)
         glUniformMatrix4fv(self.locations['projectionMatrix'], 1, GL_FALSE, projectionMatrix)
 
-    def resetView(self):
+    def fitToScreen(self):
         vectors = []
-        for scene in self.scenes:
-            p = scene.positionData
+        for shape in self.scene.shapes:
+            p = shape.positions
             for i in range(0, len(p), 3):
                 vectors.append([p[i], p[i + 1], p[i + 2]])
 
@@ -151,7 +150,11 @@ class GLWidget(QGLWidget):
             if size > maxSize:
                 maxSize = size
 
-        self.view.globalLocation = [-meanV[0], -meanV[1], -maxSize]
+        self.view.globalLocation = [-meanV[0], -meanV[1], -3*maxSize]
         self.view.rot_global_x = 0
         self.view.rot_local_z = 0
-        print('reset view')
+
+        print('Global location', self.view.globalLocation)
+
+        self.__updateModelMatrix()
+        self.__updateViewMatrix()

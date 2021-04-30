@@ -5,7 +5,7 @@ from pyrr import Matrix44, Quaternion, Vector3
 from src.math.linalg import *
 from src.math.space import Function
 from OpenGL.GL import *
-
+import pygalmesh
 
 class Surface:
     def __init__(self, step, zoom):
@@ -63,56 +63,95 @@ class Surface:
         self.zMinLog = self.logZ(self.zMin)
 
 
-class Scene:
+class Shape:
+    def __init__(self):
+        self.colors: List[float] = []
+        self.positions: List[float] = []
 
+    def __addMesh(self, mesh, color):
+        for cell in mesh.cells:
+            if cell.type == 'triangle':
+                for triangle in cell.data:
+                    for vectorIndex in triangle:
+                        self.colors += color
+                        vector = mesh.points[vectorIndex]
+                        self.positions += vector.tolist()
+
+    def addSphere(self, position, radius, color):
+        s = pygalmesh.Ball(position, radius)
+        mesh = pygalmesh.generate_mesh(s, max_cell_circumradius=radius/5)
+        self.__addMesh(mesh,color)
+
+    def addTriangle(self):
+        self.positions += [
+            0, 0, 0,
+            -1, 0, 0,
+            0, 1, 0
+        ]
+        self.colors += [
+            1,0,0,1,
+            0,1,0,1,
+            0,0,1,1,
+        ]
+
+
+class Scene:
     colorDim = 4
     positionDim = 3
 
-    def __init__(self, maxNumVertexes=10**5):
+    def __init__(self):
+        self.positionBuffer = None
+        self.colorBuffer = None
 
-        self.positionData = None
-        self.colorData = None
+        self.shapes: List[Shape] = []
 
         self.numVectors = 0
         self.posOffset = 0
         self.colOffset = 0
 
+    def initBuffers(self, maxNumVertexes=10 ** 5):
         self.positionBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.positionBuffer)
-        glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * maxNumVertexes, dtype=np.float32), GL_STATIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * maxNumVertexes, dtype=np.float32), GL_DYNAMIC_DRAW)
 
         self.colorBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.colorBuffer)
-        glBufferData(GL_ARRAY_BUFFER, np.empty(self.colorDim * maxNumVertexes, dtype=np.float32), GL_STATIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, np.empty(self.colorDim * maxNumVertexes, dtype=np.float32), GL_DYNAMIC_DRAW)
 
-    def setBuffers(self, position: List[float], color: List[float]):
+    def appendBuffers(self, shape: Shape):
+        self.shapes.append(shape)
+        position = np.array(shape.positions, dtype=np.float32)
+        color = np.array(shape.colors, dtype=np.float32)
 
-        position = np.array(position, dtype=np.float32)
-        color = np.array(color, dtype=np.float32)
-
-        posNum = position.size//self.positionDim
-        colNum = color.size//self.colorDim
-
+        posNum = position.size // self.positionDim
+        colNum = color.size // self.colorDim
         if posNum != colNum:
             raise Exception(f"Length of position and color array doesn't match: {posNum} != {colNum}")
 
-        self.numVectors = posNum
-        self.posOffset = position.nbytes
-        self.colOffset = color.nbytes
-
-        self.positionData = position
         glBindBuffer(GL_ARRAY_BUFFER, self.positionBuffer)
-        glBufferData(GL_ARRAY_BUFFER, self.positionData.nbytes, self.positionData, GL_STATIC_DRAW)
+        glBufferSubData(GL_ARRAY_BUFFER, self.posOffset, position)
 
-        self.colorData = color
         glBindBuffer(GL_ARRAY_BUFFER, self.colorBuffer)
-        glBufferData(GL_ARRAY_BUFFER, self.colorData.nbytes, self.colorData, GL_STATIC_DRAW)
+        glBufferSubData(GL_ARRAY_BUFFER, self.colOffset, color)
+
+        self.numVectors += posNum
+        self.posOffset += position.nbytes
+        self.colOffset += color.nbytes
+
+    def setBuffers(self, shapes: List[Shape]):
+        self.numVectors = 0
+        self.posOffset = 0
+        self.colOffset = 0
+
+        for shape in shapes:
+            self.appendBuffers(shape)
+
 
 class View:
     def __init__(self):
         self.rot_global_x = 0
         self.rot_local_z = 0
-        self.globalLocation = [0,0,0]
+        self.globalLocation = [0, 0, 0]
         self.zoom = 1
 
     def rotate(self, global_x, local_z):
@@ -139,7 +178,7 @@ class View:
         return mat
 
     def modelMatrix(self):
-        zVector = Vector3([0,0,1])
+        zVector = Vector3([0, 0, 1])
         rotation = Quaternion.from_x_rotation(np.deg2rad(self.rot_global_x))
         zVector = rotation.matrix44 * zVector
         rotation *= Quaternion.from_axis_rotation(zVector, np.deg2rad(self.rot_local_z))

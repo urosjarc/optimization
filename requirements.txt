@@ -1,6 +1,7 @@
 gym
 numpy
 pyrr
+pygalmesh
 
 pyqt5
 pyqt5-stubs

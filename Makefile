@@ -10,4 +10,5 @@ init: ## start virtual environment and install dev. requirements
 	$(MAKE) install
 
 install: ## install development libs
+	sudo -S apt install libcgal-dev libeigen3-dev # Install pygamesh dependencies
 	pip install -r requirements.txt
