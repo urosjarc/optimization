@@ -1,11 +1,12 @@
+from math import sqrt
 from typing import List
 
-from pyrr import Matrix44, Quaternion, Vector3
+import pygmsh
+from pyrr import Matrix44, Quaternion, Vector3, Matrix33
 
 from src.math.linalg import *
 from src.math.space import Function
 from OpenGL.GL import *
-import pygalmesh
 
 class Surface:
     def __init__(self, step, zoom):
@@ -69,30 +70,22 @@ class Shape:
         self.positions: List[float] = []
         self.normals: List[float] = []
 
-    def __addGalMesh(self, mesh, color):
-        for cell in mesh.cells:
-            if cell.type == 'triangle':
-                points, faces = mesh.points, cell.data
-                norm = np.zeros(points.shape, dtype=points.dtype)
-                tris = points[faces]
-                n = np.cross(tris[::, 1] - tris[::, 0], tris[::, 2] - tris[::, 0])
-                n = normalizeVectors(n)
-                norm[faces[:, 0]] += n
-                norm[faces[:, 1]] += n
-                norm[faces[:, 2]] += n
-                norm = normalizeVectors(norm)
-                va = points[faces]
-                no = norm[faces]
-                va = va.ravel()
-                no = no.ravel()
-                self.positions += va.tolist()
-                self.normals += no.tolist()
-                self.colors += np.tile(color,(faces.size,1)).ravel().tolist()
-
-    def addSphere(self, position, radius, color):
-        s = pygalmesh.Ball(position, radius)
-        mesh = pygalmesh.generate_mesh(s, max_cell_circumradius=radius/5)
-        self.__addGalMesh(mesh,color)
+    def __addMesh(self, points, faces, color):
+        norm = np.zeros(points.shape, dtype=points.dtype)
+        tris = points[faces]
+        n = np.cross(tris[::, 1] - tris[::, 0], tris[::, 2] - tris[::, 0])
+        n = normalizeVectors(n)
+        norm[faces[:, 0]] += n
+        norm[faces[:, 1]] += n
+        norm[faces[:, 2]] += n
+        norm = normalizeVectors(norm)
+        va = points[faces]
+        no = norm[faces]
+        va = va.ravel()
+        no = no.ravel()
+        self.positions += va.tolist()
+        self.normals += no.tolist()
+        self.colors += np.tile(color,(faces.size,1)).ravel().tolist()
 
     def addTriangle(self):
         self.positions += [
@@ -105,6 +98,41 @@ class Shape:
             0,1,0,1,
             0,0,1,1,
         ]
+        self.normals += [
+            0,0,-1,
+            0,0,-1,
+            0,0,-1,
+        ]
+
+    def addSquare(self):
+        with pygmsh.geo.Geometry() as geom:
+            poly = geom.add_polygon(
+                [
+                    [0.0, 0.0],
+                    [1.0, -0.2],
+                    [1.1, 1.2],
+                    [0.1, 0.7],
+                ],
+                mesh_size=0.1,
+            )
+            geom.extrude(poly, [0.0, 0.3, 1.0], num_layers=5)
+            mesh = geom.generate_mesh()
+            self.__addMesh(mesh.points, mesh.cells[1].data, [1,0,0,1])
+
+    def addComplex(self, color):
+        with pygmsh.occ.Geometry() as geom:
+            geom.characteristic_length_max = 0.1
+            ellipsoid = geom.add_ellipsoid([0.0, 0.0, 0.0], [1.0, 0.7, 0.5])
+
+            cylinders = [
+                geom.add_cylinder([-1.0, 0.0, 0.0], [2.0, 0.0, 0.0], 0.3),
+                geom.add_cylinder([0.0, -1.0, 0.0], [0.0, 2.0, 0.0], 0.3),
+                geom.add_cylinder([0.0, 0.0, -1.0], [0.0, 0.0, 2.0], 0.3),
+            ]
+            geom.boolean_difference(ellipsoid, geom.boolean_union(cylinders))
+
+            mesh = geom.generate_mesh()
+            self.__addMesh(mesh.points, mesh.cells[1].data, color)
 
 
 class Scene:
@@ -156,7 +184,7 @@ class Scene:
         glBufferSubData(GL_ARRAY_BUFFER, self.colOffset, colors)
 
         glBindBuffer(GL_ARRAY_BUFFER, self.normalBuffer)
-        glBufferSubData(GL_ARRAY_BUFFER, self.colOffset, normals)
+        glBufferSubData(GL_ARRAY_BUFFER, self.norOffset, normals)
 
         self.numVectors += posNum
         self.posOffset += positions.nbytes
@@ -178,6 +206,7 @@ class View:
         self.rot_local_z = 0
         self.globalLocation = [0, 0, 0]
         self.zoom = 1
+        self.light = Vector3([10, 10, 10])
 
     def rotate(self, global_x, local_z):
         self.rot_global_x += global_x

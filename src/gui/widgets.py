@@ -30,29 +30,31 @@ class GLWidget(QGLWidget):
             vs = shaders.compileShader(f.read(), GL_VERTEX_SHADER)
         with open(utils.getPath(__file__, 'ui/shader_fragments.glsl')) as f:
             fs = shaders.compileShader(f.read(), GL_FRAGMENT_SHADER)
-        program = shaders.compileProgram(vs, fs)
 
         # Use compiled shader program
+        program = shaders.compileProgram(vs, fs)
         glUseProgram(program)
 
         # Get program atributes locations
-        self.locations = {
+        self.location = {
             'in_position': glGetAttribLocation(program, 'in_position'),
             'in_color': glGetAttribLocation(program, 'in_color'),
             'in_normal': glGetAttribLocation(program, 'in_normal'),
             'projectionMatrix': glGetUniformLocation(program, 'projectionMatrix'),
             'viewMatrix': glGetUniformLocation(program, 'viewMatrix'),
-            'modelMatrix': glGetUniformLocation(program, 'modelMatrix')
+            'modelMatrix': glGetUniformLocation(program, 'modelMatrix'),
+            'light': glGetUniformLocation(program, 'light'),
         }
 
         # Activate program "in" atributes to be rendered in a process of rendering
-        glEnableVertexAttribArray(self.locations['in_position'])
-        glEnableVertexAttribArray(self.locations['in_color'])
-        glEnableVertexAttribArray(self.locations['in_normal'])
+        glEnableVertexAttribArray(self.location['in_position'])
+        glEnableVertexAttribArray(self.location['in_color'])
+        glEnableVertexAttribArray(self.location['in_normal'])
 
-        # Setup model view matrix !!! projection matrix is setup in resizing event!
+        # Setup model view matrix and light !!! projection matrix is setup in resizing event!
         self.__updateModelMatrix()
         self.__updateViewMatrix()
+        self.__updateLight()
 
         # Anable depth testing in z-buffer, replace old value in z-buffer if value is less or equal to old one.
         glEnable(GL_DEPTH_TEST)
@@ -65,7 +67,10 @@ class GLWidget(QGLWidget):
         # Init widget scene
         self.scene.initBuffers()
         shape = Shape()
-        shape.addSphere([0,0,0], 1, [1,0,0,1])
+        # shape.addTriangle()
+        # shape.addSphere([1,0,0,1])
+        shape.addComplex([1,0,0,1])
+        # shape.addSquare()
         self.scene.appendBuffers(shape)
 
         self.fitToScreen()
@@ -76,11 +81,11 @@ class GLWidget(QGLWidget):
 
         # Explain data form stored in binded buffers
         glBindBuffer(GL_ARRAY_BUFFER, self.scene.positionBuffer)
-        glVertexAttribPointer(self.locations['in_position'], self.scene.positionDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
+        glVertexAttribPointer(self.location['in_position'], self.scene.positionDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
         glBindBuffer(GL_ARRAY_BUFFER, self.scene.colorBuffer)
-        glVertexAttribPointer(self.locations['in_color'], self.scene.colorDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
+        glVertexAttribPointer(self.location['in_color'], self.scene.colorDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
         glBindBuffer(GL_ARRAY_BUFFER, self.scene.normalBuffer)
-        glVertexAttribPointer(self.locations['in_normal'], self.scene.normalDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
+        glVertexAttribPointer(self.location['in_normal'], self.scene.normalDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
 
         # Draw number of elements binded in buffer arrays
         glDrawArrays(GL_TRIANGLES, 0, self.scene.numVectors)
@@ -128,15 +133,18 @@ class GLWidget(QGLWidget):
             self.__updateViewMatrix()
             self.updateGL()
 
+    def __updateLight(self):
+        glUniform3fv(self.location['light'], 1, self.view.light)
+
     def __updateViewMatrix(self):
-        glUniformMatrix4fv(self.locations['viewMatrix'], 1, GL_FALSE, self.view.viewMatrix())
+        glUniformMatrix4fv(self.location['viewMatrix'], 1, GL_FALSE, self.view.viewMatrix())
 
     def __updateModelMatrix(self):
-        glUniformMatrix4fv(self.locations['modelMatrix'], 1, GL_FALSE, self.view.modelMatrix())
+        glUniformMatrix4fv(self.location['modelMatrix'], 1, GL_FALSE, self.view.modelMatrix())
 
     def __updateProjectionMatrix(self, width, height):
         projectionMatrix = self.view.projectionMatrix(width, height)
-        glUniformMatrix4fv(self.locations['projectionMatrix'], 1, GL_FALSE, projectionMatrix)
+        glUniformMatrix4fv(self.location['projectionMatrix'], 1, GL_FALSE, projectionMatrix)
 
     def fitToScreen(self):
         vectors = []
