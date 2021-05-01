@@ -113,6 +113,7 @@ class Scene:
     normalDim = 3
 
     def __init__(self):
+        self.normalBuffer = None
         self.positionBuffer = None
         self.colorBuffer = None
 
@@ -121,6 +122,7 @@ class Scene:
         self.numVectors = 0
         self.posOffset = 0
         self.colOffset = 0
+        self.norOffset = 0
 
     def initBuffers(self, maxNumVertexes=10 ** 5):
         self.positionBuffer = glGenBuffers(1)
@@ -131,34 +133,44 @@ class Scene:
         glBindBuffer(GL_ARRAY_BUFFER, self.colorBuffer)
         glBufferData(GL_ARRAY_BUFFER, np.empty(self.colorDim * maxNumVertexes, dtype=np.float32), GL_DYNAMIC_DRAW)
 
+        self.normalBuffer = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, self.normalBuffer)
+        glBufferData(GL_ARRAY_BUFFER, np.empty(self.normalDim * maxNumVertexes, dtype=np.float32), GL_DYNAMIC_DRAW)
+
     def appendBuffers(self, shape: Shape):
         self.shapes.append(shape)
-        position = np.array(shape.positions, dtype=np.float32)
-        color = np.array(shape.colors, dtype=np.float32)
+        positions = np.array(shape.positions, dtype=np.float32)
+        colors = np.array(shape.colors, dtype=np.float32)
+        normals = np.array(shape.normals, dtype=np.float32)
 
-        posNum = position.size // self.positionDim
-        colNum = color.size // self.colorDim
-        if posNum != colNum:
-            raise Exception(f"Length of position and color array doesn't match: {posNum} != {colNum}")
+        posNum = positions.size // self.positionDim
+        colNum = colors.size // self.colorDim
+        norNum = normals.size // self.normalDim
+        if posNum != colNum != norNum:
+            raise Exception(f"Length of positions | colors | normals array doesn't match: {posNum} != {colNum}")
 
         glBindBuffer(GL_ARRAY_BUFFER, self.positionBuffer)
-        glBufferSubData(GL_ARRAY_BUFFER, self.posOffset, position)
+        glBufferSubData(GL_ARRAY_BUFFER, self.posOffset, positions)
 
         glBindBuffer(GL_ARRAY_BUFFER, self.colorBuffer)
-        glBufferSubData(GL_ARRAY_BUFFER, self.colOffset, color)
+        glBufferSubData(GL_ARRAY_BUFFER, self.colOffset, colors)
+
+        glBindBuffer(GL_ARRAY_BUFFER, self.normalBuffer)
+        glBufferSubData(GL_ARRAY_BUFFER, self.colOffset, normals)
 
         self.numVectors += posNum
-        self.posOffset += position.nbytes
-        self.colOffset += color.nbytes
+        self.posOffset += positions.nbytes
+        self.colOffset += colors.nbytes
+        self.norOffset += normals.nbytes
 
     def setBuffers(self, shapes: List[Shape]):
         self.numVectors = 0
         self.posOffset = 0
         self.colOffset = 0
+        self.norOffset = 0
 
         for shape in shapes:
             self.appendBuffers(shape)
-
 
 class View:
     def __init__(self):

@@ -39,6 +39,7 @@ class GLWidget(QGLWidget):
         self.locations = {
             'in_position': glGetAttribLocation(program, 'in_position'),
             'in_color': glGetAttribLocation(program, 'in_color'),
+            'in_normal': glGetAttribLocation(program, 'in_normal'),
             'projectionMatrix': glGetUniformLocation(program, 'projectionMatrix'),
             'viewMatrix': glGetUniformLocation(program, 'viewMatrix'),
             'modelMatrix': glGetUniformLocation(program, 'modelMatrix')
@@ -47,6 +48,7 @@ class GLWidget(QGLWidget):
         # Activate program "in" atributes to be rendered in a process of rendering
         glEnableVertexAttribArray(self.locations['in_position'])
         glEnableVertexAttribArray(self.locations['in_color'])
+        glEnableVertexAttribArray(self.locations['in_normal'])
 
         # Setup model view matrix !!! projection matrix is setup in resizing event!
         self.__updateModelMatrix()
@@ -77,6 +79,8 @@ class GLWidget(QGLWidget):
         glVertexAttribPointer(self.locations['in_position'], self.scene.positionDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
         glBindBuffer(GL_ARRAY_BUFFER, self.scene.colorBuffer)
         glVertexAttribPointer(self.locations['in_color'], self.scene.colorDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
+        glBindBuffer(GL_ARRAY_BUFFER, self.scene.normalBuffer)
+        glVertexAttribPointer(self.locations['in_normal'], self.scene.normalDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
 
         # Draw number of elements binded in buffer arrays
         glDrawArrays(GL_TRIANGLES, 0, self.scene.numVectors)
