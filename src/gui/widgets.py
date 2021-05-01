@@ -138,23 +138,14 @@ class GLWidget(QGLWidget):
         vectors = []
         for shape in self.scene.shapes:
             p = shape.positions
-            for i in range(0, len(p), 3):
-                vectors.append([p[i], p[i + 1], p[i + 2]])
+            vectors += np.array_split(np.array(p), len(p)/3)
 
         meanV = np.mean(vectors, axis=0)
-
-        maxSize = 0
-        for v in np.array(vectors):
-            diff = v - meanV
-            size = np.linalg.norm(diff)
-            if size > maxSize:
-                maxSize = size
+        maxSize = max(np.linalg.norm(vectors-meanV, axis=1))
 
         self.view.globalLocation = [-meanV[0], -meanV[1], -3*maxSize]
         self.view.rot_global_x = 0
         self.view.rot_local_z = 0
-
-        print('Global location', self.view.globalLocation)
 
         self.__updateModelMatrix()
         self.__updateViewMatrix()

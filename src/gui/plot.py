@@ -67,20 +67,32 @@ class Shape:
     def __init__(self):
         self.colors: List[float] = []
         self.positions: List[float] = []
+        self.normals: List[float] = []
 
-    def __addMesh(self, mesh, color):
+    def __addGalMesh(self, mesh, color):
         for cell in mesh.cells:
             if cell.type == 'triangle':
-                for triangle in cell.data:
-                    for vectorIndex in triangle:
-                        self.colors += color
-                        vector = mesh.points[vectorIndex]
-                        self.positions += vector.tolist()
+                points, faces = mesh.points, cell.data
+                norm = np.zeros(points.shape, dtype=points.dtype)
+                tris = points[faces]
+                n = np.cross(tris[::, 1] - tris[::, 0], tris[::, 2] - tris[::, 0])
+                n = normalizeVectors(n)
+                norm[faces[:, 0]] += n
+                norm[faces[:, 1]] += n
+                norm[faces[:, 2]] += n
+                norm = normalizeVectors(norm)
+                va = points[faces]
+                no = norm[faces]
+                va = va.ravel()
+                no = no.ravel()
+                self.positions += va.tolist()
+                self.normals += no.tolist()
+                self.colors += np.tile(color,(faces.size,1)).ravel().tolist()
 
     def addSphere(self, position, radius, color):
         s = pygalmesh.Ball(position, radius)
         mesh = pygalmesh.generate_mesh(s, max_cell_circumradius=radius/5)
-        self.__addMesh(mesh,color)
+        self.__addGalMesh(mesh,color)
 
     def addTriangle(self):
         self.positions += [
@@ -98,6 +110,7 @@ class Shape:
 class Scene:
     colorDim = 4
     positionDim = 3
+    normalDim = 3
 
     def __init__(self):
         self.positionBuffer = None
