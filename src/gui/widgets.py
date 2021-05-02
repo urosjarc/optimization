@@ -115,8 +115,7 @@ class GLWidget(QGLWidget):
                 self.__updateModelMatrix()
                 self.updateGL()
             elif btns == Qt.RightButton:
-                self.view.translate(x=-dx / 200, y=dy / 200)
-                self.view.translate()
+                self.view.translate(dx=-dx / 200, dy=dy / 200)
                 self.__updateViewMatrix()
                 self.updateGL()
 
