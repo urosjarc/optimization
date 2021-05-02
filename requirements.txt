@@ -2,6 +2,7 @@ gym
 numpy
 pyrr
 pygmsh
+meshio
 gmsh
 
 pyqt5

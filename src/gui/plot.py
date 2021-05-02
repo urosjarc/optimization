@@ -1,9 +1,10 @@
-from math import sqrt
 from typing import List
 
 import pygmsh
-from pyrr import Matrix44, Quaternion, Vector3, Matrix33
+import meshio
+from pyrr import Matrix44, Quaternion, Vector3
 
+from src import utils
 from src.math.linalg import *
 from src.math.space import Function
 from OpenGL.GL import *
@@ -104,7 +105,7 @@ class Shape:
             0,0,-1,
         ]
 
-    def addSquare(self):
+    def addSquare(self, color):
         with pygmsh.geo.Geometry() as geom:
             poly = geom.add_polygon(
                 [
@@ -117,7 +118,7 @@ class Shape:
             )
             geom.extrude(poly, [0.0, 0.3, 1.0], num_layers=5)
             mesh = geom.generate_mesh()
-            self.__addMesh(mesh.points, mesh.cells[1].data, [1,0,0,1])
+            self.__addMesh(mesh.points, mesh.cells[1].data, color)
 
     def addComplex(self, color):
         with pygmsh.occ.Geometry() as geom:
@@ -134,6 +135,15 @@ class Shape:
             mesh = geom.generate_mesh()
             self.__addMesh(mesh.points, mesh.cells[1].data, color)
 
+    def addSphere(self, color):
+        with pygmsh.geo.Geometry() as geom:
+            geom.add_torus(1,3, mesh_size=0.1)
+            mesh = geom.generate_mesh()
+            self.__addMesh(mesh.points, mesh.cells[1].data, color)
+
+    def addBunny(self, color):
+        mesh = meshio.read(utils.getPath(__file__, '../../data/models/bun_zipper.ply'))
+        self.__addMesh(mesh.points, mesh.cells[0].data, color)
 
 class Scene:
     colorDim = 4
@@ -152,7 +162,7 @@ class Scene:
         self.colOffset = 0
         self.norOffset = 0
 
-    def initBuffers(self, maxNumVertexes=10 ** 5):
+    def initBuffers(self, maxNumVertexes=10 ** 7):
         self.positionBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.positionBuffer)
         glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * maxNumVertexes, dtype=np.float32), GL_DYNAMIC_DRAW)

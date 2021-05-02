@@ -69,7 +69,8 @@ class GLWidget(QGLWidget):
         shape = Shape()
         # shape.addTriangle()
         # shape.addSphere([1,0,0,1])
-        shape.addComplex([1,0,0,1])
+        shape.addArmadilo([1,0,0,1])
+        # shape.addComplex([1,0,0,1])
         # shape.addSquare()
         self.scene.appendBuffers(shape)
 
