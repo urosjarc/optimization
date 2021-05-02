@@ -1,1 +1,2 @@
-from .scene import *
+from .model import *
+from .view import *

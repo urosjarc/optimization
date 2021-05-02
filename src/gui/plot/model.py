@@ -8,12 +8,9 @@ import pygmsh
 
 from src import utils
 from src.math.linalg import normalizeVectors
-from .view import View
-
 
 class Shape:
     def __init__(self):
-        self.view: View = View()
         self.colors: List[float] = []
         self.positions: List[float] = []
         self.normals: List[float] = []
@@ -34,23 +31,6 @@ class Shape:
         self.positions += va.tolist()
         self.normals += no.tolist()
         self.colors += np.tile(color,(faces.size,1)).ravel().tolist()
-
-    def addTriangle(self):
-        self.positions += [
-            0, 0, 0,
-            -1, 0, 0,
-            0, 1, 0
-        ]
-        self.colors += [
-            1,0,0,1,
-            0,1,0,1,
-            0,0,1,1,
-        ]
-        self.normals += [
-            0,0,-1,
-            0,0,-1,
-            0,0,-1,
-        ]
 
     def addSquare(self, color):
         with pygmsh.geo.Geometry() as geom:
@@ -84,7 +64,7 @@ class Shape:
 
     def addSphere(self, color):
         with pygmsh.geo.Geometry() as geom:
-            geom.add_torus(1,3, mesh_size=0.1)
+            geom.add_torus(1, 3, mesh_size=0.1)
             mesh = geom.generate_mesh()
             self.__addMesh(mesh.points, mesh.cells[1].data, color)
 
@@ -94,11 +74,7 @@ class Shape:
 
     def addDragon(self, color):
         mesh = meshio.read(utils.getPath(__file__, '../../../data/models/dragon_vrip_res2.ply'))
-        print(mesh.points, mesh.cells)
         self.__addMesh(mesh.points, mesh.cells[0].data, color)
-
-
-
 
 
 class Scene:
@@ -111,12 +87,12 @@ class Scene:
         self.positionBuffer = None
         self.colorBuffer = None
 
-        self.shapes: List[Shape] = []
-
         self.numVectors = 0
         self.posOffset = 0
         self.colOffset = 0
         self.norOffset = 0
+
+        self.shapes: List[Shape] = []
 
     def initBuffers(self, maxNumVertexes=10 ** 7):
         self.positionBuffer = glGenBuffers(1)

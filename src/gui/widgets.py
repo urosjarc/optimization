@@ -9,7 +9,7 @@ from PyQt5.QtOpenGL import QGLWidget
 from pyrr import Matrix44
 
 from src import utils
-from src.gui.plot import Scene, View, Shape
+from src.gui.plot import View, Shape, Scene
 
 
 class GLWidget(QGLWidget):
@@ -21,7 +21,7 @@ class GLWidget(QGLWidget):
         self.mouse: List = None
 
         self.view = View()
-        self.view.translate(dz=-5)
+        self.light = np.array([10, 10, 10], dtype=np.float32)
         self.scene: Scene = Scene()
         self.programLocations: Dict[str, GLuint]
 
@@ -44,7 +44,7 @@ class GLWidget(QGLWidget):
             'projectionMatrix': glGetUniformLocation(program, 'projectionMatrix'),
             'viewMatrix': glGetUniformLocation(program, 'viewMatrix'),
             'modelMatrix': glGetUniformLocation(program, 'modelMatrix'),
-            'light': glGetUniformLocation(program, 'light'),
+            'in_light': glGetUniformLocation(program, 'in_light'),
         }
 
         # Activate program "in" atributes to be rendered in a process of rendering
@@ -67,15 +67,14 @@ class GLWidget(QGLWidget):
 
         # Init widget scene
         self.scene.initBuffers()
+
+        # Add shapes to scene
         shape = Shape()
-        # shape.addTriangle()
-        # shape.addSphere([1,0,0,1])
         shape.addDragon([1,1,1,1])
-        # shape.addComplex([1,0,0,1])
-        # shape.addSquare()
         self.scene.appendBuffers(shape)
 
-        # self.fitToScreen()
+        # Fit to screen
+        self.fitToScreen()
 
     def paintGL(self):
         # Clear color buffer and depth z-buffer
@@ -118,6 +117,11 @@ class GLWidget(QGLWidget):
                 self.view.translate(dx=-dx / 200, dy=dy / 200)
                 self.__updateViewMatrix()
                 self.updateGL()
+            elif btns == Qt.MidButton:
+                self.light[0] += dy/20
+                self.light[2] += dx/20
+                self.__updateLight()
+                self.updateGL()
 
         self.mouse = [event.x(), event.y()]
 
@@ -137,7 +141,7 @@ class GLWidget(QGLWidget):
             self.updateGL()
 
     def __updateLight(self):
-        glUniform3fv(self.location['light'], 1, self.view.light)
+        glUniform3fv(self.location['in_light'], 1, self.light)
 
     def __updateViewMatrix(self):
         glUniformMatrix4fv(self.location['viewMatrix'], 1, GL_FALSE, self.view.viewMatrix)
@@ -158,9 +162,10 @@ class GLWidget(QGLWidget):
         meanV = np.mean(vectors, axis=0)
         maxSize = max(np.linalg.norm(vectors-meanV, axis=1))
 
-        self.view.globalLocation = [-meanV[0], -meanV[1], -3*maxSize]
-        self.view.rot_global_x = 0
-        self.view.rot_local_z = 0
+        self.view.init()
+        self.view.translate(-meanV[0], -meanV[1], -3*maxSize)
+        self.light = np.array([10, 10, 10], dtype=np.float32)
 
         self.__updateModelMatrix()
         self.__updateViewMatrix()
+        self.__updateLight()
