@@ -1,11 +1,10 @@
 from PyQt5 import QtWidgets, uic
-from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QOpenGLWidget, QProgressBar, \
+from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QProgressBar, \
     QHBoxLayout
 
 from src import utils
-from src.gui.plot import Surface
 from src.gui.widgets import GLWidget
-from src.math.space import functions
+from src.optimization.space import functions, Mesh
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -44,7 +43,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.logHeightCB.stateChanged.connect(self.on_logaritmic_toggle)
         self.wireframeCB.stateChanged.connect(self.on_wireframe_toggle)
 
-        self.surface = Surface(200, 10)
+        self.mesh = Mesh(200, 10)
         self.__init()
 
     def __init(self):

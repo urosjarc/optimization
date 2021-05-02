@@ -6,6 +6,7 @@ from PyQt5.QtCore import Qt, QPoint
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from PyQt5.QtOpenGL import QGLWidget
+from pyrr import Matrix44
 
 from src import utils
 from src.gui.plot import Scene, View, Shape
@@ -20,15 +21,15 @@ class GLWidget(QGLWidget):
         self.mouse: List = None
 
         self.view = View()
-        self.view.translate(dglobal_z=-5)
+        self.view.translate(dz=-5)
         self.scene: Scene = Scene()
         self.programLocations: Dict[str, GLuint]
 
     def initializeGL(self):
         # Activate program and use it
-        with open(utils.getPath(__file__, 'ui/shader_vertex.glsl')) as f:
+        with open(utils.getPath(__file__, 'glsl/shader_vertex.glsl')) as f:
             vs = shaders.compileShader(f.read(), GL_VERTEX_SHADER)
-        with open(utils.getPath(__file__, 'ui/shader_fragments.glsl')) as f:
+        with open(utils.getPath(__file__, 'glsl/shader_fragments.glsl')) as f:
             fs = shaders.compileShader(f.read(), GL_FRAGMENT_SHADER)
 
         # Use compiled shader program
@@ -69,12 +70,12 @@ class GLWidget(QGLWidget):
         shape = Shape()
         # shape.addTriangle()
         # shape.addSphere([1,0,0,1])
-        shape.addArmadilo([1,0,0,1])
+        shape.addDragon([1,1,1,1])
         # shape.addComplex([1,0,0,1])
         # shape.addSquare()
         self.scene.appendBuffers(shape)
 
-        self.fitToScreen()
+        # self.fitToScreen()
 
     def paintGL(self):
         # Clear color buffer and depth z-buffer
@@ -109,11 +110,13 @@ class GLWidget(QGLWidget):
             dy = self.mouse[1] - event.y()
 
             if btns == Qt.LeftButton:
-                self.view.rotate(global_x=dy / 2, local_z=dx)
+                self.view.rotateX(dy / 2)
+                self.view.rotateZ(dx / 2, local=True)
                 self.__updateModelMatrix()
                 self.updateGL()
             elif btns == Qt.RightButton:
-                self.view.translate(dglobal_x=-dx / 200, dglobal_y=dy / 200)
+                self.view.translate(x=-dx / 200, y=dy / 200)
+                self.view.translate()
                 self.__updateViewMatrix()
                 self.updateGL()
 
@@ -130,7 +133,7 @@ class GLWidget(QGLWidget):
             self.resetView()
         elif btns == Qt.NoButton:
             dz = event.angleDelta().y() / 100
-            self.view.translate(dglobal_z=dz)
+            self.view.translate(dz=dz)
             self.__updateViewMatrix()
             self.updateGL()
 
@@ -138,13 +141,13 @@ class GLWidget(QGLWidget):
         glUniform3fv(self.location['light'], 1, self.view.light)
 
     def __updateViewMatrix(self):
-        glUniformMatrix4fv(self.location['viewMatrix'], 1, GL_FALSE, self.view.viewMatrix())
+        glUniformMatrix4fv(self.location['viewMatrix'], 1, GL_FALSE, self.view.viewMatrix)
 
     def __updateModelMatrix(self):
-        glUniformMatrix4fv(self.location['modelMatrix'], 1, GL_FALSE, self.view.modelMatrix())
+        glUniformMatrix4fv(self.location['modelMatrix'], 1, GL_FALSE, self.view.modelMatrix)
 
     def __updateProjectionMatrix(self, width, height):
-        projectionMatrix = self.view.projectionMatrix(width, height)
+        projectionMatrix = Matrix44.perspective_projection(45, width / height, 0.1, 100.0)
         glUniformMatrix4fv(self.location['projectionMatrix'], 1, GL_FALSE, projectionMatrix)
 
     def fitToScreen(self):
