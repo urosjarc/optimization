@@ -1,2 +1,3 @@
-from .model import *
-from .view import *
+from .model import Model
+from .view import View
+from .shape import Shape

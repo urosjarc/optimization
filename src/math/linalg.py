@@ -19,12 +19,3 @@ def pointInTriangle(pointVector, v1, v2, v3):
     has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0);
     has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0);
     return not (has_neg and has_pos)
-
-
-def normalizeVectors(arr: np.array):
-    ''' Normalize a numpy array of 3 component vectors shape=(n,3) '''
-    lens = np.sqrt(arr[:, 0] ** 2 + arr[:, 1] ** 2 + arr[:, 2] ** 2)
-    arr[:, 0] /= lens
-    arr[:, 1] /= lens
-    arr[:, 2] /= lens
-    return arr

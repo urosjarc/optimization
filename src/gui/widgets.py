@@ -2,14 +2,14 @@ from typing import Dict, List
 import numpy as np
 
 from PyQt5.QtGui import QMouseEvent, QWheelEvent
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from PyQt5.QtOpenGL import QGLWidget
 from pyrr import Matrix44
 
 from src import utils
-from src.gui.plot import View, Shape, Scene
+from src.gui.plot import Model, View, Shape
 
 
 class GLWidget(QGLWidget):
@@ -17,13 +17,14 @@ class GLWidget(QGLWidget):
     def __init__(self, parent):
         QGLWidget.__init__(self, parent)
 
-        self.setMouseTracking(True)
-        self.mouse: List = None
+        self.programLocations: Dict[str, GLuint]
+        self.light = np.array([10, 10, 10], dtype=np.float32)
 
         self.view = View()
-        self.light = np.array([10, 10, 10], dtype=np.float32)
-        self.scene: Scene = Scene()
-        self.programLocations: Dict[str, GLuint]
+        self.models: List[Model] = []
+        self.mouse: List[int] = None
+
+        self.setMouseTracking(True)
 
     def initializeGL(self):
         # Activate program and use it
@@ -41,10 +42,12 @@ class GLWidget(QGLWidget):
             'in_position': glGetAttribLocation(program, 'in_position'),
             'in_color': glGetAttribLocation(program, 'in_color'),
             'in_normal': glGetAttribLocation(program, 'in_normal'),
-            'projectionMatrix': glGetUniformLocation(program, 'projectionMatrix'),
-            'viewMatrix': glGetUniformLocation(program, 'viewMatrix'),
-            'modelMatrix': glGetUniformLocation(program, 'modelMatrix'),
             'in_light': glGetUniformLocation(program, 'in_light'),
+            'projectionMatrix': glGetUniformLocation(program, 'projectionMatrix'),
+            'worldTranslationMatrix': glGetUniformLocation(program, 'worldTranslationMatrix'),
+            'worldRotationMatrix': glGetUniformLocation(program, 'worldRotationMatrix'),
+            'modelTranslationMatrix': glGetUniformLocation(program, 'modelTranslationMatrix'),
+            'modelRotationMatrix': glGetUniformLocation(program, 'modelRotationMatrix'),
         }
 
         # Activate program "in" atributes to be rendered in a process of rendering
@@ -52,9 +55,11 @@ class GLWidget(QGLWidget):
         glEnableVertexAttribArray(self.location['in_color'])
         glEnableVertexAttribArray(self.location['in_normal'])
 
-        # Setup model view matrix and light !!! projection matrix is setup in resizing event!
-        self.__updateModelMatrix()
-        self.__updateViewMatrix()
+        # Setup world matrixes and light.
+        # Projection matrix is updated on resize event only.
+        # Model matrixes is updated before rendering object.
+        self.__updateWorldTranslationMatrix()
+        self.__updateWorldRotationMatrix()
         self.__updateLight()
 
         # Anable depth testing in z-buffer, replace old value in z-buffer if value is less or equal to old one.
@@ -65,13 +70,11 @@ class GLWidget(QGLWidget):
         glClearColor(1, 1, 1, 1)
         glClearDepth(1.0)
 
-        # Init widget scene
-        self.scene.initBuffers()
-
         # Add shapes to scene
-        shape = Shape()
-        shape.addDragon([1,1,1,1])
-        self.scene.appendBuffers(shape)
+        model = Model()
+        model.addShape(Shape.Dragon([1,1,1,1]))
+        #Todo fix centering and rotation
+        self.models.append(model)
 
         # Fit to screen
         self.fitToScreen()
@@ -80,16 +83,23 @@ class GLWidget(QGLWidget):
         # Clear color buffer and depth z-buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-        # Explain data form stored in binded buffers
-        glBindBuffer(GL_ARRAY_BUFFER, self.scene.positionBuffer)
-        glVertexAttribPointer(self.location['in_position'], self.scene.positionDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
-        glBindBuffer(GL_ARRAY_BUFFER, self.scene.colorBuffer)
-        glVertexAttribPointer(self.location['in_color'], self.scene.colorDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
-        glBindBuffer(GL_ARRAY_BUFFER, self.scene.normalBuffer)
-        glVertexAttribPointer(self.location['in_normal'], self.scene.normalDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
+        for model in self.models:
+            bd = model.bdata
 
-        # Draw number of elements binded in buffer arrays
-        glDrawArrays(GL_TRIANGLES, 0, self.scene.numVectors)
+            # Set model matrixes
+            glUniformMatrix4fv(self.location['modelTranslationMatrix'], 1, GL_FALSE, model.view.translationMatrix)
+            glUniformMatrix4fv(self.location['modelRotationMatrix'], 1, GL_FALSE, model.view.rotationMatrix)
+
+            # Explain data form stored in model data buffers
+            glBindBuffer(GL_ARRAY_BUFFER, bd.positionBuffer)
+            glVertexAttribPointer(self.location['in_position'], bd.positionDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
+            glBindBuffer(GL_ARRAY_BUFFER, bd.colorBuffer)
+            glVertexAttribPointer(self.location['in_color'], bd.colorDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
+            glBindBuffer(GL_ARRAY_BUFFER, bd.normalBuffer)
+            glVertexAttribPointer(self.location['in_normal'], bd.normalDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
+
+            # Draw number of elements binded in buffer arrays
+            glDrawArrays(GL_TRIANGLES, 0, bd.numVectors)
 
     def resizeGL(self, width, height):
         if width + height == 0:
@@ -98,8 +108,9 @@ class GLWidget(QGLWidget):
         # Update size of viewport
         glViewport(0, 0, width, height)
 
-        # Setup projection matrix
-        self.__updateProjectionMatrix(width, height)
+        # Update projection matrix
+        projectionMatrix = Matrix44.perspective_projection(45, width / height, 0.1, 100.0)
+        glUniformMatrix4fv(self.location['projectionMatrix'], 1, GL_FALSE, projectionMatrix)
 
     def mouseMoveEvent(self, event: QMouseEvent):
         btns = event.buttons()
@@ -111,15 +122,15 @@ class GLWidget(QGLWidget):
             if btns == Qt.LeftButton:
                 self.view.rotateX(dy / 2)
                 self.view.rotateZ(dx / 2, local=True)
-                self.__updateModelMatrix()
+                self.__updateWorldRotationMatrix()
                 self.updateGL()
             elif btns == Qt.RightButton:
                 self.view.translate(dx=-dx / 200, dy=dy / 200)
-                self.__updateViewMatrix()
+                self.__updateWorldTranslationMatrix()
                 self.updateGL()
             elif btns == Qt.MidButton:
-                self.light[0] += dy/20
-                self.light[2] += dx/20
+                self.light[0] -= dx/20
+                self.light[1] += dy/20
                 self.__updateLight()
                 self.updateGL()
 
@@ -137,27 +148,24 @@ class GLWidget(QGLWidget):
         elif btns == Qt.NoButton:
             dz = event.angleDelta().y() / 100
             self.view.translate(dz=dz)
-            self.__updateViewMatrix()
+            self.__updateWorldTranslationMatrix()
             self.updateGL()
 
     def __updateLight(self):
         glUniform3fv(self.location['in_light'], 1, self.light)
 
-    def __updateViewMatrix(self):
-        glUniformMatrix4fv(self.location['viewMatrix'], 1, GL_FALSE, self.view.viewMatrix)
+    def __updateWorldRotationMatrix(self):
+        glUniformMatrix4fv(self.location['worldRotationMatrix'], 1, GL_FALSE, self.view.rotationMatrix)
 
-    def __updateModelMatrix(self):
-        glUniformMatrix4fv(self.location['modelMatrix'], 1, GL_FALSE, self.view.modelMatrix)
-
-    def __updateProjectionMatrix(self, width, height):
-        projectionMatrix = Matrix44.perspective_projection(45, width / height, 0.1, 100.0)
-        glUniformMatrix4fv(self.location['projectionMatrix'], 1, GL_FALSE, projectionMatrix)
+    def __updateWorldTranslationMatrix(self):
+        glUniformMatrix4fv(self.location['worldTranslationMatrix'], 1, GL_FALSE, self.view.translationMatrix)
 
     def fitToScreen(self):
         vectors = []
-        for shape in self.scene.shapes:
-            p = shape.positions
-            vectors += np.array_split(np.array(p), len(p)/3)
+        for model in self.models:
+            for shape in model.shapes:
+                p = shape.positions
+                vectors += np.array_split(np.array(p), len(p)/3)
 
         meanV = np.mean(vectors, axis=0)
         maxSize = max(np.linalg.norm(vectors-meanV, axis=1))
@@ -166,6 +174,6 @@ class GLWidget(QGLWidget):
         self.view.translate(-meanV[0], -meanV[1], -3*maxSize)
         self.light = np.array([10, 10, 10], dtype=np.float32)
 
-        self.__updateModelMatrix()
-        self.__updateViewMatrix()
+        self.__updateWorldTranslationMatrix()
+        self.__updateWorldRotationMatrix()
         self.__updateLight()
