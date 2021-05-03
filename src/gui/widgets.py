@@ -6,7 +6,7 @@ from PyQt5.QtCore import Qt
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from PyQt5.QtOpenGL import QGLWidget
-from pyrr import Matrix44
+from pyrr import Matrix44, Vector3
 
 from src import utils
 from src.gui.plot import Model, View, Shape
@@ -73,6 +73,8 @@ class GLWidget(QGLWidget):
         # Add shapes to scene
         model = Model()
         model.addShape(Shape.Dragon([1,1,1,1]))
+        model.center()
+        model.view.rotateX(-90)
         #Todo fix centering and rotation
         self.models.append(model)
 
@@ -120,12 +122,12 @@ class GLWidget(QGLWidget):
             dy = self.mouse[1] - event.y()
 
             if btns == Qt.LeftButton:
-                self.view.rotateX(dy / 2)
+                # self.view.rotateX(dy / 2)
                 self.view.rotateZ(dx / 2, local=True)
                 self.__updateWorldRotationMatrix()
                 self.updateGL()
             elif btns == Qt.RightButton:
-                self.view.translate(dx=-dx / 200, dy=dy / 200)
+                self.view.translate(dx=-dx / 1000, dy=dy / 1000)
                 self.__updateWorldTranslationMatrix()
                 self.updateGL()
             elif btns == Qt.MidButton:
@@ -162,17 +164,22 @@ class GLWidget(QGLWidget):
 
     def fitToScreen(self):
         vectors = []
+        centers = []
         for model in self.models:
             for shape in model.shapes:
                 p = shape.positions
-                vectors += np.array_split(np.array(p), len(p)/3)
+                shapeVectors = np.array_split(np.array(p), len(p)/3)
+                shapeCenter = model.view.translationMatrix * Vector3(np.mean(shapeVectors, axis=0), dtype=np.float32)
+                vectors += shapeVectors
+                centers.append(shapeCenter)
 
-        meanV = np.mean(vectors, axis=0)
-        maxSize = max(np.linalg.norm(vectors-meanV, axis=1))
+        center = np.mean(centers, axis=0)
+        maxSize = max(np.linalg.norm(vectors-center, axis=1))
 
         self.view.init()
-        self.view.translate(-meanV[0], -meanV[1], -3*maxSize)
+        self.view.translate(-center[0], -center[1], -3*maxSize)
         self.light = np.array([10, 10, 10], dtype=np.float32)
+        self.view.rotateX(45)
 
         self.__updateWorldTranslationMatrix()
         self.__updateWorldRotationMatrix()

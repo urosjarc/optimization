@@ -27,3 +27,12 @@ class Model:
         self.bdata.resetBuffers()
         for shape in shapes:
             self.addShape(shape)
+
+    def center(self):
+        vectors = []
+        for shape in self.shapes:
+            p = shape.positions
+            vectors += np.array_split(np.array(p), len(p)/3)
+
+        meanV = -np.mean(vectors, axis=0)
+        self.view.translate(*meanV.tolist())
