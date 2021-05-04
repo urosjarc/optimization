@@ -122,7 +122,7 @@ class GLWidget(QGLWidget):
             dy = self.mouse[1] - event.y()
 
             if btns == Qt.LeftButton:
-                # self.view.rotateX(dy / 2)
+                self.view.rotateX(dy / 2)
                 self.view.rotateZ(dx / 2, local=True)
                 self.__updateWorldRotationMatrix()
                 self.updateGL()
