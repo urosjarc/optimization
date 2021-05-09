@@ -72,9 +72,9 @@ class GLWidget(QGLWidget):
 
         # Add shapes to scene
         model = Model()
-        model.addShape(Shape.Dragon([1,1,1,1]))
-        model.center()
-        model.view.rotateX(-90)
+        shape = Shape()
+        shape.addSphere([1,1,1,1])
+        model.addShape(shape)
         self.models.append(model)
 
         # Fit to screen

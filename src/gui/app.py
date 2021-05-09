@@ -60,15 +60,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_name_change(self):
         fun = self.nameCB.currentData()
         if fun and self.inited:
-            model = Model()
-            model.addShape(Shape.Function(fun, 200, 1))
-            model.center()
-            self.normal2D.models = [model]
-            self.normal2D.fitToScreen()
-            self.normal2D.updateGL()
-            # self.normal3D.models = [model]
-            # self.zoom2D.models = [model]
-            # self.zoom3D.models = [model]
+                model = Model()
+                model.addShape(Shape.Function(fun, 200, 1))
+                model.center()
+
+                self.normal3D.models = [model]
+                self.normal3D.fitToScreen()
+                self.normal3D.updateGL()
+
         self.inited = True
 
     def on_logaritmic_toggle(self, state: int):
