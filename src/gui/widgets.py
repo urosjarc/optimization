@@ -75,7 +75,6 @@ class GLWidget(QGLWidget):
         model.addShape(Shape.Dragon([1,1,1,1]))
         model.center()
         model.view.rotateX(-90)
-        #Todo fix centering and rotation
         self.models.append(model)
 
         # Fit to screen
@@ -176,6 +175,7 @@ class GLWidget(QGLWidget):
         center = np.mean(centers, axis=0)
         maxSize = max(np.linalg.norm(vectors-center, axis=1))
 
+        print(center, maxSize)
         self.view.init()
         self.view.translate(-center[0], -center[1], -3*maxSize)
         self.light = np.array([10, 10, 10], dtype=np.float32)
