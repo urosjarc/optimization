@@ -109,6 +109,8 @@ class Shape:
                 else:
                     sqC += 1
 
+        #Todo: Normalization problems
+        points /= np.linalg.norm(points, axis=1, keepdims=True)
         shape = Shape()
         shape.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32), [1, 0, 0, 1])
         return shape

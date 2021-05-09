@@ -61,7 +61,7 @@ class MainWindow(QtWidgets.QMainWindow):
         fun = self.nameCB.currentData()
         if fun and self.inited:
             model = Model()
-            model.addShape(Shape.Function(fun, 100, 1))
+            model.addShape(Shape.Function(fun, 200, 1))
             model.center()
             self.normal2D.models = [model]
             self.normal2D.fitToScreen()
