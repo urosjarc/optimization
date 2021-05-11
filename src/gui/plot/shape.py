@@ -28,39 +28,21 @@ class Shape:
         self.normals += no.ravel().tolist()
         self.colors += np.tile(color, (faces.size, 1)).ravel().tolist()
 
-    def addSquare(self, color):
+    def addPipe(self, color):
         with pygmsh.geo.Geometry() as geom:
-            poly = geom.add_polygon(
-                [
-                    [0.0, 0.0],
-                    [1.0, -0.2],
-                    [1.1, 1.2],
-                    [0.1, 0.7],
-                ],
-                mesh_size=4.0,
-            )
-            geom.extrude(poly, [0.0, 0.1, 1.0], num_layers=1)
+            geom.add_pipe(1,.9, 2)
             mesh = geom.generate_mesh()
             self.__addMesh(mesh.points, mesh.cells[1].data, color)
 
-    def addComplex(self, color):
-        with pygmsh.occ.Geometry() as geom:
-            geom.characteristic_length_max = 0.1
-            ellipsoid = geom.add_ellipsoid([0.0, 0.0, 0.0], [1.0, 0.7, 0.5])
-
-            cylinders = [
-                geom.add_cylinder([-1.0, 0.0, 0.0], [2.0, 0.0, 0.0], 0.3),
-                geom.add_cylinder([0.0, -1.0, 0.0], [0.0, 2.0, 0.0], 0.3),
-                geom.add_cylinder([0.0, 0.0, -1.0], [0.0, 0.0, 2.0], 0.3),
-            ]
-            geom.boolean_difference(ellipsoid, geom.boolean_union(cylinders))
-
+    def addBox(self, color):
+        with pygmsh.geo.Geometry() as geom:
+            geom.add_box(-1, 1, -1, 1, -1, 1)
             mesh = geom.generate_mesh()
             self.__addMesh(mesh.points, mesh.cells[1].data, color)
 
     def addSphere(self, color):
         with pygmsh.geo.Geometry() as geom:
-            geom.add_torus(1, 3, mesh_size=0.1)
+            geom.add_ball([0,0,0], 1, mesh_size=1)
             mesh = geom.generate_mesh()
             self.__addMesh(mesh.points, mesh.cells[1].data, color)
 

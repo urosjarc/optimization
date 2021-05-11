@@ -2,9 +2,9 @@ from typing import List
 
 import numpy as np
 
+from src.gui.plot.view import View
 from src.gui.plot.buffer_data import BufferData
 from src.gui.plot.shape import Shape
-from src.gui.plot.view import View
 
 
 class Model:

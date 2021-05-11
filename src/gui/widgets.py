@@ -5,17 +5,17 @@ from PyQt5.QtGui import QMouseEvent, QWheelEvent
 from PyQt5.QtCore import Qt
 from OpenGL.GL import *
 from OpenGL.GL import shaders
-from PyQt5.QtOpenGL import QGLWidget
+from PyQt5.QtWidgets import QOpenGLWidget
 from pyrr import Matrix44, Vector3
 
 from src import utils
 from src.gui.plot import Model, View, Shape
 
 
-class GLWidget(QGLWidget):
+class OpenGLWidget(QOpenGLWidget):
 
     def __init__(self, parent):
-        QGLWidget.__init__(self, parent)
+        QOpenGLWidget.__init__(self, parent=parent)
 
         self.programLocations: Dict[str, GLuint]
         self.light = np.array([10, 10, 10], dtype=np.float32)
@@ -55,13 +55,6 @@ class GLWidget(QGLWidget):
         glEnableVertexAttribArray(self.location['in_color'])
         glEnableVertexAttribArray(self.location['in_normal'])
 
-        # Setup world matrixes and light.
-        # Projection matrix is updated on resize event only.
-        # Model matrixes is updated before rendering object.
-        self.__updateWorldTranslationMatrix()
-        self.__updateWorldRotationMatrix()
-        self.__updateLight()
-
         # Anable depth testing in z-buffer, replace old value in z-buffer if value is less or equal to old one.
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LEQUAL)
@@ -70,19 +63,17 @@ class GLWidget(QGLWidget):
         glClearColor(1, 1, 1, 1)
         glClearDepth(1.0)
 
-        # Add shapes to scene
-        model = Model()
-        shape = Shape()
-        shape.addSphere([1,1,1,1])
-        model.addShape(shape)
-        self.models.append(model)
-
-        # Fit to screen
-        self.fitToScreen()
+        print('InitializeGL:',self)
 
     def paintGL(self):
+        print('paing')
         # Clear color buffer and depth z-buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+        # Set view matrixes
+        glUniform3fv(self.location['in_light'], 1, self.light)
+        glUniformMatrix4fv(self.location['worldRotationMatrix'], 1, GL_FALSE, self.view.rotationMatrix)
+        glUniformMatrix4fv(self.location['worldTranslationMatrix'], 1, GL_FALSE, self.view.translationMatrix)
 
         for model in self.models:
             bd = model.bdata
@@ -123,23 +114,20 @@ class GLWidget(QGLWidget):
             if btns == Qt.LeftButton:
                 self.view.rotateX(dy / 2)
                 self.view.rotateZ(dx / 2, local=True)
-                self.__updateWorldRotationMatrix()
-                self.updateGL()
+                self.update()
             elif btns == Qt.RightButton:
                 self.view.translate(dx=-dx / 1000, dy=dy / 1000)
-                self.__updateWorldTranslationMatrix()
-                self.updateGL()
+                self.update()
             elif btns == Qt.MidButton:
                 self.light[0] -= dx/20
                 self.light[1] += dy/20
-                self.__updateLight()
-                self.updateGL()
+                self.update()
 
         self.mouse = [event.x(), event.y()]
 
     def mouseDoubleClickEvent(self, event: QMouseEvent):
         self.fitToScreen()
-        self.updateGL()
+        self.update()
 
     def wheelEvent(self, event: QWheelEvent):
         btns = event.buttons()
@@ -149,17 +137,7 @@ class GLWidget(QGLWidget):
         elif btns == Qt.NoButton:
             dz = event.angleDelta().y() / 100
             self.view.translate(dz=dz)
-            self.__updateWorldTranslationMatrix()
-            self.updateGL()
-
-    def __updateLight(self):
-        glUniform3fv(self.location['in_light'], 1, self.light)
-
-    def __updateWorldRotationMatrix(self):
-        glUniformMatrix4fv(self.location['worldRotationMatrix'], 1, GL_FALSE, self.view.rotationMatrix)
-
-    def __updateWorldTranslationMatrix(self):
-        glUniformMatrix4fv(self.location['worldTranslationMatrix'], 1, GL_FALSE, self.view.translationMatrix)
+            self.update()
 
     def fitToScreen(self):
         vectors = []
@@ -179,7 +157,4 @@ class GLWidget(QGLWidget):
         self.view.translate(-center[0], -center[1], -3*maxSize)
         self.light = np.array([10, 10, 10], dtype=np.float32)
         self.view.rotateX(45)
-
-        self.__updateWorldTranslationMatrix()
-        self.__updateWorldRotationMatrix()
-        self.__updateLight()
+        self.update()
