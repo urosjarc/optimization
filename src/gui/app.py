@@ -58,9 +58,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tabWidget.setCurrentIndex(0)
 
         model = Model()
-        shape = Shape()
-        shape.addSphere([1, 1, 1, 1])
-        model.addShape(shape)
+        model.addShape(Shape.Test([1,1,1,1]))
         model.center()
 
         import time

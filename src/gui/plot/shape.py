@@ -2,13 +2,13 @@ from typing import List
 
 import meshio
 import numpy as np
-import pygmsh
 
 from src import utils
 from src.optimization.space import Function
 
 
 class Shape:
+
     def __init__(self):
         self.colors: List[float] = []
         self.positions: List[float] = []
@@ -28,23 +28,32 @@ class Shape:
         self.normals += no.ravel().tolist()
         self.colors += np.tile(color, (faces.size, 1)).ravel().tolist()
 
-    def addPipe(self, color):
-        with pygmsh.geo.Geometry() as geom:
-            geom.add_pipe(1,.9, 2)
-            mesh = geom.generate_mesh()
-            self.__addMesh(mesh.points, mesh.cells[1].data, color)
+    @staticmethod
+    def Tetrahedron(color):
+        from scipy.spatial import ConvexHull
+        points = np.array([
+            [-1,-1, 0],
+            [+1, -1, 0],
+            [0, 1, 0],
+            [0, 0, 1]
+        ],dtype=np.float32)
+        hull = ConvexHull(points)
+        indices = hull.simplices
+        vertices = points[indices]
 
-    def addBox(self, color):
-        with pygmsh.geo.Geometry() as geom:
-            geom.add_box(-1, 1, -1, 1, -1, 1)
-            mesh = geom.generate_mesh()
-            self.__addMesh(mesh.points, mesh.cells[1].data, color)
+        print(vertices)
+        shape = Shape()
+        shape.__addMesh(points, indices, color)
+        return shape
 
-    def addSphere(self, color):
-        with pygmsh.geo.Geometry() as geom:
-            geom.add_ball([0,0,0], 1, mesh_size=1)
-            mesh = geom.generate_mesh()
-            self.__addMesh(mesh.points, mesh.cells[1].data, color)
+    @staticmethod
+    def Test(color):
+        import trimesh
+        box = trimesh.primitives.Capsule(sections=50)
+        shape = Shape()
+        shape.__addMesh(box.vertices, box.faces, color)
+        return shape
+
 
     @staticmethod
     def Bunny(color):
