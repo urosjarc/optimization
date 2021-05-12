@@ -1,3 +1,4 @@
+import numpy as np
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QProgressBar, QHBoxLayout, \
@@ -6,7 +7,7 @@ from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDouble
 from src import utils
 from src.gui.plot import Shape, Model
 from src.gui.widgets import OpenGLWidget
-from src.optimization.space import functions
+from src.optimization.space import functions, Function
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -27,8 +28,8 @@ class MainWindow(QtWidgets.QMainWindow):
     wireframeCB: QCheckBox
 
     def __init__(self):
-        super(MainWindow, self).__init__() # Call the inherited classes __init__ method
-        uic.loadUi(utils.getPath(__file__, 'ui/MainWindow.ui'), self) # Load the .ui file
+        super(MainWindow, self).__init__()  # Call the inherited classes __init__ method
+        uic.loadUi(utils.getPath(__file__, 'ui/MainWindow.ui'), self)  # Load the .ui file
 
         self.normal2D: OpenGLWidget = OpenGLWidget(self)
         self.normal3D: OpenGLWidget = OpenGLWidget(self)
@@ -56,19 +57,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_load(self):
         self.tabWidget.setCurrentIndex(1)
         self.tabWidget.setCurrentIndex(0)
-
-        model = Model()
-        model.addShape(Shape.Test([1,1,1,1]))
-        model.center()
-
-        import time
-        for w in [self.normal2D, self.normal3D, self.zoom2D, self.zoom3D]:
-            w.models = [model]
-            start = time.time()
-            w.fitToScreen()
-            end = time.time()
-            print(end - start) # Time in seconds, e.g. 5.38091952400282
-            w.update()
+        self.inited = True
+        self.on_name_change()
 
     def on_start(self):
         print('start')
@@ -79,14 +69,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_name_change(self):
         fun = self.nameCB.currentData()
         if fun and self.inited:
-            model = Model()
-            model.addShape(Shape.Function(fun, 200, 1))
-            model.center()
-
-            self.normal3D.models = [model]
-            self.normal3D.fitToScreen()
-            self.normal3D.update()
-        self.inited = True
+            self.setFunction(fun)
 
     def on_logaritmic_toggle(self, state: int):
         print("logaritmic toggle", state)
@@ -94,10 +77,31 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_wireframe_toggle(self, state: int):
         print("wireframe toggle", state)
 
+    def setFunction(self, fun: Function):
+        funShape = Shape.Function(fun, 200, color=[1, 0, 0, 1])
+
+        # Computer vector of minimal point with scaling
+        maxXY = np.linalg.norm(fun.bounds, axis=1)
+        maxZ_del = abs(np.max(funShape.positions[2::3]) - fun.minValue)
+        max = maxXY.tolist() + [maxZ_del]
+        minVector = np.array(fun.minVectors[0] + [fun.minValue])
+        minVector /= max
+
+        # Create model with scalled x,y,z to ~1
+        model = Model()
+        model.addShape(funShape)
+        model.view.scale(x=1/maxXY[0], y=1/maxXY[1], z=1/maxZ_del)
+
+        for w in [self.normal2D, self.normal3D, self.zoom2D, self.zoom3D]:
+            w.models = [model]
+            w.fitToScreen(center=minVector.tolist(), maxSize=1)
+            w.update()
+
+
 def start(argv):
     app = QtWidgets.QApplication(argv)
     mainWindow = MainWindow()
     mainWindow.show()
     t = QTimer()
-    t.singleShot(0,mainWindow.on_load)
+    t.singleShot(0, mainWindow.on_load)
     app.exec()

@@ -13,6 +13,10 @@ class View:
     def init(self):
         self.orientation = Quaternion()
         self.translationMatrix = Matrix44.identity(dtype=np.float32)
+        self.scaleMatrix = Matrix44.identity(dtype=np.float32)
+
+    def scale(self, x=1, y=1, z=1):
+        self.scaleMatrix = Matrix44.from_scale([x, y, z], dtype=np.float32)
 
     def rotateX(self, deg, local=False):
         axis = Vector3([1, 0, 0], dtype=np.float32)

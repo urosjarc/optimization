@@ -29,11 +29,10 @@ class Shape:
         self.normals += no.ravel().tolist()
         self.colors += np.tile(color, (faces.size, 1)).ravel().tolist()
 
-
     @staticmethod
     def Test(color):
         with pygmsh.occ.Geometry() as geom:
-            cyl = geom.add_cylinder([0,0,0], [0,0,1], 1, mesh_size=0.1)
+            cyl = geom.add_cylinder([0, 0, 0], [0, 0, 1], 1, mesh_size=0.1)
             cyl.id = cyl._id
             geom.force_outward_normals(cyl)
             mesh = geom.generate_mesh()
@@ -57,12 +56,12 @@ class Shape:
         return shape
 
     @staticmethod
-    def Function(function: Function, step, zoom=1):
+    def Function(function: Function, step, zoom=1, color=(1, 1, 1, 1)):
         XminDiff = abs(-function.bounds[0][0] + function.bounds[0][1]) / zoom
         YminDiff = abs(-function.bounds[1][0] + function.bounds[1][1]) / zoom
         bounds = [
-            [function.minVector[0][0] - XminDiff, function.minVector[0][0] + XminDiff],
-            [function.minVector[0][1] - YminDiff, function.minVector[0][1] + YminDiff]
+            [function.minVectors[0][0] - XminDiff, function.minVectors[0][0] + XminDiff],
+            [function.minVectors[0][1] - YminDiff, function.minVectors[0][1] + YminDiff]
         ]
         axis_x = np.linspace(*bounds[0], step)
         axis_y = np.linspace(*bounds[1], step)
@@ -88,5 +87,5 @@ class Shape:
                     sqC += 1
 
         shape = Shape()
-        shape.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32), [1, 0, 0, 1])
+        shape.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32), color)
         return shape

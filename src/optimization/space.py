@@ -22,14 +22,14 @@ class Function:
         }
         return parameters.get('dimensions')
 
-    def __init__(self, f: Benchmark, hardness=-1, randomize=True):
+    def __init__(self, f: Benchmark, hardness=-1, randomize=False):
         self.benchmark: Benchmark = f()
         self.hardness = hardness
         self.dimensions = self.__function_dim(f)
         self.randomize = randomize
         self.name = str(f).split('.')[-1][:-2]
         self.minValue = np.nan_to_num(self.benchmark.fglob)
-        self.minVector = self.benchmark.global_optimum
+        self.minVectors = self.benchmark.global_optimum
         self.bounds = []
         self.evaluation = 0
         self.init()
@@ -44,7 +44,7 @@ class Function:
             self.bounds.append(b)
 
         if self.name == 'ZeroSum':
-            self.minVector = [[0, 0]]
+            self.minVectors = [[0, 0]]
 
     def __call__(self, vector):
         self.evaluation += 1

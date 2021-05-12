@@ -6,10 +6,10 @@ from PyQt5.QtCore import Qt
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from PyQt5.QtWidgets import QOpenGLWidget
-from pyrr import Matrix44, Vector3
+from pyrr import Matrix44
 
 from src import utils
-from src.gui.plot import Model, View, Shape
+from src.gui.plot import Model, View
 
 
 class OpenGLWidget(QOpenGLWidget):
@@ -44,8 +44,10 @@ class OpenGLWidget(QOpenGLWidget):
             'in_normal': glGetAttribLocation(program, 'in_normal'),
             'in_light': glGetUniformLocation(program, 'in_light'),
             'projectionMatrix': glGetUniformLocation(program, 'projectionMatrix'),
+            'worldScaleMatrix': glGetUniformLocation(program, 'worldScaleMatrix'),
             'worldTranslationMatrix': glGetUniformLocation(program, 'worldTranslationMatrix'),
             'worldRotationMatrix': glGetUniformLocation(program, 'worldRotationMatrix'),
+            'modelScaleMatrix': glGetUniformLocation(program, 'modelScaleMatrix'),
             'modelTranslationMatrix': glGetUniformLocation(program, 'modelTranslationMatrix'),
             'modelRotationMatrix': glGetUniformLocation(program, 'modelRotationMatrix'),
         }
@@ -60,13 +62,10 @@ class OpenGLWidget(QOpenGLWidget):
         glDepthFunc(GL_LEQUAL)
 
         # Configure what will happend at glClear call
-        glClearColor(1, 1, 1, 1)
+        glClearColor(0, 0, 0, 1)
         glClearDepth(1.0)
 
-        print('InitializeGL:',self)
-
     def paintGL(self):
-        print('paing')
         # Clear color buffer and depth z-buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
@@ -74,6 +73,7 @@ class OpenGLWidget(QOpenGLWidget):
         glUniform3fv(self.location['in_light'], 1, self.light)
         glUniformMatrix4fv(self.location['worldRotationMatrix'], 1, GL_FALSE, self.view.rotationMatrix)
         glUniformMatrix4fv(self.location['worldTranslationMatrix'], 1, GL_FALSE, self.view.translationMatrix)
+        glUniformMatrix4fv(self.location['worldScaleMatrix'], 1, GL_FALSE, self.view.scaleMatrix)
 
         for model in self.models:
             bd = model.bdata
@@ -81,6 +81,7 @@ class OpenGLWidget(QOpenGLWidget):
             # Set model matrixes
             glUniformMatrix4fv(self.location['modelTranslationMatrix'], 1, GL_FALSE, model.view.translationMatrix)
             glUniformMatrix4fv(self.location['modelRotationMatrix'], 1, GL_FALSE, model.view.rotationMatrix)
+            glUniformMatrix4fv(self.location['modelScaleMatrix'], 1, GL_FALSE, model.view.scaleMatrix)
 
             # Explain data form stored in model data buffers
             glBindBuffer(GL_ARRAY_BUFFER, bd.positionBuffer)
@@ -101,7 +102,7 @@ class OpenGLWidget(QOpenGLWidget):
         glViewport(0, 0, width, height)
 
         # Update projection matrix
-        projectionMatrix = Matrix44.perspective_projection(45, width / height, 0.1, 100.0)
+        projectionMatrix = Matrix44.perspective_projection(45, width / height, 0.1, 10000.0)
         glUniformMatrix4fv(self.location['projectionMatrix'], 1, GL_FALSE, projectionMatrix)
 
     def mouseMoveEvent(self, event: QMouseEvent):
@@ -119,8 +120,8 @@ class OpenGLWidget(QOpenGLWidget):
                 self.view.translate(dx=-dx / 1000, dy=dy / 1000)
                 self.update()
             elif btns == Qt.MidButton:
-                self.light[0] -= dx/20
-                self.light[1] += dy/20
+                self.light[0] -= dx / 20
+                self.light[1] += dy / 20
                 self.update()
 
         self.mouse = [event.x(), event.y()]
@@ -139,22 +140,18 @@ class OpenGLWidget(QOpenGLWidget):
             self.view.translate(dz=dz)
             self.update()
 
-    def fitToScreen(self):
-        vectors = []
-        centers = []
-        for model in self.models:
-            for shape in model.shapes:
-                p = shape.positions
-                shapeVectors = np.array_split(np.array(p), len(p)/3)
-                shapeCenter = model.view.translationMatrix * Vector3(np.mean(shapeVectors, axis=0), dtype=np.float32)
-                vectors += shapeVectors
-                centers.append(shapeCenter)
+    def fitToScreen(self, center=None, maxSize=None):
 
-        center = np.mean(centers, axis=0)
-        maxSize = max(np.linalg.norm(vectors-center, axis=1))
+        if None in [center, maxSize]:
+            centers = []
+            maxSize = 0
+            for model in self.models:
+                mi = model.getInfo()
+                centers.append(mi.center)
+                if maxSize < mi.maxWidth:
+                    maxSize = mi.maxWidth
+            center = np.mean(centers, axis=0)
 
         self.view.init()
-        self.view.translate(-center[0], -center[1], -3*maxSize)
-        self.light = np.array([10, 10, 10], dtype=np.float32)
+        self.view.translate(-center[0], -center[1], -2 * maxSize)
         self.view.rotateX(45)
-        self.update()
