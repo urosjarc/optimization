@@ -2,9 +2,10 @@ gym
 numpy
 pyrr
 
+
+gmsh
+pygmsh
 meshio
-scipy
-trimesh
 
 pyqt5
 pyqt5-stubs
