@@ -7,7 +7,6 @@ import pygmsh
 from src import utils
 from src.optimization.space import Function
 
-
 class Shape:
 
     def __init__(self):
@@ -28,6 +27,11 @@ class Shape:
         self.positions += va.ravel().tolist()
         self.normals += no.ravel().tolist()
         self.colors += np.tile(color, (faces.size, 1)).ravel().tolist()
+
+    def addLine(self, start: List[float], finish: List[float], color: List[float]):
+        self.positions += start + finish
+        self.colors += color + color
+        self.normals += start + finish
 
     @staticmethod
     def Test(color):

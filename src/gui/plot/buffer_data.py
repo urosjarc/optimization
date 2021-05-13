@@ -2,11 +2,12 @@ from OpenGL.GL import *
 import numpy as np
 
 class BufferData:
-    colorDim = 4
-    positionDim = 3
-    normalDim = 3
+    def __init__(self, drawModel, dim):
+        self.drawMode = drawModel
 
-    def __init__(self):
+        self.positionDim = dim
+        self.colorDim = 4
+
         self.normalBuffer = None
         self.positionBuffer = None
         self.colorBuffer = None
@@ -29,7 +30,7 @@ class BufferData:
 
         self.normalBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.normalBuffer)
-        glBufferData(GL_ARRAY_BUFFER, np.empty(self.normalDim * maxNumVertexes, dtype=np.float32), GL_DYNAMIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * maxNumVertexes, dtype=np.float32), GL_DYNAMIC_DRAW)
 
     def appendBuffers(self, positions, colors, normals):
         positions = np.array(positions, dtype=np.float32)
@@ -38,7 +39,8 @@ class BufferData:
 
         posNum = positions.size // self.positionDim
         colNum = colors.size // self.colorDim
-        norNum = normals.size // self.normalDim
+        norNum = normals.size // self.positionDim
+
         if posNum != colNum != norNum:
             raise Exception(f"Length of positions | colors | normals array doesn't match: {posNum} != {colNum}")
 

@@ -14,8 +14,8 @@ class ModelInfo:
 
 
 class Model:
-    def __init__(self):
-        self.bdata = BufferData()
+    def __init__(self, drawMode, dim):
+        self.bdata = BufferData(drawMode, dim)
         self.view = View()
         self.shapes: List[Shape] = []
 
@@ -34,6 +34,8 @@ class Model:
         for shape in shapes:
             self.addShape(shape)
 
+
+    #TODO: This method has to much dependency
     def center(self):
         vectors = []
         for shape in self.shapes:
@@ -44,6 +46,7 @@ class Model:
         meanV = np.dot(meanV, self.view.scaleMatrix.matrix33.T)
         self.view.translate(*meanV.tolist())
 
+    #TODO: This method has to much dependency
     def getInfo(self) -> ModelInfo:
         vectors = []
         centers = []

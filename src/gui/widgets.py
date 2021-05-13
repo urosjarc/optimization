@@ -89,10 +89,10 @@ class OpenGLWidget(QOpenGLWidget):
             glBindBuffer(GL_ARRAY_BUFFER, bd.colorBuffer)
             glVertexAttribPointer(self.location['in_color'], bd.colorDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
             glBindBuffer(GL_ARRAY_BUFFER, bd.normalBuffer)
-            glVertexAttribPointer(self.location['in_normal'], bd.normalDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
+            glVertexAttribPointer(self.location['in_normal'], bd.positionDim, GL_FLOAT, False, 0, ctypes.c_void_p(0))
 
             # Draw number of elements binded in buffer arrays
-            glDrawArrays(GL_TRIANGLES, 0, bd.numVectors)
+            glDrawArrays(bd.drawMode, 0, bd.numVectors)
 
     def resizeGL(self, width, height):
         if width + height == 0:
@@ -153,5 +153,5 @@ class OpenGLWidget(QOpenGLWidget):
             center = np.mean(centers, axis=0)
 
         self.view.init()
-        self.view.translate(-center[0], -center[1], -2 * maxSize)
+        self.view.translate(-center[0], -center[1], -3 * maxSize)
         self.view.rotateX(45)

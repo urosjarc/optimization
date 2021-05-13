@@ -1,4 +1,5 @@
 import numpy as np
+from OpenGL.GL import GL_TRIANGLES, GL_LINES
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QProgressBar, QHBoxLayout, \
@@ -78,22 +79,41 @@ class MainWindow(QtWidgets.QMainWindow):
         print("wireframe toggle", state)
 
     def setFunction(self, fun: Function):
-        funShape = Shape.Function(fun, 200, color=[1, 0, 0, 1])
-
+        # Create function shape
+        funShape = Shape.Function(fun, 10, color=[1, 0, 0, 1])
         # Computer vector of minimal point with scaling
         maxXY = np.linalg.norm(fun.bounds, axis=1)
         maxZ_del = abs(np.max(funShape.positions[2::3]) - fun.minValue)
         max = maxXY.tolist() + [maxZ_del]
         minVector = np.array(fun.minVectors[0] + [fun.minValue])
         minVector /= max
-
         # Create model with scalled x,y,z to ~1
-        model = Model()
-        model.addShape(funShape)
-        model.view.scale(x=1/maxXY[0], y=1/maxXY[1], z=1/maxZ_del)
+        funModel = Model(GL_TRIANGLES, 3)
+        funModel.addShape(funShape)
+        funModel.view.scale(x=1/maxXY[0], y=1/maxXY[1], z=1/maxZ_del)
+
+        # Create axis shape
+        axis = Shape()
+        axis.addLine(minVector.tolist(), (minVector + np.array([1,0,0])).tolist(), [1,0,0,1])
+        axis.addLine(minVector.tolist(), (minVector + np.array([0,1,0])).tolist(), [0,1,0,1])
+        axis.addLine(minVector.tolist(), (minVector + np.array([0,0,1])).tolist(), [0,0,1,1])
+        axisModel = Model(GL_LINES, 3)
+        axisModel.addShape(axis)
+
+        #TODO Create wireframe!
+        #TODO Create normals
+        normals = Shape()
+        funPositions = np.array_split(np.array(funShape.positions), len(funShape.positions) / 3)
+        funNormals = np.array_split(np.array(funShape.normals), len(funShape.normals) / 3)
+        normals.positions = np.concatenate([funPositions, funNormals], axis=1).tolist()
+        normals.normals = axis.positions
+        normals.colors = 2*funShape.colors
+        normalsModel = Model(GL_LINES, 3)
+        normalsModel.addShape(normals)
+        normalsModel.view.scale(x=1/maxXY[0], y=1/maxXY[1], z=1/maxZ_del)
 
         for w in [self.normal2D, self.normal3D, self.zoom2D, self.zoom3D]:
-            w.models = [model]
+            w.models = [funModel, axisModel, normalsModel]
             w.fitToScreen(center=minVector.tolist(), maxSize=1)
             w.update()
 
