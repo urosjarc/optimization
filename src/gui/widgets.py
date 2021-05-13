@@ -62,7 +62,7 @@ class OpenGLWidget(QOpenGLWidget):
         glDepthFunc(GL_LEQUAL)
 
         # Configure what will happend at glClear call
-        glClearColor(0, 0, 0, 1)
+        glClearColor(1, 1, 1, 1)
         glClearDepth(1.0)
 
     def paintGL(self):

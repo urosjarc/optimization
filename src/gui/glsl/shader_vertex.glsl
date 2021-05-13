@@ -26,11 +26,13 @@ void main()
     vec3 light_direction = normalize(in_light - world_position.xyz);
 
 
-    ambient = in_color;
-    ambient.z = scaledPosition.z;
-    ambient.y = 0;
-    ambient.x = 1-scaledPosition.z;
+//    ambient = in_color;
+//    ambient.z = scaledPosition.z;
+//    ambient.y = 0;
+//    ambient.x = 1-scaledPosition.z;
 
+    ambient = in_color;
     diffuse = abs(dot(normal, light_direction));
+
     gl_Position = projectionMatrix * world_position;
 }

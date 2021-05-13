@@ -80,7 +80,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def setFunction(self, fun: Function):
         # Create function shape
-        funShape = Shape.Function(fun, 10, color=[1, 0, 0, 1])
+        funShape = Shape.Function(fun, 20, color=[1, 0, 0, 1])
         # Computer vector of minimal point with scaling
         maxXY = np.linalg.norm(fun.bounds, axis=1)
         maxZ_del = abs(np.max(funShape.positions[2::3]) - fun.minValue)
@@ -90,7 +90,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Create model with scalled x,y,z to ~1
         funModel = Model(GL_TRIANGLES, 3)
         funModel.addShape(funShape)
-        funModel.view.scale(x=1/maxXY[0], y=1/maxXY[1], z=1/maxZ_del)
+        # funModel.view.scale(x=1/maxXY[0], y=1/maxXY[1], z=1/maxZ_del)
 
         # Create axis shape
         axis = Shape()
@@ -103,18 +103,20 @@ class MainWindow(QtWidgets.QMainWindow):
         #TODO Create wireframe!
         #TODO Create normals
         normals = Shape()
-        funPositions = np.array_split(np.array(funShape.positions), len(funShape.positions) / 3)
+        starts = np.array_split(np.array(funShape.positions), len(funShape.positions) / 3)
         funNormals = np.array_split(np.array(funShape.normals), len(funShape.normals) / 3)
-        normals.positions = np.concatenate([funPositions, funNormals], axis=1).tolist()
-        normals.normals = axis.positions
+        ends = np.array(starts) + np.array(funNormals)*10
+        lines = np.concatenate([starts, ends], axis=1)
+
+        normals.positions = lines.ravel().tolist()
+        normals.normals = normals.positions
         normals.colors = 2*funShape.colors
         normalsModel = Model(GL_LINES, 3)
         normalsModel.addShape(normals)
-        normalsModel.view.scale(x=1/maxXY[0], y=1/maxXY[1], z=1/maxZ_del)
 
         for w in [self.normal2D, self.normal3D, self.zoom2D, self.zoom3D]:
             w.models = [funModel, axisModel, normalsModel]
-            w.fitToScreen(center=minVector.tolist(), maxSize=1)
+            w.fitToScreen(center=[0,0,0], maxSize=2)
             w.update()
 
 

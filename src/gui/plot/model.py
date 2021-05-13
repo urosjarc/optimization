@@ -43,7 +43,7 @@ class Model:
             vectors += np.array_split(np.array(p), len(p) / 3)
 
         meanV = -np.mean(vectors, axis=0)
-        meanV = np.dot(meanV, self.view.scaleMatrix.matrix33.T)
+        #TODO: scale meanV = np.dot(meanV, self.view.scaleMatrix.matrix33.T)
         self.view.translate(*meanV.tolist())
 
     #TODO: This method has to much dependency
@@ -53,7 +53,7 @@ class Model:
         for shape in self.shapes:
             p = shape.positions
             shapeVectors = np.array_split(np.array(p), len(p) / 3)
-            shapeVectors = np.dot(shapeVectors, self.view.scaleMatrix.matrix33.T)
+            #TODO: scale shapeVectors = np.dot(shapeVectors, self.view.scaleMatrix.matrix33.T)
             shapeCenter = self.view.translationMatrix * Vector3(np.mean(shapeVectors, axis=0), dtype=np.float32)
 
             vectors += shapeVectors.tolist()
