@@ -1,7 +1,10 @@
 from OpenGL.GL import *
 import numpy as np
 
+
 class BufferData:
+    maxNumVectors = 10 ** 6
+
     def __init__(self, drawModel, dim):
         self.drawMode = drawModel
 
@@ -19,18 +22,25 @@ class BufferData:
 
         self.initBuffers()
 
-    def initBuffers(self, maxNumVertexes=10 ** 7):
+    def initBuffers(self):
         self.positionBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.positionBuffer)
-        glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * maxNumVertexes, dtype=np.float32), GL_DYNAMIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * self.maxNumVectors, dtype=np.float32), GL_DYNAMIC_DRAW)
 
         self.colorBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.colorBuffer)
-        glBufferData(GL_ARRAY_BUFFER, np.empty(self.colorDim * maxNumVertexes, dtype=np.float32), GL_DYNAMIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, np.empty(self.colorDim * self.maxNumVectors, dtype=np.float32), GL_DYNAMIC_DRAW)
 
         self.normalBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.normalBuffer)
-        glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * maxNumVertexes, dtype=np.float32), GL_DYNAMIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * self.maxNumVectors, dtype=np.float32), GL_DYNAMIC_DRAW)
+
+    def __del__(self):
+        glDeleteBuffers(3, [
+            self.normalBuffer,
+            self.positionBuffer,
+            self.colorBuffer,
+        ])
 
     def appendBuffers(self, positions, colors, normals):
         positions = np.array(positions, dtype=np.float32)
@@ -57,6 +67,9 @@ class BufferData:
         self.posOffset += positions.nbytes
         self.colOffset += colors.nbytes
         self.norOffset += normals.nbytes
+
+        if self.numVectors > self.maxNumVectors:
+            raise Exception("Buffers memory overflown!")
 
     def resetBuffers(self):
         self.numVectors = 0
