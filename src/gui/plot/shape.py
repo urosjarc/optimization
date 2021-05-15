@@ -46,6 +46,18 @@ class Shape:
             return shape
 
     @staticmethod
+    def Cone(color):
+        with pygmsh.occ.Geometry() as geom:
+            cyl = geom.add_cone([0, 0, 0], [0, 0, 1], 1,0, mesh_size=0.1)
+            cyl.id = cyl._id
+            geom.force_outward_normals(cyl)
+            mesh = geom.generate_mesh()
+
+            shape = Shape()
+            shape.__addMesh(mesh.points, mesh.cells[1].data, color)
+            return shape
+
+    @staticmethod
     def Bunny(color):
         mesh = meshio.read(utils.getPath(__file__, '../../../data/models/bun_zipper.ply'))
         shape = Shape()

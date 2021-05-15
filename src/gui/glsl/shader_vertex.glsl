@@ -1,16 +1,10 @@
 #version 460
 
-uniform mat4 modelTranslationMatrix;
-uniform mat4 modelScaleMatrix;
-uniform mat4 modelRotationMatrix;
+uniform mat4 positionView;
+uniform mat4 normalView;
+uniform mat4 projectionView;
 
-uniform mat4 worldScaleMatrix;
-uniform mat4 worldRotationMatrix;
-uniform mat4 worldTranslationMatrix;
-
-uniform mat4 projectionMatrix;
 uniform vec3 in_light;
-
 in vec3 in_position;
 in vec3 in_normal;
 in vec4 in_color;
@@ -20,19 +14,12 @@ out float diffuse;
 
 void main()
 {
-    vec3 normal = (worldRotationMatrix * modelRotationMatrix * vec4(in_normal, 0)).xyz;
-    vec4 scaledPosition = worldScaleMatrix * modelRotationMatrix * modelScaleMatrix * modelTranslationMatrix * vec4(in_position, 1);
-    vec4 world_position =  worldTranslationMatrix * worldRotationMatrix * scaledPosition;
-    vec3 light_direction = normalize(in_light - world_position.xyz);
-
-
-//    ambient = in_color;
-//    ambient.z = scaledPosition.z;
-//    ambient.y = 0;
-//    ambient.x = 1-scaledPosition.z;
+    vec4 position = positionView * vec4(in_position, 1);
+    vec3 normal = (normalView * vec4(in_normal, 0)).xyz;
+    vec3 lightDirection = in_light - position.xyz;
 
     ambient = in_color;
-    diffuse = abs(dot(normal, light_direction));
+    diffuse = abs(dot(normalize(normal), normalize(lightDirection)));
 
-    gl_Position = projectionMatrix * world_position;
+    gl_Position = projectionView * position;
 }

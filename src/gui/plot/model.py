@@ -34,16 +34,12 @@ class Model:
         for shape in shapes:
             self.addShape(shape)
 
-
-    #TODO: This method has to much dependency
     def center(self):
         vectors = []
         for shape in self.shapes:
             p = shape.positions
             vectors += np.array_split(np.array(p), len(p) / 3)
-
         meanV = -np.mean(vectors, axis=0)
-        #TODO: scale meanV = np.dot(meanV, self.view.scaleMatrix.matrix33.T)
         self.view.translate(*meanV.tolist())
 
     #TODO: This method has to much dependency

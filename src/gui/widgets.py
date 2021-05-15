@@ -43,13 +43,9 @@ class OpenGLWidget(QOpenGLWidget):
             'in_color': glGetAttribLocation(program, 'in_color'),
             'in_normal': glGetAttribLocation(program, 'in_normal'),
             'in_light': glGetUniformLocation(program, 'in_light'),
-            'projectionMatrix': glGetUniformLocation(program, 'projectionMatrix'),
-            'worldScaleMatrix': glGetUniformLocation(program, 'worldScaleMatrix'),
-            'worldTranslationMatrix': glGetUniformLocation(program, 'worldTranslationMatrix'),
-            'worldRotationMatrix': glGetUniformLocation(program, 'worldRotationMatrix'),
-            'modelScaleMatrix': glGetUniformLocation(program, 'modelScaleMatrix'),
-            'modelTranslationMatrix': glGetUniformLocation(program, 'modelTranslationMatrix'),
-            'modelRotationMatrix': glGetUniformLocation(program, 'modelRotationMatrix'),
+            'positionView': glGetUniformLocation(program, 'positionView'),
+            'normalView': glGetUniformLocation(program, 'normalView'),
+            'projectionView': glGetUniformLocation(program, 'projectionView'),
         }
 
         # Activate program "in" atributes to be rendered in a process of rendering
@@ -71,17 +67,21 @@ class OpenGLWidget(QOpenGLWidget):
 
         # Set view matrixes
         glUniform3fv(self.location['in_light'], 1, self.light)
-        glUniformMatrix4fv(self.location['worldRotationMatrix'], 1, GL_FALSE, self.view.rotationMatrix)
-        glUniformMatrix4fv(self.location['worldTranslationMatrix'], 1, GL_FALSE, self.view.translationMatrix)
-        glUniformMatrix4fv(self.location['worldScaleMatrix'], 1, GL_FALSE, self.view.scaleMatrix)
+
+        # Set world view
+        worldView = self.view.translationMatrix * self.view.rotationMatrix * self.view.scaleMatrix
 
         for model in self.models:
             bd = model.bdata
 
-            # Set model matrixes
-            glUniformMatrix4fv(self.location['modelTranslationMatrix'], 1, GL_FALSE, model.view.translationMatrix)
-            glUniformMatrix4fv(self.location['modelRotationMatrix'], 1, GL_FALSE, model.view.rotationMatrix)
-            glUniformMatrix4fv(self.location['modelScaleMatrix'], 1, GL_FALSE, model.view.scaleMatrix)
+            # Compute views
+            modelView = model.view.scaleMatrix * model.view.rotationMatrix * model.view.translationMatrix
+            positionView = worldView * modelView
+            normalView = positionView.inverse.transpose()
+
+            # Set views
+            glUniformMatrix4fv(self.location['positionView'], 1, GL_FALSE, positionView)
+            glUniformMatrix4fv(self.location['normalView'], 1, GL_FALSE, normalView)
 
             # Explain data form stored in model data buffers
             glBindBuffer(GL_ARRAY_BUFFER, bd.positionBuffer)
@@ -102,8 +102,8 @@ class OpenGLWidget(QOpenGLWidget):
         glViewport(0, 0, width, height)
 
         # Update projection matrix
-        projectionMatrix = Matrix44.perspective_projection(45, width / height, 0.1, 10000.0)
-        glUniformMatrix4fv(self.location['projectionMatrix'], 1, GL_FALSE, projectionMatrix)
+        projectionView = Matrix44.perspective_projection(45, width / height, 0.1, 10000.0)
+        glUniformMatrix4fv(self.location['projectionView'], 1, GL_FALSE, projectionView)
 
     def mouseMoveEvent(self, event: QMouseEvent):
         btns = event.buttons()
@@ -117,7 +117,7 @@ class OpenGLWidget(QOpenGLWidget):
                 self.view.rotateZ(dx / 2, local=True)
                 self.update()
             elif btns == Qt.RightButton:
-                self.view.translate(dx=-dx / 1000, dy=dy / 1000)
+                self.view.translate(dx=-dx / 10, dy=dy / 10)
                 self.update()
             elif btns == Qt.MidButton:
                 self.light[0] -= dx / 20

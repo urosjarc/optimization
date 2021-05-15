@@ -12,14 +12,15 @@ plt.ion()
 
 mV = View()
 wV = View()
-mV.translate(dy=3)
-mV.scale(z=1/2, x=2)
+mV.scale(z=1/2, x=2, y=4)
 
 while angle < 360:
 
     # View matrixes
     mV.rotateX(angle)
-    angle+=10
+    wV.rotateY(angle)
+    wV.translate(dx=1)
+    angle+=50
 
     ax.set_xlim([-5, 5])
     ax.set_ylim([-5, 5])
@@ -38,7 +39,6 @@ while angle < 360:
     # Calculate normals
     deltaVec1, deltaVec2 = points[0] - points[1], points[0] - points[2]
     normal = np.cross(deltaVec1, deltaVec2)
-    normal = normal / np.linalg.norm(normal)
     endPoints = points + normal
 
 
@@ -50,11 +50,10 @@ while angle < 360:
         in_normal = Vector4(normal.tolist() + [1])
 
         #GLSL
-        modelMatrix = mV.rotationMatrix * mV.scaleMatrix * mV.translationMatrix
-        worldMatrix = wV.rotationMatrix * wV.scaleMatrix * wV.translationMatrix
+        worldMatrix = wV.translationMatrix * wV.rotationMatrix * wV.scaleMatrix
+        modelMatrix = mV.translationMatrix * mV.scaleMatrix * mV.rotationMatrix
         matrix = worldMatrix * modelMatrix
         in_normal = (matrix.inverse.transpose() * in_normal)
-        in_normal /= np.linalg.norm(in_normal)
         worldPosition = matrix * in_position
 
         #SAVE GLSL
@@ -71,6 +70,7 @@ while angle < 360:
     # Plot transformed points and normals
     worldPositions = np.array(worldPositions)
     in_normal = np.array(in_normal)
+    in_normal /= np.linalg.norm(in_normal)
     endPoints = worldPositions + in_normal
     ax.plot_trisurf(worldPositions[:, 0], worldPositions[:, 1], worldPositions[:, 2], linewidth=0.2, antialiased=True)
     ax.quiver(
@@ -81,4 +81,4 @@ while angle < 360:
     plt.show()
     plt.pause(0.1)
 
-plt.pause(10)
+plt.pause(60)
