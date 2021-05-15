@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from pyrr import Vector4
+from pyrr import Vector4, Matrix44
 
 from src.gui.plot import View
 
@@ -12,12 +12,18 @@ plt.ion()
 
 mV = View()
 wV = View()
+mV.translate(dy=3)
+mV.scale(z=1/2, x=2)
 
 while angle < 360:
 
-    ax.set_xlim([-2, 2])
-    ax.set_ylim([-2, 2])
-    ax.set_zlim([-2, 2])
+    # View matrixes
+    mV.rotateX(angle)
+    angle+=10
+
+    ax.set_xlim([-5, 5])
+    ax.set_ylim([-5, 5])
+    ax.set_zlim([-5, 5])
     ax.set_xlabel("X axis")
     ax.set_ylabel("Y axis")
     ax.set_zlabel("Z axis")
@@ -35,12 +41,6 @@ while angle < 360:
     normal = normal / np.linalg.norm(normal)
     endPoints = points + normal
 
-    # View matrixes
-    mV.rotateX(angle)
-    wV.rotateY(angle)
-    wV.rotateZ(angle, local=True)
-    angle+=40
-    mV.scale(z=1/10)
 
     # Compute new values
     worldPositions = []
@@ -50,9 +50,12 @@ while angle < 360:
         in_normal = Vector4(normal.tolist() + [1])
 
         #GLSL
-        in_normal = wV.rotationMatrix * mV.rotationMatrix * in_normal
-        scaledPosition = wV.scaleMatrix * mV.rotationMatrix * mV.scaleMatrix * mV.translationMatrix * in_position
-        worldPosition = wV.translationMatrix * wV.rotationMatrix * scaledPosition
+        modelMatrix = mV.rotationMatrix * mV.scaleMatrix * mV.translationMatrix
+        worldMatrix = wV.rotationMatrix * wV.scaleMatrix * wV.translationMatrix
+        matrix = worldMatrix * modelMatrix
+        in_normal = (matrix.inverse.transpose() * in_normal)
+        in_normal /= np.linalg.norm(in_normal)
+        worldPosition = matrix * in_position
 
         #SAVE GLSL
         worldPositions.append(worldPosition.xyz)
