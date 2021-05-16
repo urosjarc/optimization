@@ -7,6 +7,7 @@ import pygmsh
 from src import utils
 from src.optimization.space import Function
 
+
 class Shape:
 
     def __init__(self):
@@ -48,7 +49,7 @@ class Shape:
     @staticmethod
     def Cone(color):
         with pygmsh.occ.Geometry() as geom:
-            cyl = geom.add_cone([0, 0, 0], [0, 0, 1], 1,0, mesh_size=0.1)
+            cyl = geom.add_cone([0, 0, 0], [0, 0, 1], 1, 0, mesh_size=0.1)
             cyl.id = cyl._id
             geom.force_outward_normals(cyl)
             mesh = geom.generate_mesh()
@@ -72,13 +73,17 @@ class Shape:
         return shape
 
     @staticmethod
-    def Function(function: Function, step, zoom=1, color=(1, 1, 1, 1)):
-        XminDiff = abs(-function.bounds[0][0] + function.bounds[0][1]) / zoom
-        YminDiff = abs(-function.bounds[1][0] + function.bounds[1][1]) / zoom
-        bounds = [
-            [function.minVectors[0][0] - XminDiff, function.minVectors[0][0] + XminDiff],
-            [function.minVectors[0][1] - YminDiff, function.minVectors[0][1] + YminDiff]
-        ]
+    def Function(function: Function, step, color=(1, 1, 1, 1), zoomCenter: List[float] = None, zoom: float = 1):
+
+        bounds = function.bounds
+        if zoomCenter is not None and zoom != 1:
+            xRange = abs(bounds[0][0] - bounds[0][1]) / zoom
+            yRange = abs(bounds[1][0] - bounds[1][1]) / zoom
+            bounds = [
+                [max([bounds[0][0], zoomCenter[0] - xRange]), min([bounds[0][1], zoomCenter[0] + xRange])],
+                [max([bounds[1][0], zoomCenter[1] - yRange]), min([bounds[1][1], zoomCenter[1] + yRange])]
+            ]
+
         axis_x = np.linspace(*bounds[0], step)
         axis_y = np.linspace(*bounds[1], step)
 

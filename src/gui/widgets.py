@@ -1,10 +1,10 @@
 from typing import Dict, List
-import numpy as np
 
-from PyQt5.QtGui import QMouseEvent, QWheelEvent
-from PyQt5.QtCore import Qt
+import numpy as np
 from OpenGL.GL import *
 from OpenGL.GL import shaders
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QMouseEvent, QWheelEvent
 from PyQt5.QtWidgets import QOpenGLWidget
 from pyrr import Matrix44
 
@@ -61,6 +61,10 @@ class OpenGLWidget(QOpenGLWidget):
         glClearColor(1, 1, 1, 1)
         glClearDepth(1.0)
 
+    @property
+    def worldView(self):
+        return self.view.translationMatrix * self.view.rotationMatrix * self.view.scaleMatrix
+
     def paintGL(self):
         # Clear color buffer and depth z-buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -68,15 +72,11 @@ class OpenGLWidget(QOpenGLWidget):
         # Set view matrixes
         glUniform3fv(self.location['in_light'], 1, self.light)
 
-        # Set world view
-        worldView = self.view.translationMatrix * self.view.rotationMatrix * self.view.scaleMatrix
-
         for model in self.models:
             bd = model.bdata
 
             # Compute views
-            modelView = model.view.scaleMatrix * model.view.rotationMatrix * model.view.translationMatrix
-            positionView = worldView * modelView
+            positionView = self.worldView * model.modelView
             normalView = positionView.inverse.transpose()
 
             # Set views
@@ -102,7 +102,7 @@ class OpenGLWidget(QOpenGLWidget):
         glViewport(0, 0, width, height)
 
         # Update projection matrix
-        projectionView = Matrix44.perspective_projection(45, width / height, 0.1, 10000.0)
+        projectionView = Matrix44.perspective_projection(45, width / height, 0.1, 100.0)
         glUniformMatrix4fv(self.location['projectionView'], 1, GL_FALSE, projectionView)
 
     def mouseMoveEvent(self, event: QMouseEvent):
@@ -117,7 +117,7 @@ class OpenGLWidget(QOpenGLWidget):
                 self.view.rotateZ(dx / 2, local=True)
                 self.update()
             elif btns == Qt.RightButton:
-                self.view.translate(dx=-dx / 10, dy=dy / 10)
+                self.view.translate(dx=-dx / 500, dy=dy / 500)
                 self.update()
             elif btns == Qt.MidButton:
                 self.light[0] -= dx / 20
@@ -140,18 +140,23 @@ class OpenGLWidget(QOpenGLWidget):
             self.view.translate(dz=dz)
             self.update()
 
-    def fitToScreen(self, center=None, maxSize=None):
+    def fitToScreen(self, center=None):
 
-        if None in [center, maxSize]:
+        if center is None:
             centers = []
             maxSize = 0
             for model in self.models:
-                mi = model.getInfo()
-                centers.append(mi.center)
-                if maxSize < mi.maxWidth:
-                    maxSize = mi.maxWidth
+                vectors = np.array(np.dot(self.worldView.matrix33, model.vectors.T).T)
+                center = np.mean(vectors, axis=0)
+                maxModelSize = np.max(np.linalg.norm(vectors - center, axis=1))
+                centers.append(center)
+                if maxSize < maxModelSize:
+                    maxSize = maxModelSize
+
             center = np.mean(centers, axis=0)
+            center[2] = 3 * maxSize
 
         self.view.init()
-        self.view.translate(-center[0], -center[1], -3 * maxSize)
+        self.view.translate(dx=-center[0], dy=-center[1], dz=-center[2])
         self.view.rotateX(45)
+        self.view.rotateZ(60, local=True)

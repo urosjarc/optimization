@@ -1,16 +1,11 @@
 from typing import List
 
 import numpy as np
-from pyrr import Vector3
+from pyrr import Matrix44
 
-from src.gui.plot.view import View
 from src.gui.plot.buffer_data import BufferData
 from src.gui.plot.shape import Shape
-
-
-class ModelInfo:
-    center: List[float]
-    maxWidth: float
+from src.gui.plot.view import View
 
 
 class Model:
@@ -42,21 +37,16 @@ class Model:
         meanV = -np.mean(vectors, axis=0)
         self.view.translate(*meanV.tolist())
 
-    #TODO: This method has to much dependency
-    def getInfo(self) -> ModelInfo:
+    @property
+    def modelView(self) -> Matrix44:
+        return self.view.scaleMatrix * self.view.rotationMatrix * self.view.translationMatrix
+
+    @property
+    def vectors(self):
         vectors = []
-        centers = []
         for shape in self.shapes:
             p = shape.positions
             shapeVectors = np.array_split(np.array(p), len(p) / 3)
-            #TODO: scale shapeVectors = np.dot(shapeVectors, self.view.scaleMatrix.matrix33.T)
-            shapeCenter = self.view.translationMatrix * Vector3(np.mean(shapeVectors, axis=0), dtype=np.float32)
+            vectors += shapeVectors
 
-            vectors += shapeVectors.tolist()
-            centers.append(shapeCenter)
-
-        modelInfo = ModelInfo()
-        modelInfo.center = np.mean(centers, axis=0)
-        modelInfo.maxWidth = max(np.linalg.norm(vectors - modelInfo.center, axis=1))
-
-        return modelInfo
+        return np.dot(self.modelView.matrix33, np.array(vectors).T).T
