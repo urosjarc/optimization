@@ -140,23 +140,8 @@ class OpenGLWidget(QOpenGLWidget):
             self.view.translate(dz=dz)
             self.update()
 
-    def fitToScreen(self, center=None):
-
-        if center is None:
-            centers = []
-            maxSize = 0
-            for model in self.models:
-                vectors = np.array(np.dot(self.worldView.matrix33, model.vectors.T).T)
-                center = np.mean(vectors, axis=0)
-                maxModelSize = np.max(np.linalg.norm(vectors - center, axis=1))
-                centers.append(center)
-                if maxSize < maxModelSize:
-                    maxSize = maxModelSize
-
-            center = np.mean(centers, axis=0)
-            center[2] = 3 * maxSize
-
+    def fitToScreen(self):
         self.view.init()
-        self.view.translate(dx=-center[0], dy=-center[1], dz=-center[2])
+        self.view.translate(dy=-0.3, dz=-3)
         self.view.rotateX(45)
         self.view.rotateZ(60, local=True)

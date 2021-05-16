@@ -40,13 +40,3 @@ class Model:
     @property
     def modelView(self) -> Matrix44:
         return self.view.scaleMatrix * self.view.rotationMatrix * self.view.translationMatrix
-
-    @property
-    def vectors(self):
-        vectors = []
-        for shape in self.shapes:
-            p = shape.positions
-            shapeVectors = np.array_split(np.array(p), len(p) / 3)
-            vectors += shapeVectors
-
-        return np.dot(self.modelView.matrix33, np.array(vectors).T).T

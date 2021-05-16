@@ -105,7 +105,7 @@ class MainWindow(QtWidgets.QMainWindow):
             funModel.view.scale(x=1 / deltaX, y=1 / deltaY, z=1 / deltaZ)
 
             wid3D.models = [funModel, axisModel]
-            wid3D.fitToScreen(center=[0, 0.3, 3])
+            wid3D.fitToScreen()
             wid3D.update()
 
 
