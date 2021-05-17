@@ -59,15 +59,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_name_change(self):
         fun = self.nameCB.currentData()
-
-        # Create axis
-        axisModel = Model(GL_LINES, 3)
-        axisShape = Shape()
-        axisShape.addLine([0, 0, 0], [2, 0, 0], [0, 0, 0, 0])
-        axisShape.addLine([0, 0, 0], [0, 2, 0], [0, 0, 0, 0])
-        axisShape.addLine([0, 0, 0], [0, 0, 2], [0, 0, 0, 0])
-        axisModel.addShape(axisShape)
-
         if fun and self.inited:
             self.setFunction(fun)
 
@@ -81,9 +72,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Create axis shape
         axis = Shape()
-        axis.addLine([0, 0, 0], [1, 0, 0], [1, 0, 0, 1])
-        axis.addLine([0, 0, 0], [0, 1, 0], [0, 1, 0, 1])
-        axis.addLine([0, 0, 0], [0, 0, 1], [0, 0, 1, 1])
+        axis.addLine([-100, 0, 0], [100, 0, 0], [1, 0, 0, 1])
+        axis.addLine([0, -100, 0], [0, 100, 0], [0, 1, 0, 1])
+        axis.addLine([0, 0, -100], [0, 0, 100], [0, 0, 1, 1])
         axisModel = Model(GL_LINES, 3)
         axisModel.addShape(axis)
 
@@ -105,7 +96,7 @@ class MainWindow(QtWidgets.QMainWindow):
             funModel.view.scale(x=1 / deltaX, y=1 / deltaY, z=1 / deltaZ)
 
             wid3D.models = [funModel, axisModel]
-            wid3D.fitToScreen()
+            wid3D.resetView()
             wid3D.update()
 
 

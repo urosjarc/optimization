@@ -61,10 +61,6 @@ class OpenGLWidget(QOpenGLWidget):
         glClearColor(1, 1, 1, 1)
         glClearDepth(1.0)
 
-    @property
-    def worldView(self):
-        return self.view.translationMatrix * self.view.rotationMatrix * self.view.scaleMatrix
-
     def paintGL(self):
         # Clear color buffer and depth z-buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -127,7 +123,7 @@ class OpenGLWidget(QOpenGLWidget):
         self.mouse = [event.x(), event.y()]
 
     def mouseDoubleClickEvent(self, event: QMouseEvent):
-        self.fitToScreen()
+        self.resetView()
         self.update()
 
     def wheelEvent(self, event: QWheelEvent):
@@ -140,8 +136,12 @@ class OpenGLWidget(QOpenGLWidget):
             self.view.translate(dz=dz)
             self.update()
 
-    def fitToScreen(self):
+    @property
+    def worldView(self):
+        return self.view.translationMatrix * self.view.rotationMatrix * self.view.scaleMatrix
+
+    def resetView(self):
         self.view.init()
-        self.view.translate(dy=-0.3, dz=-3)
-        self.view.rotateX(45)
-        self.view.rotateZ(60, local=True)
+        self.view.translate(dz=-3)
+        self.view.rotateX(20)
+        self.view.rotateZ(20, local=True)
