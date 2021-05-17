@@ -20,8 +20,6 @@ class BufferData:
         self.colOffset = 0
         self.norOffset = 0
 
-        self.initBuffers()
-
     def initBuffers(self):
         self.positionBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.positionBuffer)

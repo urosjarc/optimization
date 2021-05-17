@@ -9,25 +9,43 @@ from src.gui.plot.view import View
 
 
 class Model:
-    def __init__(self, drawMode, dim):
+    def __init__(self, drawMode, dim, initBuffers=True):
         self.bdata = BufferData(drawMode, dim)
         self.view = View()
         self.shapes: List[Shape] = []
 
+        self.buffersInited = initBuffers
+        if initBuffers:
+            self.bdata.initBuffers()
+
+    def initBuffers(self):
+        self.bdata.initBuffers()
+        self.buffersInited = True
+
+        for shape in self.shapes:
+            self.bdata.appendBuffers(
+                positions=shape.positions,
+                colors=shape.colors,
+                normals=shape.normals,
+            )
+
     def addShape(self, shape: Shape):
         self.shapes.append(shape)
-        self.bdata.appendBuffers(
-            positions=shape.positions,
-            colors=shape.colors,
-            normals=shape.normals,
-        )
+
+        if self.buffersInited:
+            self.bdata.appendBuffers(
+                positions=shape.positions,
+                colors=shape.colors,
+                normals=shape.normals,
+            )
 
     def setShapes(self, shapes: List[Shape]):
         self.shapes = shapes
 
-        self.bdata.resetBuffers()
-        for shape in shapes:
-            self.addShape(shape)
+        if self.buffersInited:
+            self.bdata.resetBuffers()
+            for shape in shapes:
+                self.addShape(shape)
 
     def center(self):
         vectors = []
