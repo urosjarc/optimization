@@ -1,7 +1,7 @@
 import numpy as np
 from OpenGL.GL import GL_TRIANGLES, GL_LINES
 from PyQt5 import QtWidgets, uic
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, QObject, pyqtSignal, QThread
 from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QProgressBar, QHBoxLayout
 
 from src import utils
@@ -72,9 +72,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Create axis shape
         axis = Shape()
-        axis.addLine([-100, 0, 0], [100, 0, 0], [1, 0, 0, 1])
-        axis.addLine([0, -100, 0], [0, 100, 0], [0, 1, 0, 1])
-        axis.addLine([0, 0, -100], [0, 0, 100], [0, 0, 1, 1])
+        axis.add_line([-100, 0, 0], [100, 0, 0], [1, 0, 0, 1])
+        axis.add_line([0, -100, 0], [0, 100, 0], [0, 1, 0, 1])
+        axis.add_line([0, 0, -100], [0, 0, 100], [0, 0, 1, 1])
         axisModel = Model(GL_LINES, 3)
         axisModel.addShape(axis)
 
@@ -82,22 +82,56 @@ class MainWindow(QtWidgets.QMainWindow):
         deltaX, deltaY = np.linalg.norm(fun.bounds, axis=1)
         minVector = np.array(fun.minVectors[0] + [fun.minValue])
 
-        # Create function shape
-        for info in [(1, self.normalW), (8, self.zoomW)]:
-            zoom, wid3D = info
+        # Step 2: Create a QThread object
+        def on_finish(shape):
+            self.startPB.setEnabled(True)
+            self.progressPB.setValue(0)
 
-            funShape = Shape.Function(fun, step=200, color=[1, 0, 0, 1], zoom=zoom, zoomCenter=fun.minVectors[0])
-            deltaZ = abs(np.max(funShape.positions[2::3]) - fun.minValue)
+            # Create function shape
+            for info in [(1, self.normalW), (8, self.zoomW)]:
+                zoom, wid3D = info
 
-            # Create model with scalled x,y,z to ~1
-            funModel = Model(GL_TRIANGLES, 3)
-            funModel.addShape(funShape)
-            funModel.view.translate(*-minVector)
-            funModel.view.scale(x=1 / deltaX, y=1 / deltaY, z=1 / deltaZ)
+                deltaZ = abs(np.max(shape.positions[2::3]) - fun.minValue)
 
-            wid3D.models = [funModel, axisModel]
-            wid3D.resetView()
-            wid3D.update()
+                # Create model with scalled x,y,z to ~1
+                funModel = Model(GL_TRIANGLES, 3)
+                funModel.addShape(shape)
+                funModel.view.translate(*-minVector)
+                funModel.view.scale(x=1 / deltaX, y=1 / deltaY, z=1 / deltaZ)
+
+                wid3D.models = [funModel, axisModel]
+                wid3D.resetView()
+                wid3D.update()
+
+        self.thread, self.worker = ShapeLoader.Function(function=fun, step=200, color=[1, 0, 0, 1], zoom=1, zoomCenter=fun.minVectors[0])
+        self.worker.finished.connect(on_finish)
+        self.startPB.setEnabled(False)
+
+
+# Step 1: Create a worker class
+class ShapeLoader(QObject):
+    finished = pyqtSignal(Shape)
+    def __init__(self, **args):
+        self.args = args
+        super().__init__()
+
+    def run(self):
+        """Long-running task."""
+        shape = Shape().add_function(**self.args)
+        self.finished.emit(shape)
+
+    @staticmethod
+    def Function(**args):
+        thread = QThread()
+        worker = ShapeLoader(**args)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+
+        return (thread, worker)
 
 
 def start(argv):

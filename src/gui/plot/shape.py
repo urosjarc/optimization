@@ -29,51 +29,40 @@ class Shape:
         self.normals += no.ravel().tolist()
         self.colors += np.tile(color, (faces.size, 1)).ravel().tolist()
 
-    def addLine(self, start: List[float], finish: List[float], color: List[float]):
+        return self
+
+    def add_line(self, start: List[float], finish: List[float], color: List[float]):
         self.positions += start + finish
         self.colors += color + color
         self.normals += start + finish
 
-    @staticmethod
-    def Test(color):
+    def add_test(self, color):
         with pygmsh.occ.Geometry() as geom:
             cyl = geom.add_cylinder([0, 0, 0], [0, 0, 1], 1, mesh_size=0.1)
             cyl.id = cyl._id
             geom.force_outward_normals(cyl)
             mesh = geom.generate_mesh()
 
-            shape = Shape()
-            shape.__addMesh(mesh.points, mesh.cells[1].data, color)
-            return shape
+            return self.__addMesh(mesh.points, mesh.cells[1].data, color)
 
-    @staticmethod
-    def Cone(color):
+    def add_cone(self, color):
         with pygmsh.occ.Geometry() as geom:
             cyl = geom.add_cone([0, 0, 0], [0, 0, 1], 1, 0, mesh_size=0.1)
             cyl.id = cyl._id
             geom.force_outward_normals(cyl)
             mesh = geom.generate_mesh()
 
-            shape = Shape()
-            shape.__addMesh(mesh.points, mesh.cells[1].data, color)
-            return shape
+            return self.__addMesh(mesh.points, mesh.cells[1].data, color)
 
-    @staticmethod
-    def Bunny(color):
+    def add_bunny(self, color):
         mesh = meshio.read(utils.getPath(__file__, '../../../data/models/bun_zipper.ply'))
-        shape = Shape()
-        shape.__addMesh(mesh.points, mesh.cells[0].data, color)
-        return shape
+        return self.__addMesh(mesh.points, mesh.cells[0].data, color)
 
-    @staticmethod
-    def Dragon(color):
+    def add_dragon(self, color):
         mesh = meshio.read(utils.getPath(__file__, '../../../data/models/dragon_vrip_res2.ply'))
-        shape = Shape()
-        shape.__addMesh(mesh.points, mesh.cells[0].data, color)
-        return shape
+        return self.__addMesh(mesh.points, mesh.cells[0].data, color)
 
-    @staticmethod
-    def Function(function: Function, step, color=(1, 1, 1, 1), zoomCenter: List[float] = None, zoom: float = 1):
+    def add_function(self, function: Function, step, color=(1, 1, 1, 1), zoomCenter: List[float] = None, zoom: float = 1):
 
         bounds = function.bounds
         if zoomCenter is not None and zoom != 1:
@@ -107,6 +96,4 @@ class Shape:
                 else:
                     sqC += 1
 
-        shape = Shape()
-        shape.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32), color)
-        return shape
+        return self.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32), color)
