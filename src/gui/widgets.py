@@ -20,6 +20,8 @@ class OpenGLWidget(QOpenGLWidget):
         self.programLocations: Dict[str, GLuint]
         self.light = np.array([10, 10, 10], dtype=np.float32)
 
+        self.birdsEye = False
+        self.projectionView = None
         self.view = View()
         self.models: List[Model] = []
         self.mouse: List[int] = None
@@ -61,11 +63,15 @@ class OpenGLWidget(QOpenGLWidget):
         glClearColor(1, 1, 1, 1)
         glClearDepth(1.0)
 
+        # Update widget
+        self.update(context=False, view=True, projection=True)
+
     def paintGL(self):
         # Clear color buffer and depth z-buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Set view matrixes
+        glUniformMatrix4fv(self.location['projectionView'], 1, GL_FALSE, self.projectionView)
         glUniform3fv(self.location['in_light'], 1, self.light)
 
         for model in self.models:
@@ -94,12 +100,7 @@ class OpenGLWidget(QOpenGLWidget):
         if width + height == 0:
             return
 
-        # Update size of viewport
         glViewport(0, 0, width, height)
-
-        # Update projection matrix
-        projectionView = Matrix44.perspective_projection(45, width / height, 0.1, 100.0)
-        glUniformMatrix4fv(self.location['projectionView'], 1, GL_FALSE, projectionView)
 
     def mouseMoveEvent(self, event: QMouseEvent):
         btns = event.buttons()
@@ -108,29 +109,34 @@ class OpenGLWidget(QOpenGLWidget):
             dx = self.mouse[0] - event.x()
             dy = self.mouse[1] - event.y()
 
-            if btns == Qt.LeftButton:
-                self.view.rotateX(dy / 2)
-                self.view.rotateZ(dx / 2, local=True)
-                self.update()
-            elif btns == Qt.RightButton:
-                self.view.translate(dx=-dx / 500, dy=dy / 500)
-                self.update()
-            elif btns == Qt.MidButton:
-                self.light[0] -= dx / 20
-                self.light[1] += dy / 20
-                self.update()
+            if self.birdsEye:
+                if btns == Qt.LeftButton:
+                    self.view.translate(dx=-dx / 500, dy=dy / 500)
+                    self.update()
+            else:
+                if btns == Qt.LeftButton:
+                    self.view.rotateX(dy / 2)
+                    self.view.rotateZ(dx / 2, local=True)
+                    self.update()
+                elif btns == Qt.RightButton:
+                    self.view.translate(dx=-dx / 500, dy=dy / 500)
+                    self.update()
+
+            if btns == Qt.MidButton:
+                self.birdsEye = not self.birdsEye
+                self.update(projection=True, view=True)
 
         self.mouse = [event.x(), event.y()]
 
     def mouseDoubleClickEvent(self, event: QMouseEvent):
-        self.resetView()
-        self.update()
+        self.update(view=True)
 
     def wheelEvent(self, event: QWheelEvent):
         btns = event.buttons()
 
         if btns == Qt.MidButton:
-            self.resetView()
+            self.birdsEye = not self.birdsEye
+            self.update(projection=True, view=True)
         elif btns == Qt.NoButton:
             dz = event.angleDelta().y() / 100
             self.view.translate(dz=dz)
@@ -140,8 +146,20 @@ class OpenGLWidget(QOpenGLWidget):
     def worldView(self):
         return self.view.translationMatrix * self.view.rotationMatrix * self.view.scaleMatrix
 
-    def resetView(self):
-        self.view.init()
-        self.view.translate(dz=-3)
-        self.view.rotateX(20)
-        self.view.rotateZ(20, local=True)
+    def update(self, context=True, projection=False, view=False) -> None:
+        if view:
+            self.view.init()
+            self.view.translate(dz=-3)
+            if not self.birdsEye:
+                self.view.rotateX(20)
+                self.view.rotateZ(20, local=True)
+
+        if projection:
+            if self.birdsEye:
+                self.projectionView = Matrix44.orthogonal_projection(-1, 1, -1, 1, 1, 100.0)
+            else:
+                aspect = self.width() / self.height()
+                self.projectionView = Matrix44.perspective_projection(45, aspect, 0.1, 100.0)
+
+        if context:
+            super(OpenGLWidget, self).update()

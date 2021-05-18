@@ -22,7 +22,7 @@ class MainWindow(QtWidgets.QMainWindow):
     nameCB: QComboBox
 
     logHeightCB: QCheckBox
-    wireframeCB: QCheckBox
+    birdsEyeCB: QCheckBox
 
     def __init__(self):
         super(MainWindow, self).__init__()  # Call the inherited classes __init__ method
@@ -38,7 +38,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stopPB.clicked.connect(self.on_stop)
         self.nameCB.currentIndexChanged.connect(self.on_name_change)
         self.logHeightCB.stateChanged.connect(self.on_logaritmic_toggle)
-        self.wireframeCB.stateChanged.connect(self.on_wireframe_toggle)
+        self.birdsEyeCB.stateChanged.connect(self.on_birdsEye_toggle)
         self.inited = False
 
         self.__init()
@@ -66,6 +66,12 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_logaritmic_toggle(self, state: int):
         print("logaritmic toggle", state)
 
+    def on_birdsEye_toggle(self, state: int):
+        for w in [self.normalW, self.zoomW]:
+            w.birdsEye = state == 2
+            w.update(view=True, projection=True)
+
+
     def on_wireframe_toggle(self, state: int):
         print("wireframe toggle", state)
 
@@ -83,7 +89,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         def work(fun, zoom):
             # Create shape
-            shape = Shape().add_function(function=fun, step=200, color=[1, 0, 0, 1], zoom=zoom, zoomCenter=fun.minVectors[0])
+            shape = Shape().add_function(function=fun, step=150, color=[1, 0, 0, 1], zoom=zoom, zoomCenter=fun.minVectors[0])
 
             # Function infos
             deltaZ = abs(np.max(shape.positions[2::3]) - fun.minValue)
@@ -96,17 +102,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
             return funModel
 
-        import time
-        start = time.time()
-
         def on_result(widget: OpenGLWidget, model: Model):
             model.initBuffers()
             widget.models = [axisModel, model]
-            widget.resetView()
-            widget.update()
+            widget.update(view=True)
             self.startPB.setEnabled(True)
-            end = time.time()
-            print(end - start)
 
         # model0 = work(fun, 1)
         # model1 = work(fun, 8)

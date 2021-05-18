@@ -214,15 +214,9 @@
       <item>
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
-         <widget class="QCheckBox" name="wireframeCB">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
+         <widget class="QCheckBox" name="birdsEyeCB">
           <property name="text">
-           <string>Show wireframe</string>
+           <string>Birds-eye</string>
           </property>
          </widget>
         </item>
