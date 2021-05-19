@@ -8,12 +8,55 @@ from src import utils
 from src.optimization.space import Function
 
 
+class BoundBox:
+    xMax = None
+    xMin = None
+
+    yMax = None
+    yMin = None
+
+    zMax = None
+    zMin = None
+
+
 class Shape:
 
     def __init__(self):
         self.colors: List[float] = []
         self.positions: List[float] = []
         self.normals: List[float] = []
+        self.boundBox: BoundBox = BoundBox()
+
+    @staticmethod
+    def __boundBox(points):
+
+        xMax, xMin = points[0][0], points[0][0]
+        yMax, yMin = points[0][1], points[0][1]
+        zMax, zMin = points[0][2], points[0][2]
+
+        for i in range(len(points)):
+            x = points[i][0]
+            y = points[i][1]
+            z = points[i][2]
+
+            if x < xMin:
+                xMin = x
+            elif x > xMax:
+                xMax = x
+
+            if y < yMin:
+                yMin = y
+            elif y > yMax:
+                yMax = y
+
+            if z < zMin:
+                zMin = z
+            elif z > zMax:
+                zMax = z
+
+        return (xMax, xMin,
+                yMax, yMin,
+                zMax, zMin)
 
     def __addMesh(self, points, faces, color):
         norm = np.zeros(points.shape, dtype=points.dtype)
@@ -29,6 +72,13 @@ class Shape:
         self.normals += no.ravel().tolist()
         self.colors += np.tile(color, (faces.size, 1)).ravel().tolist()
 
+        mM = self.__boundBox(points)
+        self.boundBox.xMax = mM[0]
+        self.boundBox.xMin = mM[1]
+        self.boundBox.yMax = mM[2]
+        self.boundBox.yMin = mM[3]
+        self.boundBox.zMax = mM[4]
+        self.boundBox.zMin = mM[5]
         return self
 
     def add_line(self, start: List[float], finish: List[float], color: List[float]):
@@ -62,7 +112,8 @@ class Shape:
         mesh = meshio.read(utils.getPath(__file__, '../../../data/models/dragon_vrip_res2.ply'))
         return self.__addMesh(mesh.points, mesh.cells[0].data, color)
 
-    def add_function(self, function: Function, step, color=(1, 1, 1, 1), zoomCenter: List[float] = None, zoom: float = 1):
+    def add_function(self, function: Function, step, color=(1, 1, 1, 1), zoomCenter: List[float] = None,
+                     zoom: float = 1):
 
         bounds = function.bounds
         if zoomCenter is not None and zoom != 1:
