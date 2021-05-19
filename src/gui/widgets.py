@@ -18,14 +18,15 @@ class OpenGLWidget(QOpenGLWidget):
         QOpenGLWidget.__init__(self, parent=parent)
 
         self.programLocations: Dict[str, GLuint]
-        self.light = np.array([10, 10, 10], dtype=np.float32)
 
+        self.light = np.array([10, 10, 10], dtype=np.float32)
         self.birdsEye = False
-        self.projectionView = None
+        self.logHeight = False
         self.view = View()
         self.models: List[Model] = []
-        self.mouse: List[int] = None
 
+        self.projectionView = None
+        self.mouse: List[int] = None
         self.setMouseTracking(True)
 
     def initializeGL(self):
@@ -44,7 +45,9 @@ class OpenGLWidget(QOpenGLWidget):
             'in_position': glGetAttribLocation(program, 'in_position'),
             'in_color': glGetAttribLocation(program, 'in_color'),
             'in_normal': glGetAttribLocation(program, 'in_normal'),
+
             'in_light': glGetUniformLocation(program, 'in_light'),
+            'in_logHeight': glGetUniformLocation(program, 'in_logHeight'),
             'positionView': glGetUniformLocation(program, 'positionView'),
             'normalView': glGetUniformLocation(program, 'normalView'),
             'projectionView': glGetUniformLocation(program, 'projectionView'),
@@ -70,9 +73,10 @@ class OpenGLWidget(QOpenGLWidget):
         # Clear color buffer and depth z-buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-        # Set view matrixes
+        # Set GLSL constants
         glUniformMatrix4fv(self.location['projectionView'], 1, GL_FALSE, self.projectionView)
         glUniform3fv(self.location['in_light'], 1, self.light)
+        glUniform1ui(self.location['in_logHeight'], np.uint(int(self.logHeight)))
 
         for model in self.models:
             bd = model.bdata
@@ -144,9 +148,11 @@ class OpenGLWidget(QOpenGLWidget):
 
     @property
     def worldView(self):
+        if self.birdsEye:
+            return self.view.translationMatrix * self.view.scaleMatrix
         return self.view.translationMatrix * self.view.rotationMatrix * self.view.scaleMatrix
 
-    def update(self, context=True, projection=False, view=False) -> None:
+    def update(self, projection=False, view=False, context=True) -> None:
         if view:
             self.view.init()
             self.view.translate(dz=-3)

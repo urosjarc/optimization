@@ -4,7 +4,7 @@ import numpy as np
 from pyrr import Matrix44
 
 from src.gui.plot.buffer_data import BufferData
-from src.gui.plot.shape import Shape
+from src.gui.plot.shape import Shape, BoundBox
 from src.gui.plot.view import View
 
 
@@ -13,6 +13,7 @@ class Model:
         self.bdata = BufferData(drawMode, dim)
         self.view = View()
         self.shapes: List[Shape] = []
+        self.boundBox: BoundBox = BoundBox()
 
         self.buffersInited = initBuffers
         if initBuffers:
@@ -31,6 +32,7 @@ class Model:
 
     def addShape(self, shape: Shape):
         self.shapes.append(shape)
+        self.boundBox.resize(boundBox=shape.boundBox)
 
         if self.buffersInited:
             self.bdata.appendBuffers(
@@ -40,12 +42,14 @@ class Model:
             )
 
     def setShapes(self, shapes: List[Shape]):
-        self.shapes = shapes
 
         if self.buffersInited:
             self.bdata.resetBuffers()
-            for shape in shapes:
-                self.addShape(shape)
+
+        self.shapes = []
+        self.boundBox = BoundBox()
+        for shape in shapes:
+            self.addShape(shape)
 
     def center(self):
         vectors = []

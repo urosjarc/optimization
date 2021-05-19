@@ -1,8 +1,10 @@
+from typing import List
+
 import numpy as np
 from OpenGL.GL import GL_TRIANGLES, GL_LINES
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QTimer, QThreadPool
-from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QProgressBar, QHBoxLayout
+from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QHBoxLayout
 
 from src import utils
 from src.gui.plot import Shape, Model
@@ -62,15 +64,15 @@ class MainWindow(QtWidgets.QMainWindow):
         if fun and self.inited:
             self.loadFunction(fun)
 
-
     def on_logaritmic_toggle(self, state: int):
-        print("logaritmic toggle", state)
+        for w in [self.normalW, self.zoomW]:
+            w.logHeight = state == 2
+            w.update()
 
     def on_birdsEye_toggle(self, state: int):
         for w in [self.normalW, self.zoomW]:
             w.birdsEye = state == 2
-            w.update(view=True, projection=True)
-
+            w.update(projection=True)
 
     def on_wireframe_toggle(self, state: int):
         print("wireframe toggle", state)
@@ -84,27 +86,35 @@ class MainWindow(QtWidgets.QMainWindow):
         axisModel = Model(GL_LINES, 3)
         axisModel.addShape(axis)
 
-        deltaX, deltaY = np.linalg.norm(fun.bounds, axis=1)
         minVector = np.array(fun.minVectors[0] + [fun.minValue])
 
         def work(fun, zoom):
             # Create shape
-            shape = Shape().add_function(function=fun, step=150, color=[1, 0, 0, 1], zoom=zoom, zoomCenter=fun.minVectors[0])
-
-            # Function infos
-            deltaZ = abs(np.max(shape.positions[2::3]) - fun.minValue)
+            shape = Shape().add_function(function=fun, step=150, color=[1, 0, 0, 1], zoom=zoom,
+                                         zoomCenter=fun.minVectors[0])
+            bb = shape.boundBox
+            scale = (1/(bb.xMax - bb.xMin), 1/(bb.yMax - bb.yMin), 1/(bb.zMax - bb.zMin))
 
             # Create model with scalled x,y,z to ~1
             funModel = Model(GL_TRIANGLES, 3, initBuffers=False)
             funModel.addShape(shape)
             funModel.view.translate(*-minVector)
-            funModel.view.scale(x=1 / deltaX, y=1 / deltaY, z=1 / deltaZ)
+            funModel.view.scale(*scale)
 
-            return funModel
+            # Create box grid
+            boundBoxModel = Model(GL_LINES, 3, initBuffers=False)
+            boundBoxShape = Shape().add_boundBox(shape.boundBox)
+            boundBoxModel.addShape(boundBoxShape)
+            boundBoxModel.view.translate(*-minVector)
+            boundBoxModel.view.scale(*scale)
 
-        def on_result(widget: OpenGLWidget, model: Model):
-            model.initBuffers()
-            widget.models = [axisModel, model]
+            return funModel, boundBoxModel
+
+        def on_result(widget: OpenGLWidget, models: List[Model]):
+            widget.models = []
+            for m in models:
+                m.initBuffers()
+                widget.models.append(m)
             widget.update(view=True)
             self.startPB.setEnabled(True)
 
@@ -117,8 +127,8 @@ class MainWindow(QtWidgets.QMainWindow):
         pool = QThreadPool.globalInstance()
         worker0 = Worker(work, fun, 1)
         worker1 = Worker(work, fun, 10)
-        worker0.signals.result.connect(lambda model: on_result(self.normalW, model))
-        worker1.signals.result.connect(lambda model: on_result(self.zoomW, model))
+        worker0.signals.result.connect(lambda models: on_result(self.normalW, models))
+        worker1.signals.result.connect(lambda models: on_result(self.zoomW, models))
         pool.start(worker0)
         pool.start(worker1)
 

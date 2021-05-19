@@ -9,14 +9,61 @@ from src.optimization.space import Function
 
 
 class BoundBox:
-    xMax = None
-    xMin = None
 
-    yMax = None
-    yMin = None
+    def __init__(self):
+        self.xMax, self.xMin = None, None
+        self.yMax, self.yMin = None, None
+        self.zMax, self.zMin = None, None
 
-    zMax = None
-    zMin = None
+    @staticmethod
+    def calculate(points):
+        b = BoundBox()
+
+        b.xMax, b.xMin = points[0][0], points[0][0]
+        b.yMax, b.yMin = points[0][1], points[0][1]
+        b.zMax, b.zMin = points[0][2], points[0][2]
+
+        for i in range(len(points)):
+            x = points[i][0]
+            y = points[i][1]
+            z = points[i][2]
+
+            if x < b.xMin:
+                b.xMin = x
+            elif x > b.xMax:
+                b.xMax = x
+
+            if y < b.yMin:
+                b.yMin = y
+            elif y > b.yMax:
+                b.yMax = y
+
+            if z < b.zMin:
+                b.zMin = z
+            elif z > b.zMax:
+                b.zMax = z
+
+        return b
+
+    def resize(self, boundBox=None, points=None):
+        bb = BoundBox.calculate(points) if points is not None else boundBox
+
+        if self.xMin is None:
+            self.__dict__ = bb.__dict__
+            return
+
+        if bb.xMin < self.xMin:
+            self.xMin = bb.xMin
+        if bb.xMax > self.xMax:
+            self.xMax = bb.xMax
+        if bb.yMin < self.yMin:
+            self.yMin = bb.yMin
+        if bb.yMax > self.yMax:
+            self.yMax = bb.yMax
+        if bb.zMin < self.zMin:
+            self.zMin = bb.zMin
+        if bb.zMax > self.zMax:
+            self.zMax = bb.zMax
 
 
 class Shape:
@@ -26,37 +73,6 @@ class Shape:
         self.positions: List[float] = []
         self.normals: List[float] = []
         self.boundBox: BoundBox = BoundBox()
-
-    @staticmethod
-    def __boundBox(points):
-
-        xMax, xMin = points[0][0], points[0][0]
-        yMax, yMin = points[0][1], points[0][1]
-        zMax, zMin = points[0][2], points[0][2]
-
-        for i in range(len(points)):
-            x = points[i][0]
-            y = points[i][1]
-            z = points[i][2]
-
-            if x < xMin:
-                xMin = x
-            elif x > xMax:
-                xMax = x
-
-            if y < yMin:
-                yMin = y
-            elif y > yMax:
-                yMax = y
-
-            if z < zMin:
-                zMin = z
-            elif z > zMax:
-                zMax = z
-
-        return (xMax, xMin,
-                yMax, yMin,
-                zMax, zMin)
 
     def __addMesh(self, points, faces, color):
         norm = np.zeros(points.shape, dtype=points.dtype)
@@ -72,19 +88,53 @@ class Shape:
         self.normals += no.ravel().tolist()
         self.colors += np.tile(color, (faces.size, 1)).ravel().tolist()
 
-        mM = self.__boundBox(points)
-        self.boundBox.xMax = mM[0]
-        self.boundBox.xMin = mM[1]
-        self.boundBox.yMax = mM[2]
-        self.boundBox.yMin = mM[3]
-        self.boundBox.zMax = mM[4]
-        self.boundBox.zMin = mM[5]
+        self.boundBox.resize(points=points)
+
         return self
 
     def add_line(self, start: List[float], finish: List[float], color: List[float]):
         self.positions += start + finish
         self.colors += color + color
         self.normals += start + finish
+        self.boundBox.resize(points=[start, finish])
+        return self
+
+    def add_boundBox(self, bb: BoundBox):
+        color = [0, 0, 0, 1]
+        p0 = [bb.xMin, bb.yMax, bb.zMax]
+        p1 = [bb.xMax, bb.yMax, bb.zMax]
+        p2 = [bb.xMax, bb.yMin, bb.zMax]
+        p3 = [bb.xMin, bb.yMin, bb.zMax]
+        p4 = [bb.xMin, bb.yMax, bb.zMin]
+        p5 = [bb.xMax, bb.yMax, bb.zMin]
+        p6 = [bb.xMax, bb.yMin, bb.zMin]
+        p7 = [bb.xMin, bb.yMin, bb.zMin]
+
+        return self.add_line(
+            p0, p1, color
+        ).add_line(
+            p1, p2, color
+        ).add_line(
+            p2, p3, color
+        ).add_line(
+            p3, p0, color
+        ).add_line(
+            p4, p5, color
+        ).add_line(
+            p5, p6, color
+        ).add_line(
+            p6, p7, color
+        ).add_line(
+            p7, p4, color
+        ).add_line(
+            p0, p4, color
+        ).add_line(
+            p1, p5, color
+        ).add_line(
+            p2, p6, color
+        ).add_line(
+            p3, p7, color
+        )
 
     def add_test(self, color):
         with pygmsh.occ.Geometry() as geom:

@@ -222,11 +222,14 @@
         </item>
         <item>
          <widget class="QCheckBox" name="logHeightCB">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
           <property name="text">
            <string>Logaritmic height</string>
           </property>
           <property name="checked">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
          </widget>
         </item>
