@@ -21,11 +21,11 @@ class OpenGLWidget(QOpenGLWidget):
 
         self.light = np.array([10, 10, 10], dtype=np.float32)
         self.birdsEye = False
-        self.logHeight = False
+        self.scaleHeight = False
         self.view = View()
         self.models: List[Model] = []
 
-        self.projectionView = None
+        self.screenView = None
         self.mouse: List[int] = None
         self.setMouseTracking(True)
 
@@ -47,10 +47,11 @@ class OpenGLWidget(QOpenGLWidget):
             'in_normal': glGetAttribLocation(program, 'in_normal'),
 
             'in_light': glGetUniformLocation(program, 'in_light'),
-            'in_logHeight': glGetUniformLocation(program, 'in_logHeight'),
-            'positionView': glGetUniformLocation(program, 'positionView'),
+            'in_scaleHeight': glGetUniformLocation(program, 'in_scaleHeight'),
+            'modelView': glGetUniformLocation(program, 'modelView'),
+            'cameraView': glGetUniformLocation(program, 'cameraView'),
             'normalView': glGetUniformLocation(program, 'normalView'),
-            'projectionView': glGetUniformLocation(program, 'projectionView'),
+            'screenView': glGetUniformLocation(program, 'screenView'),
         }
 
         # Activate program "in" atributes to be rendered in a process of rendering
@@ -67,26 +68,27 @@ class OpenGLWidget(QOpenGLWidget):
         glClearDepth(1.0)
 
         # Update widget
-        self.update(context=False, view=True, projection=True)
+        self.update(context=False, cameraView=True, screenView=True)
 
     def paintGL(self):
         # Clear color buffer and depth z-buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Set GLSL constants
-        glUniformMatrix4fv(self.location['projectionView'], 1, GL_FALSE, self.projectionView)
         glUniform3fv(self.location['in_light'], 1, self.light)
-        glUniform1ui(self.location['in_logHeight'], np.uint(int(self.logHeight)))
+        glUniform1ui(self.location['in_scaleHeight'], np.uint(int(self.scaleHeight)))
+        glUniformMatrix4fv(self.location['cameraView'], 1, GL_FALSE, self.cameraView)
+        glUniformMatrix4fv(self.location['screenView'], 1, GL_FALSE, self.screenView)
 
         for model in self.models:
             bd = model.bdata
 
             # Compute views
-            positionView = self.worldView * model.modelView
-            normalView = positionView.inverse.transpose()
+            cameraModelView = self.cameraView * model.modelView
+            normalView = cameraModelView.inverse.transpose()
 
             # Set views
-            glUniformMatrix4fv(self.location['positionView'], 1, GL_FALSE, positionView)
+            glUniformMatrix4fv(self.location['modelView'], 1, GL_FALSE, model.modelView)
             glUniformMatrix4fv(self.location['normalView'], 1, GL_FALSE, normalView)
 
             # Explain data form stored in model data buffers
@@ -128,44 +130,44 @@ class OpenGLWidget(QOpenGLWidget):
 
             if btns == Qt.MidButton:
                 self.birdsEye = not self.birdsEye
-                self.update(projection=True, view=True)
+                self.update(screenView=True, cameraView=True)
 
         self.mouse = [event.x(), event.y()]
 
     def mouseDoubleClickEvent(self, event: QMouseEvent):
-        self.update(view=True)
+        self.update(cameraView=True)
 
     def wheelEvent(self, event: QWheelEvent):
         btns = event.buttons()
 
         if btns == Qt.MidButton:
             self.birdsEye = not self.birdsEye
-            self.update(projection=True, view=True)
+            self.update(screenView=True, cameraView=True)
         elif btns == Qt.NoButton:
             dz = event.angleDelta().y() / 100
             self.view.translate(dz=dz)
             self.update()
 
     @property
-    def worldView(self):
+    def cameraView(self):
         if self.birdsEye:
             return self.view.translationMatrix * self.view.scaleMatrix
         return self.view.translationMatrix * self.view.rotationMatrix * self.view.scaleMatrix
 
-    def update(self, projection=False, view=False, context=True) -> None:
-        if view:
+    def update(self, screenView=False, cameraView=False, context=True) -> None:
+        if cameraView:
             self.view.init()
             self.view.translate(dz=-3)
             if not self.birdsEye:
                 self.view.rotateX(20)
                 self.view.rotateZ(20, local=True)
 
-        if projection:
+        if screenView:
             if self.birdsEye:
-                self.projectionView = Matrix44.orthogonal_projection(-1, 1, -1, 1, 1, 100.0)
+                self.screenView = Matrix44.orthogonal_projection(-1, 1, -1, 1, 1, 100.0)
             else:
                 aspect = self.width() / self.height()
-                self.projectionView = Matrix44.perspective_projection(45, aspect, 0.1, 100.0)
+                self.screenView = Matrix44.perspective_projection(45, aspect, 0.1, 100.0)
 
         if context:
             super(OpenGLWidget, self).update()

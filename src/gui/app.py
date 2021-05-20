@@ -23,7 +23,7 @@ class MainWindow(QtWidgets.QMainWindow):
     iterationPauseDSB: QDoubleSpinBox
     nameCB: QComboBox
 
-    logHeightCB: QCheckBox
+    scaleHeightCB: QCheckBox
     birdsEyeCB: QCheckBox
 
     def __init__(self):
@@ -39,7 +39,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.startPB.clicked.connect(self.on_start)
         self.stopPB.clicked.connect(self.on_stop)
         self.nameCB.currentIndexChanged.connect(self.on_name_change)
-        self.logHeightCB.stateChanged.connect(self.on_logaritmic_toggle)
+        self.scaleHeightCB.stateChanged.connect(self.on_scaleHeight_toggle)
         self.birdsEyeCB.stateChanged.connect(self.on_birdsEye_toggle)
         self.inited = False
 
@@ -64,15 +64,15 @@ class MainWindow(QtWidgets.QMainWindow):
         if fun and self.inited:
             self.loadFunction(fun)
 
-    def on_logaritmic_toggle(self, state: int):
+    def on_scaleHeight_toggle(self, state: int):
         for w in [self.normalW, self.zoomW]:
-            w.logHeight = state == 2
+            w.scaleHeight = state == 2
             w.update()
 
     def on_birdsEye_toggle(self, state: int):
         for w in [self.normalW, self.zoomW]:
             w.birdsEye = state == 2
-            w.update(projection=True)
+            w.update(screenView=True)
 
     def on_wireframe_toggle(self, state: int):
         print("wireframe toggle", state)
@@ -80,9 +80,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def loadFunction(self, fun: Function):
 
         axis = Shape()
-        axis.add_line([-100, 0, 0], [100, 0, 0], [1, 0, 0, 1])
-        axis.add_line([0, -100, 0], [0, 100, 0], [0, 1, 0, 1])
-        axis.add_line([0, 0, -100], [0, 0, 100], [0, 0, 1, 1])
+        axis.add_line([0, 0, 0], [1, 0, 0], [1, 0, 0, 1])
+        axis.add_line([0, 0, 0], [0, 1, 0], [0, 1, 0, 1])
+        axis.add_line([0, 0, 0], [0, 0, 1], [0, 0, 1, 1])
         axisModel = Model(GL_LINES, 3)
         axisModel.addShape(axis)
 
@@ -111,11 +111,11 @@ class MainWindow(QtWidgets.QMainWindow):
             return funModel, boundBoxModel
 
         def on_result(widget: OpenGLWidget, models: List[Model]):
-            widget.models = []
+            widget.models = [axisModel]
             for m in models:
                 m.initBuffers()
                 widget.models.append(m)
-            widget.update(view=True)
+            widget.update(cameraView=True)
             self.startPB.setEnabled(True)
 
         # model0 = work(fun, 1)
