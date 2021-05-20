@@ -6,7 +6,7 @@ uniform mat4 normalView;
 uniform mat4 screenView;
 
 uniform vec3 in_light;
-uniform uint in_scaleHeight;
+uniform uint in_scaleRate;
 
 in vec3 in_position;
 in vec3 in_normal;
@@ -29,8 +29,8 @@ void main() {
 
 
     vec4 modelPosition = modelView * position;
-    if(in_scaleHeight == 1){
-        modelPosition.z = logistic_scalling(modelPosition.z, 10);
+    if(in_scaleRate != 0){
+        modelPosition.z = logistic_scalling(modelPosition.z, in_scaleRate);
     }
     vec4 cameraModelPosition = cameraView * modelPosition;
     vec4 screenPosition = screenView * cameraModelPosition;

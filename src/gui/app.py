@@ -4,7 +4,7 @@ import numpy as np
 from OpenGL.GL import GL_TRIANGLES, GL_LINES
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QTimer, QThreadPool
-from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QHBoxLayout
+from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QHBoxLayout, QSlider
 
 from src import utils
 from src.gui.plot import Shape, Model
@@ -24,6 +24,7 @@ class MainWindow(QtWidgets.QMainWindow):
     nameCB: QComboBox
 
     scaleHeightCB: QCheckBox
+    scaleRateS: QSlider
     birdsEyeCB: QCheckBox
 
     def __init__(self):
@@ -39,8 +40,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.startPB.clicked.connect(self.on_start)
         self.stopPB.clicked.connect(self.on_stop)
         self.nameCB.currentIndexChanged.connect(self.on_name_change)
-        self.scaleHeightCB.stateChanged.connect(self.on_scaleHeight_toggle)
         self.birdsEyeCB.stateChanged.connect(self.on_birdsEye_toggle)
+        self.scaleRateS.valueChanged.connect(self.on_scaleRate_change)
         self.inited = False
 
         self.__init()
@@ -64,10 +65,11 @@ class MainWindow(QtWidgets.QMainWindow):
         if fun and self.inited:
             self.loadFunction(fun)
 
-    def on_scaleHeight_toggle(self, state: int):
+    def on_scaleRate_change(self, value: float):
         for w in [self.normalW, self.zoomW]:
-            w.scaleHeight = state == 2
+            w.scaleRate = 1.05 ** value +2 if value != 0 else value
             w.update()
+
 
     def on_birdsEye_toggle(self, state: int):
         for w in [self.normalW, self.zoomW]:

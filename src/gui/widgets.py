@@ -21,7 +21,7 @@ class OpenGLWidget(QOpenGLWidget):
 
         self.light = np.array([10, 10, 10], dtype=np.float32)
         self.birdsEye = False
-        self.scaleHeight = False
+        self.scaleRate = 0
         self.view = View()
         self.models: List[Model] = []
 
@@ -48,6 +48,7 @@ class OpenGLWidget(QOpenGLWidget):
 
             'in_light': glGetUniformLocation(program, 'in_light'),
             'in_scaleHeight': glGetUniformLocation(program, 'in_scaleHeight'),
+            'in_scaleRate': glGetUniformLocation(program, 'in_scaleRate'),
             'modelView': glGetUniformLocation(program, 'modelView'),
             'cameraView': glGetUniformLocation(program, 'cameraView'),
             'normalView': glGetUniformLocation(program, 'normalView'),
@@ -76,7 +77,7 @@ class OpenGLWidget(QOpenGLWidget):
 
         # Set GLSL constants
         glUniform3fv(self.location['in_light'], 1, self.light)
-        glUniform1ui(self.location['in_scaleHeight'], np.uint(int(self.scaleHeight)))
+        glUniform1ui(self.location['in_scaleRate'], np.uint(int(self.scaleRate)))
         glUniformMatrix4fv(self.location['cameraView'], 1, GL_FALSE, self.cameraView)
         glUniformMatrix4fv(self.location['screenView'], 1, GL_FALSE, self.screenView)
 
