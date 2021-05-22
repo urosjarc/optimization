@@ -197,6 +197,11 @@
             <height>16777215</height>
            </size>
           </property>
+          <property name="font">
+           <font>
+            <family>Monospace</family>
+           </font>
+          </property>
           <property name="editable">
            <bool>true</bool>
           </property>

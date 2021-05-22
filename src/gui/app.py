@@ -48,7 +48,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init(self):
         for f in functions(2):
-            self.nameCB.addItem(f'{f.hardness:.2f} - {f.name}', f)
+            self.nameCB.addItem(f'{f.name:<30}{f.hardness:>.2f}', f)
 
     def on_load(self):
         self.inited = True
@@ -67,9 +67,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_scaleRate_change(self, value: float):
         for w in [self.normalW, self.zoomW]:
-            w.scaleRate = 1.05 ** value +2 if value != 0 else value
+            w.scaleRate = 1.1 ** value + 2 if value != 0 else value
             w.update()
-
 
     def on_birdsEye_toggle(self, state: int):
         for w in [self.normalW, self.zoomW]:
@@ -81,49 +80,53 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def loadFunction(self, fun: Function):
 
-        axis = Shape()
-        axis.add_line([0, 0, 0], [1, 0, 0], [1, 0, 0, 1])
-        axis.add_line([0, 0, 0], [0, 1, 0], [0, 1, 0, 1])
-        axis.add_line([0, 0, 0], [0, 0, 1], [0, 0, 1, 1])
-        axisModel = Model(GL_LINES, 3)
-        axisModel.addShape(axis)
+        def work(fun: Function, zoom):
 
-        minVector = np.array(fun.minVectors[0] + [fun.minValue])
+            # First min vector
+            firstMinVector = np.array(fun.minVectors[0] + [fun.minValue])
 
-        def work(fun, zoom):
             # Create shape
-            shape = Shape().add_function(function=fun, step=150, color=[1, 0, 0, 1], zoom=zoom,
-                                         zoomCenter=fun.minVectors[0])
+            shape = Shape().add_function(
+                function=fun, step=150,
+                color=[1, 0, 0, 1], zoom=zoom,
+                zoomCenter=firstMinVector
+            )
+
             bb = shape.boundBox
             scale = (1/(bb.xMax - bb.xMin), 1/(bb.yMax - bb.yMin), 1/(bb.zMax - bb.zMin))
+
+            # Create models
+            models = []
 
             # Create model with scalled x,y,z to ~1
             funModel = Model(GL_TRIANGLES, 3, initBuffers=False)
             funModel.addShape(shape)
-            funModel.view.translate(*-minVector)
+            funModel.view.translate(*-firstMinVector)
             funModel.view.scale(*scale)
+            models.append(funModel)
 
-            # Create box grid
-            boundBoxModel = Model(GL_LINES, 3, initBuffers=False)
-            boundBoxShape = Shape().add_boundBox(shape.boundBox)
-            boundBoxModel.addShape(boundBoxShape)
-            boundBoxModel.view.translate(*-minVector)
-            boundBoxModel.view.scale(*scale)
+            # Minimum models
+            for min2DVector in fun.minVectors:
+                minVector = np.array(min2DVector + [fun.minValue])
+                minAxis = Shape()
+                for i in range(3):
+                    base = np.array([0,0,0])
+                    base[i] = 1
+                    minAxis.add_line((minVector-base*100).tolist(), (minVector+base*100).tolist(), base.tolist() + [1])
+                minAxisModel = Model(GL_LINES, 3, initBuffers=False)
+                minAxisModel.addShape(minAxis)
+                minAxisModel.view.translate(*-firstMinVector)
+                minAxisModel.view.scale(*scale)
+                models.append(minAxisModel)
 
-            return funModel, boundBoxModel
+            return models
 
         def on_result(widget: OpenGLWidget, models: List[Model]):
-            widget.models = [axisModel]
+            widget.models = models
             for m in models:
                 m.initBuffers()
-                widget.models.append(m)
             widget.update(cameraView=True)
             self.startPB.setEnabled(True)
-
-        # model0 = work(fun, 1)
-        # model1 = work(fun, 8)
-        # on_result(self.normalW, model0)
-        # on_result(self.zoomW, model1)
 
         self.startPB.setEnabled(False)
         pool = QThreadPool.globalInstance()

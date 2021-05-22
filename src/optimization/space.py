@@ -29,7 +29,7 @@ class Function:
         self.randomize = randomize
         self.name = str(f).split('.')[-1][:-2]
         self.minValue = np.nan_to_num(self.benchmark.fglob)
-        self.minVectors = self.benchmark.global_optimum
+        self.minVectors = [list(ele) for ele in self.benchmark.global_optimum]
         self.bounds = []
         self.evaluation = 0
         self.init()

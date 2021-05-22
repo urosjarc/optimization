@@ -27,7 +27,6 @@ void main() {
     vec4 normal = vec4(in_normal, 0);
     vec4 light = vec4(in_light, 0);
 
-
     vec4 modelPosition = modelView * position;
     if(in_scaleRate != 0){
         modelPosition.z = logistic_scalling(modelPosition.z, in_scaleRate);
