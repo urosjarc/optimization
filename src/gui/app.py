@@ -3,8 +3,9 @@ from typing import List
 import numpy as np
 from OpenGL.GL import GL_TRIANGLES, GL_LINES
 from PyQt5 import QtWidgets, uic
-from PyQt5.QtCore import QTimer, QThreadPool
-from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QHBoxLayout, QSlider
+from PyQt5.QtCore import QTimer, QThreadPool, Qt
+from PyQt5.QtGui import QKeySequence
+from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QHBoxLayout, QSlider, QShortcut
 
 from src import utils
 from src.gui.plot import Shape, Model
@@ -44,7 +45,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scaleRateS.valueChanged.connect(self.on_scaleRate_change)
         self.inited = False
 
+        self.findAction = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_F), self)
+        self.findAction.activated.connect(self.on_find_shortcut)
+
         self.__init()
+
 
     def __init(self):
         for f in functions(2):
@@ -63,7 +68,18 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_name_change(self):
         fun = self.nameCB.currentData()
         if fun and self.inited:
+            # shape = Shape().add_cone([1,1,1,1])
+            # model = Model(GL_TRIANGLES, 3)
+            # model.addShape(shape)
+            # wireModel = Model(GL_LINES, 3).addShape(Shape().add_boundBox(shape.boundBox))
+            # self.normalW.models = [model, wireModel]
+            # self.zoomW.models = [model, wireModel]
+            # self.normalW.update()
             self.loadFunction(fun)
+
+    def on_find_shortcut(self):
+        self.nameCB.setEditText('')
+        self.nameCB.setFocus()
 
     def on_scaleRate_change(self, value: float):
         for w in [self.normalW, self.zoomW]:
@@ -74,9 +90,6 @@ class MainWindow(QtWidgets.QMainWindow):
         for w in [self.normalW, self.zoomW]:
             w.birdsEye = state == 2
             w.update(screenView=True)
-
-    def on_wireframe_toggle(self, state: int):
-        print("wireframe toggle", state)
 
     def loadFunction(self, fun: Function):
 
@@ -118,6 +131,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 minAxisModel.view.translate(*-firstMinVector)
                 minAxisModel.view.scale(*scale)
                 models.append(minAxisModel)
+
+            # Create box grid
+            boundBoxModel = Model(GL_LINES, 3, initBuffers=False)
+            boundBoxShape = Shape().add_boundBox(bb)
+            boundBoxModel.addShape(boundBoxShape)
+            boundBoxModel.view.translate(*-firstMinVector)
+            boundBoxModel.view.scale(*scale)
+            models.append(boundBoxModel)
 
             return models
 

@@ -65,6 +65,11 @@ class BoundBox:
         if bb.zMax > self.zMax:
             self.zMax = bb.zMax
 
+    def center(self):
+        return np.mean([
+            [self.xMax, self.yMax, self.zMax],
+            [self.xMin, self.yMin, self.zMin]
+        ], axis=0)
 
 class Shape:
 
@@ -110,7 +115,8 @@ class Shape:
         p6 = [bb.xMax, bb.yMin, bb.zMin]
         p7 = [bb.xMin, bb.yMin, bb.zMin]
 
-        return self.add_line(
+        #Up rectangle
+        self.add_line(
             p0, p1, color
         ).add_line(
             p1, p2, color
@@ -118,7 +124,10 @@ class Shape:
             p2, p3, color
         ).add_line(
             p3, p0, color
-        ).add_line(
+        )
+
+        #Down rectangle
+        self.add_line(
             p4, p5, color
         ).add_line(
             p5, p6, color
@@ -126,7 +135,10 @@ class Shape:
             p6, p7, color
         ).add_line(
             p7, p4, color
-        ).add_line(
+        )
+
+        #Up, down connection
+        self.add_line(
             p0, p4, color
         ).add_line(
             p1, p5, color
@@ -135,6 +147,20 @@ class Shape:
         ).add_line(
             p3, p7, color
         )
+
+        #Diagonals
+
+        self.add_line(
+            p0, p6, color
+        ).add_line(
+            p1, p7, color
+        ).add_line(
+            p2, p4, color
+        ).add_line(
+            p3, p5, color
+        )
+
+        return self
 
     def add_test(self, color):
         with pygmsh.occ.Geometry() as geom:

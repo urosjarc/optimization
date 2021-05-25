@@ -6,7 +6,7 @@ from OpenGL.GL import shaders
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QMouseEvent, QWheelEvent
 from PyQt5.QtWidgets import QOpenGLWidget
-from pyrr import Matrix44
+from pyrr import Matrix44, Vector3
 
 from src import utils
 from src.gui.plot import Model, View
@@ -156,12 +156,17 @@ class OpenGLWidget(QOpenGLWidget):
         return self.view.translationMatrix * self.view.rotationMatrix * self.view.scaleMatrix
 
     def update(self, screenView=False, cameraView=False, context=True) -> None:
+
         if cameraView:
             self.view.init()
-            self.view.translate(dz=-3)
             if not self.birdsEye:
-                self.view.rotateX(20)
+                self.view.rotateX(60)
                 self.view.rotateZ(20, local=True)
+            if len(self.models) > 0:
+                center = self.models[0].boundBox.center()
+                center = self.cameraView.matrix33 * self.models[0].modelView.matrix33 * Vector3(center)
+                self.view.translate(*(-center))
+                self.view.translate(dz=-3)
 
         if screenView:
             if self.birdsEye:

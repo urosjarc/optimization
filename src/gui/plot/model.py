@@ -40,6 +40,7 @@ class Model:
                 colors=shape.colors,
                 normals=shape.normals,
             )
+        return self
 
     def setShapes(self, shapes: List[Shape]):
 
@@ -50,6 +51,7 @@ class Model:
         self.boundBox = BoundBox()
         for shape in shapes:
             self.addShape(shape)
+        return self
 
     def center(self):
         vectors = []
