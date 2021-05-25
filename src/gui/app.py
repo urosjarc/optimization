@@ -106,6 +106,7 @@ class MainWindow(QtWidgets.QMainWindow):
             )
 
             bb = shape.boundBox
+            center = bb.center() #Todo: Comment this!!!
             scale = (1/(bb.xMax - bb.xMin), 1/(bb.yMax - bb.yMin), 1/(bb.zMax - bb.zMin))
 
             # Create models
@@ -114,7 +115,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # Create model with scalled x,y,z to ~1
             funModel = Model(GL_TRIANGLES, 3, initBuffers=False)
             funModel.addShape(shape)
-            funModel.view.translate(*-firstMinVector)
+            funModel.view.translate(*-center)
             funModel.view.scale(*scale)
             models.append(funModel)
 
@@ -125,20 +126,20 @@ class MainWindow(QtWidgets.QMainWindow):
                 for i in range(3):
                     base = np.array([0,0,0])
                     base[i] = 1
-                    minAxis.add_line((minVector-base*100).tolist(), (minVector+base*100).tolist(), base.tolist() + [1])
+                    minAxis.add_line((minVector-base*1000).tolist(), (minVector+base*1000).tolist(), base.tolist() + [1])
                 minAxisModel = Model(GL_LINES, 3, initBuffers=False)
                 minAxisModel.addShape(minAxis)
-                minAxisModel.view.translate(*-firstMinVector)
+                minAxisModel.view.translate(*-center)
                 minAxisModel.view.scale(*scale)
                 models.append(minAxisModel)
 
             # Create box grid
-            boundBoxModel = Model(GL_LINES, 3, initBuffers=False)
-            boundBoxShape = Shape().add_boundBox(bb)
-            boundBoxModel.addShape(boundBoxShape)
-            boundBoxModel.view.translate(*-firstMinVector)
-            boundBoxModel.view.scale(*scale)
-            models.append(boundBoxModel)
+            # boundBoxModel = Model(GL_LINES, 3, initBuffers=False)
+            # boundBoxShape = Shape().add_boundBox(bb)
+            # boundBoxModel.addShape(boundBoxShape)
+            # boundBoxModel.view.translate(*-center)
+            # boundBoxModel.view.scale(*scale)
+            # models.append(boundBoxModel)
 
             return models
 
