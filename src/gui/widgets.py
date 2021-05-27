@@ -77,11 +77,16 @@ class OpenGLWidget(QOpenGLWidget):
 
         # Set GLSL constants
         glUniform3fv(self.location['in_light'], 1, self.light)
-        glUniform1ui(self.location['in_scaleRate'], np.uint(int(self.scaleRate)))
         glUniformMatrix4fv(self.location['cameraView'], 1, GL_FALSE, self.cameraView)
         glUniformMatrix4fv(self.location['screenView'], 1, GL_FALSE, self.screenView)
 
         for model in self.models:
+
+            if model.bdata.drawMode == GL_TRIANGLES:
+                glUniform1f(self.location['in_scaleRate'], np.float32(self.scaleRate))
+            else:
+                glUniform1f(self.location['in_scaleRate'], np.float32(0))
+
             bd = model.bdata
 
             # Compute views

@@ -6,7 +6,7 @@ uniform mat4 normalView;
 uniform mat4 screenView;
 
 uniform vec3 in_light;
-uniform uint in_scaleRate;
+uniform float in_scaleRate;
 
 in vec3 in_position;
 in vec3 in_normal;
@@ -15,11 +15,12 @@ in vec4 in_color;
 out vec4 ambient;
 out float diffuse;
 
-float logistic_scalling(float x, float k){
-    float y0 = -1;
-    float x0 = 0;
-    float L = 2;
-    return L/(1+exp(-k * (x-x0))) + y0;
+float height_scalling(float x, float s){
+    float b=0.5;
+    float x0=1.5;
+    float scale=2/(1+exp(-10*s))-1;
+    float p=1-scale;
+    return (2-2*p+b*(x+x0)*(3*p-4))/(2-3*p+4*b*(x+x0)*(p-1)) * 2 - 1.5;
 }
 
 void main() {
@@ -28,9 +29,7 @@ void main() {
     vec4 light = vec4(in_light, 0);
 
     vec4 modelPosition = modelView * position;
-    if(in_scaleRate != 0){
-        modelPosition.z = logistic_scalling(modelPosition.z, in_scaleRate);
-    }
+    modelPosition.z = height_scalling(modelPosition.z, in_scaleRate);
     vec4 cameraModelPosition = cameraView * modelPosition;
     vec4 screenPosition = screenView * cameraModelPosition;
 

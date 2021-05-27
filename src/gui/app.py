@@ -50,7 +50,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.__init()
 
-
     def __init(self):
         for f in functions(2):
             self.nameCB.addItem(f'{f.name:<30}{f.hardness:>.2f}', f)
@@ -83,7 +82,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_scaleRate_change(self, value: float):
         for w in [self.normalW, self.zoomW]:
-            w.scaleRate = 1.1 ** value + 2 if value != 0 else value
+            w.scaleRate = value / 100
+            print(w.scaleRate)
             w.update()
 
     def on_birdsEye_toggle(self, state: int):
@@ -106,8 +106,8 @@ class MainWindow(QtWidgets.QMainWindow):
             )
 
             bb = shape.boundBox
-            center = bb.center() #Todo: Comment this!!!
-            scale = (1/(bb.xMax - bb.xMin), 1/(bb.yMax - bb.yMin), 1/(bb.zMax - bb.zMin))
+            center = bb.center()  # Todo: Comment this!!!
+            scale = (1 / (bb.xMax - bb.xMin), 1 / (bb.yMax - bb.yMin), 1 / (bb.zMax - bb.zMin))
 
             # Create models
             models = []
@@ -124,9 +124,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 minVector = np.array(min2DVector + [fun.minValue])
                 minAxis = Shape()
                 for i in range(3):
-                    base = np.array([0,0,0])
+                    base = np.array([0, 0, 0])
                     base[i] = 1
-                    minAxis.add_line((minVector-base*1000).tolist(), (minVector+base*1000).tolist(), base.tolist() + [1])
+                    minAxis.add_line((minVector - base * 1000).tolist(), (minVector + base * 1000).tolist(),
+                                     base.tolist() + [1])
                 minAxisModel = Model(GL_LINES, 3, initBuffers=False)
                 minAxisModel.addShape(minAxis)
                 minAxisModel.view.translate(*-center)
