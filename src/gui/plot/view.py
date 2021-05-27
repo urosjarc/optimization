@@ -45,3 +45,7 @@ class View:
             dV = self.orientation * Vector3([dx, dy, dz], dtype=np.float32)
         mat = Matrix44.from_translation(dV, dtype=np.float32)
         self.translationMatrix *= mat
+
+    def place(self, x=0, y=0, z=0):
+        mat = Matrix44.from_translation([x, y, z], dtype=np.float32)
+        self.translationMatrix = mat

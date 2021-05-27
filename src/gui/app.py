@@ -83,7 +83,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_scaleRate_change(self, value: float):
         for w in [self.normalW, self.zoomW]:
             w.scaleRate = value / 100
-            print(w.scaleRate)
             w.update()
 
     def on_birdsEye_toggle(self, state: int):
