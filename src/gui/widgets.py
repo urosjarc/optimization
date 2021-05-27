@@ -120,10 +120,12 @@ class OpenGLWidget(QOpenGLWidget):
         if btns != Qt.NoButton and self.mouse is not None:
             dx = self.mouse[0] - event.x()
             dy = self.mouse[1] - event.y()
+            dist = self.view.translationMatrix.m43
+            transScale = 8.9*10e-5*abs(dist)
 
             if self.birdsEye:
                 if btns == Qt.LeftButton:
-                    self.view.translate(dx=-dx / 500, dy=dy / 500)
+                    self.view.translate(dx=-dx*transScale, dy=dy*transScale)
                     self.update()
             else:
                 if btns == Qt.LeftButton:
@@ -131,7 +133,7 @@ class OpenGLWidget(QOpenGLWidget):
                     self.view.rotateZ(dx / 2, local=True)
                     self.update()
                 elif btns == Qt.RightButton:
-                    self.view.translate(dx=-dx / 500, dy=dy / 500)
+                    self.view.translate(dx=-dx * transScale, dy=dy * transScale)
                     self.update()
 
             if btns == Qt.MidButton:
@@ -148,11 +150,15 @@ class OpenGLWidget(QOpenGLWidget):
 
         if btns == Qt.MidButton:
             self.birdsEye = not self.birdsEye
-            self.update(screenView=True, cameraView=True)
+            self.update(screenView=True)
         elif btns == Qt.NoButton:
-            dz = event.angleDelta().y() / 100
+
+            dist = abs(self.view.translationMatrix.m43)
+            zoomScale = 5*10e-5*dist
+            dz = event.angleDelta().y() * zoomScale
             self.view.translate(dz=dz)
-            self.update()
+
+            self.update(screenView=True)
 
     @property
     def cameraView(self):
@@ -163,19 +169,19 @@ class OpenGLWidget(QOpenGLWidget):
     def update(self, screenView=False, cameraView=False, context=True) -> None:
 
         if cameraView:
-            self.view.init()
             if not self.birdsEye:
-                self.view.rotateX(20)
+                self.view.init()
+                self.view.rotateX(60)
                 self.view.rotateZ(20, local=True)
-            if len(self.models) > 0:
-                self.view.translate(dz=-3)
+            self.view.place(z=-2.5)
 
         if screenView:
             if self.birdsEye:
-                self.screenView = Matrix44.orthogonal_projection(-1, 1, -1, 1, 1, 100.0)
+                dist = abs(self.view.translationMatrix.m43) / 5
+                self.screenView = Matrix44.orthogonal_projection(-dist, dist, -dist, dist, 0.001, 100.0)
             else:
                 aspect = self.width() / self.height()
-                self.screenView = Matrix44.perspective_projection(45, aspect, 0.1, 100.0)
+                self.screenView = Matrix44.perspective_projection(45, aspect, 0.001, 100.0)
 
         if context:
             super(OpenGLWidget, self).update()
