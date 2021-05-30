@@ -7,6 +7,7 @@ uniform mat4 screenView;
 
 uniform vec3 in_light;
 uniform float in_scaleRate;
+uniform bool in_diffuse;
 
 in vec3 in_position;
 in vec3 in_normal;
@@ -37,6 +38,7 @@ void main() {
     vec4 lightDirection = light - cameraModelPosition;
 
     ambient = in_color;
-    diffuse = abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
+    diffuse = in_diffuse ? 1 : abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
+
     gl_Position = screenPosition;
 }

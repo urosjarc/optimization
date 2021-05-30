@@ -49,6 +49,7 @@ class OpenGLWidget(QOpenGLWidget):
             'in_light': glGetUniformLocation(program, 'in_light'),
             'in_scaleHeight': glGetUniformLocation(program, 'in_scaleHeight'),
             'in_scaleRate': glGetUniformLocation(program, 'in_scaleRate'),
+            'in_diffuse': glGetUniformLocation(program, 'in_diffuse'),
             'modelView': glGetUniformLocation(program, 'modelView'),
             'cameraView': glGetUniformLocation(program, 'cameraView'),
             'normalView': glGetUniformLocation(program, 'normalView'),
@@ -65,7 +66,7 @@ class OpenGLWidget(QOpenGLWidget):
         glDepthFunc(GL_LEQUAL)
 
         # Configure what will happend at glClear call
-        glClearColor(1, 1, 1, 1)
+        glClearColor(0.1, 0.1, 0.1, 1)
         glClearDepth(1.0)
 
         # Update widget
@@ -84,8 +85,10 @@ class OpenGLWidget(QOpenGLWidget):
 
             if model.bdata.drawMode == GL_TRIANGLES:
                 glUniform1f(self.location['in_scaleRate'], np.float32(self.scaleRate))
+                glUniform1f(self.location['in_diffuse'], np.uint(0))
             else:
                 glUniform1f(self.location['in_scaleRate'], np.float32(0))
+                glUniform1f(self.location['in_diffuse'], np.uint(1))
 
             bd = model.bdata
 

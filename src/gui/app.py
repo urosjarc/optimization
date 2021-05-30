@@ -123,10 +123,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 minVector = np.array(min2DVector + [fun.minValue])
                 minAxis = Shape()
                 for i in range(3):
-                    base = np.array([0, 0, 0])
-                    base[i] = 1
-                    minAxis.add_line((minVector - base * 1000).tolist(), (minVector + base * 1000).tolist(),
-                                     base.tolist() + [1])
+                    color = [1,0,0,1,0,0][i:i+3] + [1]
+                    base = np.array([int(i==j)*(1/scale[j]) for j in range(3)])
+                    minAxis.add_line((minVector - base).tolist(), (minVector+base).tolist(),color)
                 minAxisModel = Model(GL_LINES, 3, initBuffers=False)
                 minAxisModel.addShape(minAxis)
                 minAxisModel.view.translate(*-center)
