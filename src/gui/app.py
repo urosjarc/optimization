@@ -112,7 +112,7 @@ class MainWindow(QtWidgets.QMainWindow):
             models = []
 
             # Create model with scalled x,y,z to ~1
-            funModel = Model(GL_TRIANGLES, 3, initBuffers=False)
+            funModel = Model(GL_TRIANGLES, 3, initBuffers=False, shading=True, colormap=True)
             funModel.addShape(shape)
             funModel.view.translate(*-center)
             funModel.view.scale(*scale)

@@ -19,7 +19,7 @@ class OpenGLWidget(QOpenGLWidget):
 
         self.programLocations: Dict[str, GLuint]
 
-        self.light = np.array([10, 10, 10], dtype=np.float32)
+        self.lightPosition = [1,1,5]
         self.birdsEye = False
         self.scaleRate = 0
         self.view = View()
@@ -42,18 +42,20 @@ class OpenGLWidget(QOpenGLWidget):
 
         # Get program atributes locations
         self.location = {
-            'in_position': glGetAttribLocation(program, 'in_position'),
-            'in_color': glGetAttribLocation(program, 'in_color'),
-            'in_normal': glGetAttribLocation(program, 'in_normal'),
-
-            'in_light': glGetUniformLocation(program, 'in_light'),
-            'in_scaleHeight': glGetUniformLocation(program, 'in_scaleHeight'),
-            'in_scaleRate': glGetUniformLocation(program, 'in_scaleRate'),
-            'in_diffuse': glGetUniformLocation(program, 'in_diffuse'),
             'modelView': glGetUniformLocation(program, 'modelView'),
             'cameraView': glGetUniformLocation(program, 'cameraView'),
             'normalView': glGetUniformLocation(program, 'normalView'),
             'screenView': glGetUniformLocation(program, 'screenView'),
+
+            'in_scaleRate': glGetUniformLocation(program, 'in_scaleRate'),
+
+            'in_lightPosition': glGetUniformLocation(program, 'in_lightPosition'),
+            'in_shading': glGetUniformLocation(program, 'in_shading'),
+            'in_colormap': glGetUniformLocation(program, 'in_colormap'),
+
+            'in_position': glGetAttribLocation(program, 'in_position'),
+            'in_normal': glGetAttribLocation(program, 'in_normal'),
+            'in_color': glGetAttribLocation(program, 'in_color'),
         }
 
         # Activate program "in" atributes to be rendered in a process of rendering
@@ -72,23 +74,24 @@ class OpenGLWidget(QOpenGLWidget):
         # Update widget
         self.update(context=False, cameraView=True, screenView=True)
 
+
     def paintGL(self):
         # Clear color buffer and depth z-buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Set GLSL constants
-        glUniform3fv(self.location['in_light'], 1, self.light)
         glUniformMatrix4fv(self.location['cameraView'], 1, GL_FALSE, self.cameraView)
         glUniformMatrix4fv(self.location['screenView'], 1, GL_FALSE, self.screenView)
 
-        for model in self.models:
+        glUniform3fv(self.location['in_lightPosition'], 1, self.lightPosition)
 
+        for model in self.models:
+            glUniform1ui(self.location['in_shading'], np.uint(model.shading))
+            glUniform1ui(self.location['in_colormap'], np.uint(model.colormap))
             if model.bdata.drawMode == GL_TRIANGLES:
                 glUniform1f(self.location['in_scaleRate'], np.float32(self.scaleRate))
-                glUniform1f(self.location['in_diffuse'], np.uint(0))
             else:
                 glUniform1f(self.location['in_scaleRate'], np.float32(0))
-                glUniform1f(self.location['in_diffuse'], np.uint(1))
 
             bd = model.bdata
 

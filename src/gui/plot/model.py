@@ -9,11 +9,13 @@ from src.gui.plot.view import View
 
 
 class Model:
-    def __init__(self, drawMode, dim, initBuffers=True):
+    def __init__(self, drawMode, dim, initBuffers=True, colormap=False, shading=True):
         self.bdata = BufferData(drawMode, dim)
         self.view = View()
         self.shapes: List[Shape] = []
         self.boundBox: BoundBox = BoundBox()
+        self.colormap = colormap
+        self.shading = shading
 
         self.buffersInited = initBuffers
         if initBuffers:

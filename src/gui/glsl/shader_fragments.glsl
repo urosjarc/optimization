@@ -1,8 +1,7 @@
 #version 460
 
-in vec4 ambient;
-in float diffuse;
+in vec4 color;
 
 void main(void) {
-    gl_FragColor = ambient * diffuse;
+    gl_FragColor = color;
 }
