@@ -24,7 +24,7 @@ class MainWindow(QtWidgets.QMainWindow):
     iterationPauseDSB: QDoubleSpinBox
     nameCB: QComboBox
 
-    scaleHeightCB: QCheckBox
+    heatmapCB: QComboBox
     scaleRateS: QSlider
     birdsEyeCB: QCheckBox
 
@@ -51,6 +51,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__init()
 
     def __init(self):
+        for f in functions(2):
+            self.nameCB.addItem(f'{f.name:<30}{f.hardness:>.2f}', f)
+
         for f in functions(2):
             self.nameCB.addItem(f'{f.name:<30}{f.hardness:>.2f}', f)
 

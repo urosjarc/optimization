@@ -3,8 +3,8 @@ import inspect
 from random import random
 from typing import List
 
-import go_benchmark_functions
-from go_benchmark_functions.go_benchmark import Benchmark
+from libs import go_benchmark_functions
+from libs.go_benchmark_functions.go_benchmark import Benchmark
 import numpy as np
 
 from src import utils
