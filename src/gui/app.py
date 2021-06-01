@@ -3,12 +3,13 @@ from typing import List
 import numpy as np
 from OpenGL.GL import GL_TRIANGLES, GL_LINES
 from PyQt5 import QtWidgets, uic
-from PyQt5.QtCore import QTimer, QThreadPool, Qt
-from PyQt5.QtGui import QKeySequence
+from PyQt5.QtCore import QTimer, QThreadPool, Qt, QSize
+from PyQt5.QtGui import QKeySequence, QIcon
 from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QHBoxLayout, QSlider, QShortcut
 
 from src import utils
 from src.gui.plot import Shape, Model
+from src.gui.plot.colormap import colormaps
 from src.gui.widgets import OpenGLWidget
 from src.gui.worker import Worker
 from src.optimization.space import functions, Function
@@ -24,7 +25,7 @@ class MainWindow(QtWidgets.QMainWindow):
     iterationPauseDSB: QDoubleSpinBox
     nameCB: QComboBox
 
-    heatmapCB: QComboBox
+    colormapCB: QComboBox
     scaleRateS: QSlider
     birdsEyeCB: QCheckBox
 
@@ -43,6 +44,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.nameCB.currentIndexChanged.connect(self.on_name_change)
         self.birdsEyeCB.stateChanged.connect(self.on_birdsEye_toggle)
         self.scaleRateS.valueChanged.connect(self.on_scaleRate_change)
+        self.colormapCB.currentIndexChanged.connect(self.on_colormap_change)
         self.inited = False
 
         self.findAction = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_F), self)
@@ -54,8 +56,9 @@ class MainWindow(QtWidgets.QMainWindow):
         for f in functions(2):
             self.nameCB.addItem(f'{f.name:<30}{f.hardness:>.2f}', f)
 
-        for f in functions(2):
-            self.nameCB.addItem(f'{f.name:<30}{f.hardness:>.2f}', f)
+        for cmap in colormaps():
+            self.colormapCB.addItem(QIcon(cmap.preview), '', userData=cmap.id)
+        self.colormapCB.setIconSize(QSize(256, 22))
 
     def on_load(self):
         self.inited = True
@@ -78,6 +81,12 @@ class MainWindow(QtWidgets.QMainWindow):
             # self.zoomW.models = [model, wireModel]
             # self.normalW.update()
             self.loadFunction(fun)
+
+    def on_colormap_change(self):
+        colormap = self.colormapCB.currentData()
+        for w in [self.normalW, self.zoomW]:
+            w.colormap = colormap
+            w.update()
 
     def on_find_shortcut(self):
         self.nameCB.setEditText('')

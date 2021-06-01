@@ -10,6 +10,7 @@ from pyrr import Matrix44, Vector3
 
 from src import utils
 from src.gui.plot import Model, View
+from src.gui.plot.colormap import colormaps
 
 
 class OpenGLWidget(QOpenGLWidget):
@@ -24,19 +25,36 @@ class OpenGLWidget(QOpenGLWidget):
         self.scaleRate = 0
         self.view = View()
         self.models: List[Model] = []
+        self.colormap: int = 0
 
         self.screenView = None
         self.mouse: List[int] = None
         self.setMouseTracking(True)
 
     def initializeGL(self):
+        maps = ""
+        cases = 'switch(in_colormap){\n'
+        for i,cmap in enumerate(colormaps()):
+            maps += cmap.parsedSrc + "\n"
+            cases += f'''        case {cmap.id}:
+            surfaceColor = {cmap.name}(modelPosition.z+0.5); break;
+'''
+            if i == 50:
+                break
+        cases += '        default:\n            surfaceColor = in_color;\n'
+        cases += '    }'
+
         # Activate program and use it
         with open(utils.getPath(__file__, 'glsl/shader_vertex.glsl')) as f:
-            vs = shaders.compileShader(f.read(), GL_VERTEX_SHADER)
+            src = f.read()
+            src = src.replace("#include <colormap_shaders>", maps)
+            src = src.replace("#include <colormap_shaders_switch>", cases)
+            with open('test.glsl', 'w') as f:
+                f.write(src)
+            vs = shaders.compileShader(src, GL_VERTEX_SHADER)
         with open(utils.getPath(__file__, 'glsl/shader_fragments.glsl')) as f:
             fs = shaders.compileShader(f.read(), GL_FRAGMENT_SHADER)
 
-        # Use compiled shader program
         program = shaders.compileProgram(vs, fs)
         glUseProgram(program)
 
@@ -87,7 +105,7 @@ class OpenGLWidget(QOpenGLWidget):
 
         for model in self.models:
             glUniform1ui(self.location['in_shading'], np.uint(model.shading))
-            glUniform1ui(self.location['in_colormap'], np.uint(model.colormap))
+            glUniform1ui(self.location['in_colormap'], np.uint(self.colormap if model.colormap else -1))
             if model.bdata.drawMode == GL_TRIANGLES:
                 glUniform1f(self.location['in_scaleRate'], np.float32(self.scaleRate))
             else:
