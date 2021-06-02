@@ -39,8 +39,6 @@ class OpenGLWidget(QOpenGLWidget):
             cases += f'''        case {cmap.id}:
             surfaceColor = {cmap.name}(modelPosition.z+0.5); break;
 '''
-            if i == 50:
-                break
         cases += '        default:\n            surfaceColor = in_color;\n'
         cases += '    }'
 

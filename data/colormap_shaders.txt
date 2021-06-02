@@ -1,0 +1,8 @@
+MATLAB_jet
+MATLAB_hot
+MATLAB_bone
+transform_grayscale_banded
+transform_seismic
+MATLAB_autumn
+MATLAB_summer
+MATLAB_winter

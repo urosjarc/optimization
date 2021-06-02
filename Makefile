@@ -18,6 +18,7 @@ libs:
 	git clone https://github.com/philipmorrisintl/GOBench temp/GOBench
 	mv temp/GOBench/gobench/go_benchmark_functions libs/go_benchmark_functions
 	mkdir libs/colormap_shaders
+	rm temp/colormap-shaders/shaders/glsl/gnuplot.frag
 	mv temp/colormap-shaders/shaders/glsl libs/colormap_shaders/glsl
 	mv temp/colormap-shaders/sample libs/colormap_shaders/previews
 	rm temp -rf

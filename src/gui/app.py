@@ -57,7 +57,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.nameCB.addItem(f'{f.name:<30}{f.hardness:>.2f}', f)
 
         for cmap in colormaps():
-            self.colormapCB.addItem(QIcon(cmap.preview), '', userData=cmap.id)
+            self.colormapCB.addItem(QIcon(cmap.preview), cmap.name, userData=cmap.id)
         self.colormapCB.setIconSize(QSize(256, 22))
 
     def on_load(self):
