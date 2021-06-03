@@ -5,7 +5,8 @@ from OpenGL.GL import GL_TRIANGLES, GL_LINES
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QTimer, QThreadPool, Qt, QSize
 from PyQt5.QtGui import QKeySequence, QIcon
-from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QHBoxLayout, QSlider, QShortcut
+from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QHBoxLayout, QSlider, \
+    QShortcut, QLabel
 
 from src import utils
 from src.gui.plot import Shape, Model
@@ -13,6 +14,7 @@ from src.gui.plot.colormap import colormaps
 from src.gui.widgets import OpenGLWidget
 from src.gui.worker import Worker
 from src.optimization.space import functions, Function
+from src.optimization.test import TestOptimizer
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -29,6 +31,8 @@ class MainWindow(QtWidgets.QMainWindow):
     scaleRateS: QSlider
     birdsEyeCB: QCheckBox
 
+    infoL: QLabel
+
     def __init__(self):
         super(MainWindow, self).__init__()  # Call the inherited classes __init__ method
         uic.loadUi(utils.getPath(__file__, 'ui/MainWindow.ui'), self)  # Load the .ui file
@@ -44,11 +48,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.nameCB.currentIndexChanged.connect(self.on_name_change)
         self.birdsEyeCB.stateChanged.connect(self.on_birdsEye_toggle)
         self.scaleRateS.valueChanged.connect(self.on_scaleRate_change)
+        self.iterationPauseDSB.valueChanged.connect(self.on_iterationPause_change)
         self.colormapCB.currentIndexChanged.connect(self.on_colormap_change)
         self.inited = False
 
         self.findAction = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_F), self)
         self.findAction.activated.connect(self.on_find_shortcut)
+        self.nextPointTimer = QTimer(self)
+        self.nextPointTimer.timeout.connect(self.on_nextPoint)
+
+        self.optimizer = None
+        self.iterationsLeft = None
 
         self.__init()
 
@@ -64,11 +74,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.inited = True
         self.on_name_change()
 
+    def on_iterationPause_change(self, value):
+        self.nextPointTimer.setInterval(value)
+
+    def on_nextPoint(self):
+        point = self.optimizer.nextPoint()
+        point[-1] += 1
+        pointShape = Shape().add_point(point, [0, 0, 0, 1])
+        for w in [self.zoomW, self.normalW]:
+            w.points.addShape(pointShape)
+            w.update()
+        self.iterationsLeft -= 1
+        self.infoL.setText('\n'.join([
+            f'Iterations left: {self.iterationsLeft}',
+        ]))
+
     def on_start(self):
-        print('start')
+        self.optimizer = TestOptimizer(self.nameCB.currentData())
+        self.iterationsLeft = self.iterationsSB.value()
+        self.nextPointTimer.setInterval(self.iterationPauseDSB.value())
+        self.nextPointTimer.start()
 
     def on_stop(self):
-        print('stop')
+        self.nextPointTimer.stop()
 
     def on_name_change(self):
         fun = self.nameCB.currentData()
@@ -156,6 +184,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         def on_result(widget: OpenGLWidget, models: List[Model]):
             widget.models = models
+            widget.points.view = models[0].view
             for m in models:
                 m.initBuffers()
             widget.update(cameraView=True)

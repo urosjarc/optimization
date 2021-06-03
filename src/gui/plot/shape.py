@@ -104,6 +104,13 @@ class Shape:
         self.boundBox.resize(points=[start, finish])
         return self
 
+    def add_point(self, location: List[float], color: List[float]):
+        self.positions += location
+        self.colors += color
+        self.normals += location
+        self.boundBox.resize(points=[location])
+        return self
+
     def add_boundBox(self, bb: BoundBox):
         color = [0, 0, 0, 1]
         p0 = [bb.xMin, bb.yMax, bb.zMax]
@@ -178,6 +185,23 @@ class Shape:
             geom.force_outward_normals(cyl)
             mesh = geom.generate_mesh()
 
+            return self.__addMesh(mesh.points, mesh.cells[1].data, color)
+
+    def add_cylinder(self, center, axis, radius, color):
+        with pygmsh.occ.Geometry() as geom:
+            cyl = geom.add_cylinder(center, axis, radius, mesh_size=0.1)
+            cyl.id = cyl._id
+            geom.force_outward_normals(cyl)
+            mesh = geom.generate_mesh()
+
+            return self.__addMesh(mesh.points, mesh.cells[1].data, color)
+
+    def add_sphere(self, center, radius, color):
+        with pygmsh.occ.Geometry() as geom:
+            cyl = geom.add_ball(center, radius)
+            cyl.id = cyl._id
+            geom.force_outward_normals(cyl)
+            mesh = geom.generate_mesh()
             return self.__addMesh(mesh.points, mesh.cells[1].data, color)
 
     def add_bunny(self, color):

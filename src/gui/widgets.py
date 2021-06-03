@@ -25,6 +25,7 @@ class OpenGLWidget(QOpenGLWidget):
         self.scaleRate = 0
         self.view = View()
         self.models: List[Model] = []
+        self.points: Model = None
         self.colormap: int = 0
 
         self.screenView = None
@@ -37,9 +38,14 @@ class OpenGLWidget(QOpenGLWidget):
         for i,cmap in enumerate(colormaps()):
             maps += cmap.parsedSrc + "\n"
             cases += f'''        case {cmap.id}:
-            surfaceColor = {cmap.name}(modelPosition.z+0.5); break;
+            surfaceColor = {cmap.name}(modelPosition.z+0.5);
+            surfaceColor_inverse = {cmap.name}(-modelPosition.z+0.5);
+            break;
 '''
-        cases += '        default:\n            surfaceColor = in_color;\n'
+        cases += '        default:\n'
+        cases += '            surfaceColor = in_color;\n'
+        cases += '            surfaceColor_inverse = in_color*-1;\n'
+        cases += '            break;\n'
         cases += '    }'
 
         # Activate program and use it
@@ -47,8 +53,6 @@ class OpenGLWidget(QOpenGLWidget):
             src = f.read()
             src = src.replace("#include <colormap_shaders>", maps)
             src = src.replace("#include <colormap_shaders_switch>", cases)
-            with open('test.glsl', 'w') as f:
-                f.write(src)
             vs = shaders.compileShader(src, GL_VERTEX_SHADER)
         with open(utils.getPath(__file__, 'glsl/shader_fragments.glsl')) as f:
             fs = shaders.compileShader(f.read(), GL_FRAGMENT_SHADER)
@@ -67,6 +71,7 @@ class OpenGLWidget(QOpenGLWidget):
 
             'in_lightPosition': glGetUniformLocation(program, 'in_lightPosition'),
             'in_shading': glGetUniformLocation(program, 'in_shading'),
+            'in_colormapInverse': glGetUniformLocation(program, 'in_colormapInverse'),
             'in_colormap': glGetUniformLocation(program, 'in_colormap'),
 
             'in_position': glGetAttribLocation(program, 'in_position'),
@@ -88,8 +93,9 @@ class OpenGLWidget(QOpenGLWidget):
         glClearDepth(1.0)
 
         # Update widget
+        glPointSize(4.0)
+        self.points = Model(GL_POINTS, 3, colormap=True, shading=False)
         self.update(context=False, cameraView=True, screenView=True)
-
 
     def paintGL(self):
         # Clear color buffer and depth z-buffer
@@ -101,13 +107,21 @@ class OpenGLWidget(QOpenGLWidget):
 
         glUniform3fv(self.location['in_lightPosition'], 1, self.lightPosition)
 
-        for model in self.models:
+        for model in self.models + [self.points]:
+
             glUniform1ui(self.location['in_shading'], np.uint(model.shading))
             glUniform1ui(self.location['in_colormap'], np.uint(self.colormap if model.colormap else -1))
-            if model.bdata.drawMode == GL_TRIANGLES:
+
+            if model.bdata.drawMode != GL_LINES:
                 glUniform1f(self.location['in_scaleRate'], np.float32(self.scaleRate))
             else:
                 glUniform1f(self.location['in_scaleRate'], np.float32(0))
+
+            if model.bdata.drawMode == GL_POINTS:
+                glUniform1ui(self.location['in_colormapInverse'], np.uint(True))
+            else:
+                glUniform1ui(self.location['in_colormapInverse'], np.uint(False))
+
 
             bd = model.bdata
 

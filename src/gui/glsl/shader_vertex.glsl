@@ -13,6 +13,7 @@ uniform vec3 in_lightPosition;
 uniform vec4 in_lightColor;
 
 uniform bool in_shading;
+uniform bool in_colormapInverse;
 uniform uint in_colormap;
 
 in vec3 in_position;
@@ -47,10 +48,14 @@ void main() {
     vec4 ambientColor = vec4(0.5, 0.5, 0.5, 1.0);
 
     vec4 surfaceColor;
+    vec4 surfaceColor_inverse;
     #include <colormap_shaders_switch>
 
     float diffuseRate = !in_shading ? 1: abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
     vec4 diffuseColor = diffuseRate * lightColor;
+
+    if(in_colormapInverse)
+        surfaceColor = surfaceColor_inverse;
 
     color = (ambientColor + diffuseColor) * surfaceColor;
     gl_Position = screenPosition;

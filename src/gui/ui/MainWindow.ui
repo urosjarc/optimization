@@ -170,6 +170,9 @@
               <property name="maximum">
                <double>1000.000000000000000</double>
               </property>
+              <property name="value">
+               <double>200.000000000000000</double>
+              </property>
              </widget>
             </item>
             <item>
@@ -306,7 +309,7 @@
          <number>8</number>
         </property>
         <item>
-         <widget class="QLabel" name="info">
+         <widget class="QLabel" name="infoL">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
             <horstretch>0</horstretch>
