@@ -4,7 +4,8 @@ import numpy as np
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QMouseEvent, QWheelEvent
+from PyQt5.QtGui import QMouseEvent, QWheelEvent, QSurfaceFormat
+from PyQt5.QtOpenGL import QGLFormat
 from PyQt5.QtWidgets import QOpenGLWidget
 from pyrr import Matrix44, Vector3
 
@@ -16,16 +17,22 @@ from src.gui.plot.colormap import colormaps
 class OpenGLWidget(QOpenGLWidget):
 
     def __init__(self, parent):
+        format = QSurfaceFormat()
+        format.setSamples(8)
         QOpenGLWidget.__init__(self, parent=parent)
+        self.setFormat(format)
 
         self.programLocations: Dict[str, GLuint]
+
+        self.functionModel: Model = None
+        self.axesModel: Model = None
+        self.evalPointsModel: Model = None
+        self.evalLinesModel: Model = None
 
         self.lightPosition = [1,1,5]
         self.birdsEye = False
         self.scaleRate = 0
         self.view = View()
-        self.models: List[Model] = []
-        self.points: Model = None
         self.colormap: int = 0
 
         self.screenView = None
@@ -94,7 +101,15 @@ class OpenGLWidget(QOpenGLWidget):
 
         # Update widget
         glPointSize(4.0)
-        self.points = Model(GL_POINTS, 3, colormap=True, shading=False)
+        glLineWidth(1.0)
+        glEnable(GL_MULTISAMPLE)
+        glEnable(GL_LINE_SMOOTH)
+
+        self.evalPointsModel = Model(GL_POINTS, 3, colormap=True, shading=False)
+        self.evalLinesModel = Model(GL_LINES, 3, colormap=True, shading=False)
+        self.functionModel = Model(GL_TRIANGLES, 3, colormap=True, shading=True)
+        self.axesModel = Model(GL_LINES, 3, colormap=False, shading=False)
+
         self.update(context=False, cameraView=True, screenView=True)
 
     def paintGL(self):
@@ -107,7 +122,7 @@ class OpenGLWidget(QOpenGLWidget):
 
         glUniform3fv(self.location['in_lightPosition'], 1, self.lightPosition)
 
-        for model in self.models + [self.points]:
+        for model in [self.functionModel, self.axesModel, self.evalLinesModel, self.evalPointsModel]:
 
             glUniform1ui(self.location['in_shading'], np.uint(model.shading))
             glUniform1ui(self.location['in_colormap'], np.uint(self.colormap if model.colormap else -1))

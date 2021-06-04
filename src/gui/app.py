@@ -81,8 +81,10 @@ class MainWindow(QtWidgets.QMainWindow):
         point = self.optimizer.nextPoint()
         point[-1] += 1
         pointShape = Shape().add_point(point, [0, 0, 0, 1])
+        lineShape = Shape().add_line(point, [point[0], point[1], point[2]+25], [1,1,1,1])
         for w in [self.zoomW, self.normalW]:
-            w.points.addShape(pointShape)
+            w.evalLinesModel.addShape(pointShape)
+            w.evalPointsModel.addShape(lineShape)
             w.update()
         self.iterationsLeft -= 1
         self.infoL.setText('\n'.join([
@@ -183,8 +185,10 @@ class MainWindow(QtWidgets.QMainWindow):
             return models
 
         def on_result(widget: OpenGLWidget, models: List[Model]):
-            widget.models = models
-            widget.points.view = models[0].view
+            widget.functionModel = models[0]
+            widget.axesModel = models[1]
+            widget.evalPointsModel.view = models[0].view
+            widget.evalLinesModel.view = models[0].view
             for m in models:
                 m.initBuffers()
             widget.update(cameraView=True)

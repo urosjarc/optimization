@@ -7,7 +7,7 @@ from src.optimization.space import Function
 
 class TestOptimizer:
     def __init__(self, fun: Function):
-        self.fun = fun
+        self.fun: Function = fun
     def nextPoint(self) -> List[float]:
         xy = [random.randint(*self.fun.bounds[0]), random.randint(*self.fun.bounds[1])]
         return xy + [self.fun(xy)]
