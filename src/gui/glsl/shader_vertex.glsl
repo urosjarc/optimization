@@ -2,19 +2,21 @@
 
 #include <colormap_shaders>
 
+vec4 lightColor = vec4(0.7,0.7,0.7,1);
+vec4 ambientColor = vec4(0.5, 0.5, 0.5, 1.0);
+
 uniform mat4 modelView;
 uniform mat4 cameraView;
 uniform mat4 normalView;
 uniform mat4 screenView;
 
 uniform float in_scaleRate;
-
 uniform vec3 in_lightPosition;
-uniform vec4 in_lightColor;
-
-uniform bool in_shading;
-uniform bool in_colormapInverse;
 uniform uint in_colormap;
+
+uniform bool in_modelShading;
+uniform uint in_modelColormap;
+uniform bool in_modelScale;
 
 in vec3 in_position;
 in vec3 in_normal;
@@ -36,26 +38,37 @@ void main() {
     vec4 light = vec4(in_lightPosition, 0);
 
     vec4 modelPosition = modelView * position;
-    if(in_scaleRate > 0)
+    if(in_modelScale)
         modelPosition.z = height_scalling(modelPosition.z, in_scaleRate);
+
     vec4 cameraModelPosition = cameraView * modelPosition;
     vec4 screenPosition = screenView * cameraModelPosition;
 
     vec4 cameraModelNormal = normalView * normal;
     vec4 lightDirection = light - cameraModelPosition;
 
-    vec4 lightColor = vec4(0.7,0.7,0.7,1);
-    vec4 ambientColor = vec4(0.5, 0.5, 0.5, 1.0);
-
-    vec4 surfaceColor;
-    vec4 surfaceColor_inverse;
+    vec4 colormap;
+    vec4 colormap_inverse;
     #include <colormap_shaders_switch>
 
-    float diffuseRate = !in_shading ? 1: abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
+    float diffuseRate = 1;
+    if(in_modelShading)
+        diffuseRate = abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
+
     vec4 diffuseColor = diffuseRate * lightColor;
 
-    if(in_colormapInverse)
-        surfaceColor = surfaceColor_inverse;
+    vec4 surfaceColor;
+    switch(in_modelColormap){
+        case 0:
+            surfaceColor = in_color;
+            break;
+        case 1:
+            surfaceColor = colormap;
+            break;
+        case 2:
+            surfaceColor = colormap_inverse;
+            break;
+    }
 
     color = (ambientColor + diffuseColor) * surfaceColor;
     gl_Position = screenPosition;

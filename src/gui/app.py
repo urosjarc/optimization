@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDouble
 from src import utils
 from src.gui.plot import Shape, Model
 from src.gui.plot.colormap import colormaps
+from src.gui.plot.model import CMAP
 from src.gui.widgets import OpenGLWidget
 from src.gui.worker import Worker
 from src.optimization.space import functions, Function
@@ -26,6 +27,7 @@ class MainWindow(QtWidgets.QMainWindow):
     iterationsSB: QSpinBox
     iterationPauseDSB: QDoubleSpinBox
     nameCB: QComboBox
+    ortogonalViewCB: QComboBox
 
     colormapCB: QComboBox
     scaleRateS: QSlider
@@ -39,6 +41,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.normalW: OpenGLWidget = OpenGLWidget(self)
         self.zoomW: OpenGLWidget = OpenGLWidget(self)
+        self.widgets = [self.normalW, self.zoomW]
 
         self.widgetsHL.addWidget(self.normalW)
         self.widgetsHL.addWidget(self.zoomW)
@@ -47,6 +50,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stopPB.clicked.connect(self.on_stop)
         self.nameCB.currentIndexChanged.connect(self.on_name_change)
         self.birdsEyeCB.stateChanged.connect(self.on_birdsEye_toggle)
+        self.ortogonalViewCB.stateChanged.connect(self.on_ortogonalView_toggle)
         self.scaleRateS.valueChanged.connect(self.on_scaleRate_change)
         self.iterationPauseDSB.valueChanged.connect(self.on_iterationPause_change)
         self.colormapCB.currentIndexChanged.connect(self.on_colormap_change)
@@ -67,7 +71,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.nameCB.addItem(f'{f.name:<30}{f.hardness:>.2f}', f)
 
         for cmap in colormaps():
-            self.colormapCB.addItem(QIcon(cmap.preview), cmap.name, userData=cmap.id)
+            self.colormapCB.addItem(QIcon(cmap.preview),'', userData=cmap.id)
         self.colormapCB.setIconSize(QSize(256, 22))
 
     def on_load(self):
@@ -79,12 +83,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_nextPoint(self):
         point = self.optimizer.nextPoint()
-        point[-1] += 1
+        point[-1] += 0.001
         pointShape = Shape().add_point(point, [0, 0, 0, 1])
-        lineShape = Shape().add_line(point, [point[0], point[1], point[2]+25], [1,1,1,1])
-        for w in [self.zoomW, self.normalW]:
-            w.evalLinesModel.addShape(pointShape)
-            w.evalPointsModel.addShape(lineShape)
+        for w in self.widgets:
+            funBB = w.functionModel.boundBox
+            height = funBB.zMax - funBB.zMin
+            lineShape = Shape().add_line(point, [point[0], point[1], point[2]+height/4], [1,1,1,1])
+            w.evalLinesModel.addShape(lineShape)
+            w.evalPointsModel.addShape(pointShape)
             w.update()
         self.iterationsLeft -= 1
         self.infoL.setText('\n'.join([
@@ -98,6 +104,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.nextPointTimer.start()
 
     def on_stop(self):
+        for w in self.widgets:
+            w.evalLinesModel.setShapes([])
+            w.evalPointsModel.setShapes([])
+            w.update()
         self.nextPointTimer.stop()
 
     def on_name_change(self):
@@ -114,7 +124,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_colormap_change(self):
         colormap = self.colormapCB.currentData()
-        for w in [self.normalW, self.zoomW]:
+        for w in self.widgets:
             w.colormap = colormap
             w.update()
 
@@ -123,13 +133,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.nameCB.setFocus()
 
     def on_scaleRate_change(self, value: float):
-        for w in [self.normalW, self.zoomW]:
-            w.scaleRate = value / 100
+        for w in self.widgets:
+            w.scaleRate = (value / 100)**2
             w.update()
 
     def on_birdsEye_toggle(self, state: int):
-        for w in [self.normalW, self.zoomW]:
+        for w in self.widgets:
             w.birdsEye = state == 2
+            w.update(screenView=True)
+
+    def on_ortogonalView_toggle(self, state: int):
+        for w in self.widgets:
+            w.ortogonalView = state == 2
             w.update(screenView=True)
 
     def loadFunction(self, fun: Function):
@@ -154,7 +169,7 @@ class MainWindow(QtWidgets.QMainWindow):
             models = []
 
             # Create model with scalled x,y,z to ~1
-            funModel = Model(GL_TRIANGLES, 3, initBuffers=False, shading=True, colormap=True)
+            funModel = Model(GL_TRIANGLES, 3, initBuffers=False, shading=True, colormap=CMAP.NORMAL, scale=True)
             funModel.addShape(shape)
             funModel.view.translate(*-center)
             funModel.view.scale(*scale)

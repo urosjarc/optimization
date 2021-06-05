@@ -12,6 +12,7 @@ from pyrr import Matrix44, Vector3
 from src import utils
 from src.gui.plot import Model, View
 from src.gui.plot.colormap import colormaps
+from src.gui.plot.model import CMAP
 
 
 class OpenGLWidget(QOpenGLWidget):
@@ -24,11 +25,12 @@ class OpenGLWidget(QOpenGLWidget):
 
         self.programLocations: Dict[str, GLuint]
 
-        self.functionModel: Model = None
-        self.axesModel: Model = None
-        self.evalPointsModel: Model = None
-        self.evalLinesModel: Model = None
+        self.functionModel = Model(GL_TRIANGLES, 3, initBuffers=False, colormap=CMAP.NORMAL, shading=True, scale=True)
+        self.axesModel = Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.NONE, shading=False, scale=False)
+        self.evalPointsModel = Model(GL_POINTS, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=True)
+        self.evalLinesModel = Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=True)
 
+        self.ortogonalView = False
         self.lightPosition = [1,1,5]
         self.birdsEye = False
         self.scaleRate = 0
@@ -45,13 +47,13 @@ class OpenGLWidget(QOpenGLWidget):
         for i,cmap in enumerate(colormaps()):
             maps += cmap.parsedSrc + "\n"
             cases += f'''        case {cmap.id}:
-            surfaceColor = {cmap.name}(modelPosition.z+0.5);
-            surfaceColor_inverse = {cmap.name}(-modelPosition.z+0.5);
+            colormap = {cmap.name}(modelPosition.z+0.5);
+            colormap_inverse = {cmap.name}(-modelPosition.z+0.5);
             break;
 '''
         cases += '        default:\n'
-        cases += '            surfaceColor = in_color;\n'
-        cases += '            surfaceColor_inverse = in_color*-1;\n'
+        cases += '            colormap = in_color;\n'
+        cases += '            colormap_inverse = in_color*-1;\n'
         cases += '            break;\n'
         cases += '    }'
 
@@ -68,6 +70,20 @@ class OpenGLWidget(QOpenGLWidget):
         glUseProgram(program)
 
         # Get program atributes locations
+        '''
+        glUniformMatrix4fv(self.location['cameraView'], 1, GL_FALSE, self.cameraView)
+        glUniformMatrix4fv(self.location['screenView'], 1, GL_FALSE, self.screenView)
+
+        glUniform3fv(self.location['in_lightPosition'], 1, self.lightPosition)
+        glUniform1ui(self.location['in_colormap'], np.uint(self.colormap))
+        glUniform1f(self.location['in_scaleRate'], np.float32(self.scaleRate))
+
+        for model in [self.functionModel, self.axesModel, self.evalLinesModel, self.evalPointsModel]:
+
+            glUniform1ui(self.location['in_modelShading'], np.uint(model.shading))
+            glUniform1ui(self.location['in_modelColormap'], np.uint(model.colormap))
+            glUniform1ui(self.location['in_modelScale'], np.uint(model.scale))
+        '''
         self.location = {
             'modelView': glGetUniformLocation(program, 'modelView'),
             'cameraView': glGetUniformLocation(program, 'cameraView'),
@@ -75,11 +91,12 @@ class OpenGLWidget(QOpenGLWidget):
             'screenView': glGetUniformLocation(program, 'screenView'),
 
             'in_scaleRate': glGetUniformLocation(program, 'in_scaleRate'),
-
             'in_lightPosition': glGetUniformLocation(program, 'in_lightPosition'),
-            'in_shading': glGetUniformLocation(program, 'in_shading'),
-            'in_colormapInverse': glGetUniformLocation(program, 'in_colormapInverse'),
             'in_colormap': glGetUniformLocation(program, 'in_colormap'),
+
+            'in_modelShading': glGetUniformLocation(program, 'in_modelShading'),
+            'in_modelColormap': glGetUniformLocation(program, 'in_modelColormap'),
+            'in_modelScale': glGetUniformLocation(program, 'in_modelScale'),
 
             'in_position': glGetAttribLocation(program, 'in_position'),
             'in_normal': glGetAttribLocation(program, 'in_normal'),
@@ -100,15 +117,15 @@ class OpenGLWidget(QOpenGLWidget):
         glClearDepth(1.0)
 
         # Update widget
-        glPointSize(4.0)
+        glPointSize(5.0)
         glLineWidth(1.0)
         glEnable(GL_MULTISAMPLE)
         glEnable(GL_LINE_SMOOTH)
 
-        self.evalPointsModel = Model(GL_POINTS, 3, colormap=True, shading=False)
-        self.evalLinesModel = Model(GL_LINES, 3, colormap=True, shading=False)
-        self.functionModel = Model(GL_TRIANGLES, 3, colormap=True, shading=True)
-        self.axesModel = Model(GL_LINES, 3, colormap=False, shading=False)
+        self.evalPointsModel.initBuffers()
+        self.evalLinesModel.initBuffers()
+        self.functionModel.initBuffers()
+        self.axesModel.initBuffers()
 
         self.update(context=False, cameraView=True, screenView=True)
 
@@ -121,22 +138,14 @@ class OpenGLWidget(QOpenGLWidget):
         glUniformMatrix4fv(self.location['screenView'], 1, GL_FALSE, self.screenView)
 
         glUniform3fv(self.location['in_lightPosition'], 1, self.lightPosition)
+        glUniform1ui(self.location['in_colormap'], np.uint(self.colormap))
+        glUniform1f(self.location['in_scaleRate'], np.float32(self.scaleRate))
 
         for model in [self.functionModel, self.axesModel, self.evalLinesModel, self.evalPointsModel]:
 
-            glUniform1ui(self.location['in_shading'], np.uint(model.shading))
-            glUniform1ui(self.location['in_colormap'], np.uint(self.colormap if model.colormap else -1))
-
-            if model.bdata.drawMode != GL_LINES:
-                glUniform1f(self.location['in_scaleRate'], np.float32(self.scaleRate))
-            else:
-                glUniform1f(self.location['in_scaleRate'], np.float32(0))
-
-            if model.bdata.drawMode == GL_POINTS:
-                glUniform1ui(self.location['in_colormapInverse'], np.uint(True))
-            else:
-                glUniform1ui(self.location['in_colormapInverse'], np.uint(False))
-
+            glUniform1ui(self.location['in_modelShading'], np.uint(model.shading))
+            glUniform1ui(self.location['in_modelColormap'], np.uint(model.colormap.value))
+            glUniform1ui(self.location['in_modelScale'], np.uint(model.scale))
 
             bd = model.bdata
 
@@ -164,6 +173,7 @@ class OpenGLWidget(QOpenGLWidget):
             return
 
         glViewport(0, 0, width, height)
+        self.update(screenView=True)
 
     def mouseMoveEvent(self, event: QMouseEvent):
         btns = event.buttons()
@@ -227,7 +237,7 @@ class OpenGLWidget(QOpenGLWidget):
             self.view.place(z=-2.5)
 
         if screenView:
-            if self.birdsEye:
+            if self.ortogonalView:
                 dist = abs(self.view.translationMatrix.m43) / 5
                 self.screenView = Matrix44.orthogonal_projection(-dist, dist, -dist, dist, 0.001, 100.0)
             else:

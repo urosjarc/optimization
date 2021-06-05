@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import List
 
 import numpy as np
@@ -8,13 +9,20 @@ from src.gui.plot.shape import Shape, BoundBox
 from src.gui.plot.view import View
 
 
+class CMAP(Enum):
+    NONE = 0
+    NORMAL = 1
+    INVERSE = 2
+
+
 class Model:
-    def __init__(self, drawMode, dim, initBuffers=True, colormap=False, shading=True):
+    def __init__(self, drawMode, dim, initBuffers=True, colormap: CMAP = CMAP.NONE, shading=True, scale=False):
         self.bdata = BufferData(drawMode, dim)
         self.view = View()
         self.shapes: List[Shape] = []
         self.boundBox: BoundBox = BoundBox()
-        self.colormap = colormap
+        self.colormap: CMAP = colormap
+        self.scale: bool = scale
         self.shading = shading
 
         self.buffersInited = initBuffers
