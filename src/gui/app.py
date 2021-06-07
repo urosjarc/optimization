@@ -25,9 +25,14 @@ class MainWindow(QtWidgets.QMainWindow):
     stopPB: QPushButton
 
     iterationsSB: QSpinBox
-    iterationPauseDSB: QDoubleSpinBox
+    iterationPauseSB: QSpinBox
     nameCB: QComboBox
     ortogonalViewCB: QComboBox
+
+    showPointsCB: QCheckBox
+    showLinesCB: QCheckBox
+    pointsSizeS: QSlider
+    linesSizeS: QSlider
 
     colormapCB: QComboBox
     scaleRateS: QSlider
@@ -52,8 +57,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.birdsEyeCB.stateChanged.connect(self.on_birdsEye_toggle)
         self.ortogonalViewCB.stateChanged.connect(self.on_ortogonalView_toggle)
         self.scaleRateS.valueChanged.connect(self.on_scaleRate_change)
-        self.iterationPauseDSB.valueChanged.connect(self.on_iterationPause_change)
+        self.iterationPauseSB.valueChanged.connect(self.on_iterationPause_change)
         self.colormapCB.currentIndexChanged.connect(self.on_colormap_change)
+        self.inverseColormapCB.stateChanged.connect(self.on_inverseColormap_toggle)
+        self.lightCB.stateChanged.connect(self.on_light_toggle)
+        self.pointsSizeS.valueChanged.connect(self.on_pointsSize_change)
+        self.linesSizeS.valueChanged.connect(self.on_linesSize_change)
+
+        self.lightCB.stateChanged.connect(self.on_light_toggle)
+
         self.inited = False
 
         self.findAction = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_F), self)
@@ -68,15 +80,34 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init(self):
         for f in functions(2):
-            self.nameCB.addItem(f'{f.name:<30}{f.hardness:>.2f}', f)
+            self.nameCB.addItem(f'{f.name:<27}{f.hardness:>.2f}', f)
 
         for cmap in colormaps():
             self.colormapCB.addItem(QIcon(cmap.preview),'', userData=cmap.id)
-        self.colormapCB.setIconSize(QSize(256, 22))
 
     def on_load(self):
         self.inited = True
         self.on_name_change()
+
+    def on_pointsSize_change(self, value):
+        for w in self.widgets:
+            w.pointsSize = value
+            w.update()
+
+    def on_linesSize_change(self, value):
+        for w in self.widgets:
+            w.linesSize = value
+            w.update()
+
+    def on_inverseColormap_toggle(self, state):
+        for w in self.widgets:
+            w.inverseColormap = state == 2
+            w.update()
+
+    def on_light_toggle(self, state):
+        for w in self.widgets:
+            w.light = state == 2
+            w.update()
 
     def on_iterationPause_change(self, value):
         self.nextPointTimer.setInterval(value)
@@ -100,7 +131,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_start(self):
         self.optimizer = TestOptimizer(self.nameCB.currentData())
         self.iterationsLeft = self.iterationsSB.value()
-        self.nextPointTimer.setInterval(self.iterationPauseDSB.value())
+        self.nextPointTimer.setInterval(self.iterationPauseSB.value())
         self.nextPointTimer.start()
 
     def on_stop(self):

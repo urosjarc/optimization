@@ -2,8 +2,8 @@
 
 #include <colormap_shaders>
 
-vec4 lightColor = vec4(0.7,0.7,0.7,1);
 vec4 ambientColor = vec4(0.5, 0.5, 0.5, 1.0);
+vec4 lightColor = vec4(0.7,0.7,0.7,1);
 
 uniform mat4 modelView;
 uniform mat4 cameraView;
@@ -13,6 +13,7 @@ uniform mat4 screenView;
 uniform float in_scaleRate;
 uniform vec3 in_lightPosition;
 uniform uint in_colormap;
+uniform bool in_inverseColormap;
 
 uniform bool in_modelShading;
 uniform uint in_modelColormap;
