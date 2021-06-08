@@ -35,12 +35,11 @@ class OpenGLWidget(QOpenGLWidget):
         self.birdsEye = False
         self.scaleRate = 0
         self.pointsSize = 10
+        self.linesSize = 2
         self.view = View()
         self.colormap: int = 0
         self.inverseColormap: bool = False
         self.light: bool = False
-        self.showPoints = True
-        self.showLines = True
 
         self.screenView = None
         self.mouse: List[int] = None
@@ -98,7 +97,6 @@ class OpenGLWidget(QOpenGLWidget):
             'in_scaleRate': glGetUniformLocation(program, 'in_scaleRate'),
             'in_lightPosition': glGetUniformLocation(program, 'in_lightPosition'),
             'in_colormap': glGetUniformLocation(program, 'in_colormap'),
-            'in_inverseColormap': glGetUniformLocation(program, 'in_inverseColormap'),
 
             'in_modelShading': glGetUniformLocation(program, 'in_modelShading'),
             'in_modelColormap': glGetUniformLocation(program, 'in_modelColormap'),
@@ -134,6 +132,7 @@ class OpenGLWidget(QOpenGLWidget):
 
     def paintGL(self):
         glPointSize(self.pointsSize)
+
         if self.light:
             paint = 0.9372549019607843
             glClearColor(paint, paint, paint, 1)
@@ -148,13 +147,12 @@ class OpenGLWidget(QOpenGLWidget):
         glUniformMatrix4fv(self.location['screenView'], 1, GL_FALSE, self.screenView)
         glUniform3fv(self.location['in_lightPosition'], 1, self.lightPosition)
         glUniform1ui(self.location['in_colormap'], np.uint(self.colormap))
-        glUniform1ui(self.location['in_inverseColormap'], np.uint(self.inverseColormap))
         glUniform1f(self.location['in_scaleRate'], np.float32(self.scaleRate))
 
         models =[self.functionModel, self.axesModel]
-        if self.showPoints:
+        if self.pointsSize > 0:
             models.append(self.evalPointsModel)
-        if self.showLines:
+        if self.linesSize > 0:
             models.append(self.evalLinesModel)
 
         for model in models:

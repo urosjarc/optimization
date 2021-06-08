@@ -13,7 +13,6 @@ uniform mat4 screenView;
 uniform float in_scaleRate;
 uniform vec3 in_lightPosition;
 uniform uint in_colormap;
-uniform bool in_inverseColormap;
 
 uniform bool in_modelShading;
 uniform uint in_modelColormap;
@@ -59,16 +58,16 @@ void main() {
     vec4 diffuseColor = diffuseRate * lightColor;
 
     vec4 surfaceColor;
-    switch(in_modelColormap){
+    switch (in_modelColormap){
         case 0:
-            surfaceColor = in_color;
-            break;
+        surfaceColor = in_color;
+        break;
         case 1:
-            surfaceColor = colormap;
-            break;
+        surfaceColor = colormap;
+        break;
         case 2:
-            surfaceColor = colormap_inverse;
-            break;
+        surfaceColor = colormap_inverse;
+        break;
     }
 
     color = (ambientColor + diffuseColor) * surfaceColor;

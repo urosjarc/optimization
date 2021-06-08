@@ -32,36 +32,41 @@
    <string>Optimization test</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_2">
-    <property name="leftMargin">
-     <number>0</number>
-    </property>
-    <property name="topMargin">
-     <number>0</number>
-    </property>
-    <property name="rightMargin">
-     <number>0</number>
-    </property>
-    <property name="bottomMargin">
-     <number>0</number>
+   <layout class="QVBoxLayout" name="verticalLayout_8">
+    <property name="spacing">
+     <number>8</number>
     </property>
     <item>
-     <layout class="QHBoxLayout" name="widgetsHL">
+     <layout class="QVBoxLayout" name="verticalLayout_2">
       <property name="spacing">
-       <number>1</number>
+       <number>0</number>
       </property>
       <item>
-       <spacer name="verticalSpacer">
+       <layout class="QHBoxLayout" name="widgetsHL">
+        <property name="spacing">
+         <number>1</number>
+        </property>
+        <item>
+         <spacer name="verticalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="Line" name="line_6">
         <property name="orientation">
-         <enum>Qt::Vertical</enum>
+         <enum>Qt::Horizontal</enum>
         </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>0</width>
-          <height>0</height>
-         </size>
-        </property>
-       </spacer>
+       </widget>
       </item>
      </layout>
     </item>
@@ -258,6 +263,12 @@
            <size>
             <width>0</width>
             <height>33</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>16777215</height>
            </size>
           </property>
          </widget>
@@ -532,19 +543,6 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
-           <widget class="QCheckBox" name="inverseColormapCB">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>33</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>Inverse color</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QCheckBox" name="lightCB">
             <property name="minimumSize">
              <size>
@@ -597,6 +595,19 @@
          </layout>
         </item>
        </layout>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
       </item>
      </layout>
     </item>

@@ -59,7 +59,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scaleRateS.valueChanged.connect(self.on_scaleRate_change)
         self.iterationPauseSB.valueChanged.connect(self.on_iterationPause_change)
         self.colormapCB.currentIndexChanged.connect(self.on_colormap_change)
-        self.inverseColormapCB.stateChanged.connect(self.on_inverseColormap_toggle)
         self.lightCB.stateChanged.connect(self.on_light_toggle)
         self.pointsSizeS.valueChanged.connect(self.on_pointsSize_change)
         self.linesSizeS.valueChanged.connect(self.on_linesSize_change)
@@ -80,7 +79,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init(self):
         for f in functions(2):
-            self.nameCB.addItem(f'{f.name:<27}{f.hardness:>.2f}', f)
+            self.nameCB.addItem(f'{f.name:<33}{f.hardness:>.2f}', f)
 
         for cmap in colormaps():
             self.colormapCB.addItem(QIcon(cmap.preview),'', userData=cmap.id)
@@ -99,11 +98,6 @@ class MainWindow(QtWidgets.QMainWindow):
             w.linesSize = value
             w.update()
 
-    def on_inverseColormap_toggle(self, state):
-        for w in self.widgets:
-            w.inverseColormap = state == 2
-            w.update()
-
     def on_light_toggle(self, state):
         for w in self.widgets:
             w.light = state == 2
@@ -118,6 +112,8 @@ class MainWindow(QtWidgets.QMainWindow):
         pointShape = Shape().add_point(point, [0, 0, 0, 1])
         for w in self.widgets:
             funBB = w.functionModel.boundBox
+            if w == self.zoomW and not(funBB.xMin <= point[0] <= funBB.xMax and funBB.yMin <= point[1] <= funBB.yMax):
+                continue
             height = funBB.zMax - funBB.zMin
             lineShape = Shape().add_line(point, [point[0], point[1], point[2]+height/4], [1,1,1,1])
             w.evalLinesModel.addShape(lineShape)
