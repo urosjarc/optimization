@@ -28,8 +28,12 @@ class OpenGLWidget(QOpenGLWidget):
         self.functionModel = Model(GL_TRIANGLES, 3, initBuffers=False, colormap=CMAP.NORMAL, shading=True, scale=True)
         self.axesModel = Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.NONE, shading=False, scale=False)
         self.evalPointsModel = Model(GL_POINTS, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=True)
-        self.evalLinesModel = Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=True)
+        self.evalLinesModel = [
+            Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=True)
+            for i in range(20)
+        ]
 
+        self.transperency = True
         self.ortogonalView = False
         self.lightPosition = [1,1,5]
         self.birdsEye = False
@@ -124,7 +128,8 @@ class OpenGLWidget(QOpenGLWidget):
         glEnable(GL_LINE_SMOOTH)
 
         self.evalPointsModel.initBuffers()
-        self.evalLinesModel.initBuffers()
+        for m in self.evalLinesModel:
+            m.initBuffers()
         self.functionModel.initBuffers()
         self.axesModel.initBuffers()
 
@@ -152,10 +157,15 @@ class OpenGLWidget(QOpenGLWidget):
         models =[self.functionModel, self.axesModel]
         if self.pointsSize > 0:
             models.append(self.evalPointsModel)
-        if self.linesSize > 0:
-            models.append(self.evalLinesModel)
+        if self.linesSize >= 0:
+            models.append(self.evalLinesModel[self.linesSize])
 
         for model in models:
+
+            glEnable(GL_DEPTH_TEST)
+            if self.transperency and model in [self.evalPointsModel] + self.evalLinesModel:
+                glDisable(GL_DEPTH_TEST)
+
             glUniform1ui(self.location['in_modelShading'], np.uint(model.shading))
             glUniform1ui(self.location['in_modelColormap'], np.uint(model.colormap.value))
             glUniform1ui(self.location['in_modelScale'], np.uint(model.scale))

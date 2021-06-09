@@ -37,6 +37,7 @@ class MainWindow(QtWidgets.QMainWindow):
     colormapCB: QComboBox
     scaleRateS: QSlider
     birdsEyeCB: QCheckBox
+    transperencyCB: QCheckBox
 
     infoL: QLabel
 
@@ -59,6 +60,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scaleRateS.valueChanged.connect(self.on_scaleRate_change)
         self.iterationPauseSB.valueChanged.connect(self.on_iterationPause_change)
         self.colormapCB.currentIndexChanged.connect(self.on_colormap_change)
+        self.transperencyCB.stateChanged.connect(self.on_transperency_toggle)
         self.lightCB.stateChanged.connect(self.on_light_toggle)
         self.pointsSizeS.valueChanged.connect(self.on_pointsSize_change)
         self.linesSizeS.valueChanged.connect(self.on_linesSize_change)
@@ -88,6 +90,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.inited = True
         self.on_name_change()
 
+    def on_transperency_toggle(self, state):
+        for w in self.widgets:
+            w.transperency = state == 2
+            w.update()
+
     def on_pointsSize_change(self, value):
         for w in self.widgets:
             w.pointsSize = value
@@ -115,8 +122,12 @@ class MainWindow(QtWidgets.QMainWindow):
             if w == self.zoomW and not(funBB.xMin <= point[0] <= funBB.xMax and funBB.yMin <= point[1] <= funBB.yMax):
                 continue
             height = funBB.zMax - funBB.zMin
-            lineShape = Shape().add_line(point, [point[0], point[1], point[2]+height/4], [1,1,1,1])
-            w.evalLinesModel.addShape(lineShape)
+
+            for i in range(len(w.evalLinesModel)-1):
+                lineShape = Shape().add_line(point, [point[0], point[1], point[2]+(height/15)*(i+1)], [1,1,1,1])
+                w.evalLinesModel[i].addShape(lineShape)
+            lineShape = Shape().add_line(point, [point[0], point[1], point[2]+100*height], [1,1,1,1])
+            w.evalLinesModel[-1].addShape(lineShape)
             w.evalPointsModel.addShape(pointShape)
             w.update()
         self.iterationsLeft -= 1
@@ -132,7 +143,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_stop(self):
         for w in self.widgets:
-            w.evalLinesModel.setShapes([])
+            for m in w.evalLinesModel:
+                m.setShapes([])
             w.evalPointsModel.setShapes([])
             w.update()
         self.nextPointTimer.stop()
@@ -230,7 +242,8 @@ class MainWindow(QtWidgets.QMainWindow):
             widget.functionModel = models[0]
             widget.axesModel = models[1]
             widget.evalPointsModel.view = models[0].view
-            widget.evalLinesModel.view = models[0].view
+            for m in widget.evalLinesModel:
+                m.view = models[0].view
             for m in models:
                 m.initBuffers()
             widget.update(cameraView=True)
