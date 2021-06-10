@@ -5,6 +5,6 @@ import sys
 
 if __name__ == '__main__':
     pool = QThreadPool.globalInstance()
-    pool.setMaxThreadCount(pool.maxThreadCount());
+    pool.setMaxThreadCount(pool.maxThreadCount())
 
     app.start(sys.argv)

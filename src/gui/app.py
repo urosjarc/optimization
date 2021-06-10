@@ -33,6 +33,8 @@ class MainWindow(QtWidgets.QMainWindow):
     showLinesCB: QCheckBox
     pointsSizeS: QSlider
     linesSizeS: QSlider
+    ambientRateS: QSlider
+    lightRateS: QSlider
 
     colormapCB: QComboBox
     scaleRateS: QSlider
@@ -64,6 +66,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lightCB.stateChanged.connect(self.on_light_toggle)
         self.pointsSizeS.valueChanged.connect(self.on_pointsSize_change)
         self.linesSizeS.valueChanged.connect(self.on_linesSize_change)
+        self.ambientRateS.valueChanged.connect(self.on_ambientRate_change)
+        self.lightRateS.valueChanged.connect(self.on_lightRate_change)
 
         self.lightCB.stateChanged.connect(self.on_light_toggle)
 
@@ -105,6 +109,16 @@ class MainWindow(QtWidgets.QMainWindow):
             w.linesSize = value
             w.update()
 
+    def on_ambientRate_change(self, value):
+        for w in self.widgets:
+            w.ambientRate = value/100
+            w.update()
+
+    def on_lightRate_change(self, value):
+        for w in self.widgets:
+            w.lightRate = value/100
+            w.update()
+
     def on_light_toggle(self, state):
         for w in self.widgets:
             w.light = state == 2
@@ -126,7 +140,7 @@ class MainWindow(QtWidgets.QMainWindow):
             for i in range(len(w.evalLinesModel)-1):
                 lineShape = Shape().add_line(point, [point[0], point[1], point[2]+(height/15)*(i+1)], [1,1,1,1])
                 w.evalLinesModel[i].addShape(lineShape)
-            lineShape = Shape().add_line(point, [point[0], point[1], point[2]+100*height], [1,1,1,1])
+            lineShape = Shape().add_line(point, [point[0], point[1], point[2]+10**10], [1,1,1,1])
             w.evalLinesModel[-1].addShape(lineShape)
             w.evalPointsModel.addShape(pointShape)
             w.update()

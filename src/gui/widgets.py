@@ -29,16 +29,18 @@ class OpenGLWidget(QOpenGLWidget):
         self.axesModel = Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.NONE, shading=False, scale=False)
         self.evalPointsModel = Model(GL_POINTS, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=True)
         self.evalLinesModel = [
-            Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=True)
+            Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=False)
             for i in range(20)
         ]
 
         self.transperency = True
         self.ortogonalView = False
-        self.lightPosition = [1,1,5]
+        self.lightPosition = [10,10,100]
         self.birdsEye = False
         self.scaleRate = 0
         self.pointsSize = 10
+        self.ambientRate = 0.5
+        self.lightRate = 0.8
         self.linesSize = 2
         self.view = View()
         self.colormap: int = 0
@@ -101,6 +103,8 @@ class OpenGLWidget(QOpenGLWidget):
             'in_scaleRate': glGetUniformLocation(program, 'in_scaleRate'),
             'in_lightPosition': glGetUniformLocation(program, 'in_lightPosition'),
             'in_colormap': glGetUniformLocation(program, 'in_colormap'),
+            'in_ambientRate': glGetUniformLocation(program, 'in_ambientRate'),
+            'in_lightRate': glGetUniformLocation(program, 'in_lightRate'),
 
             'in_modelShading': glGetUniformLocation(program, 'in_modelShading'),
             'in_modelColormap': glGetUniformLocation(program, 'in_modelColormap'),
@@ -153,6 +157,8 @@ class OpenGLWidget(QOpenGLWidget):
         glUniform3fv(self.location['in_lightPosition'], 1, self.lightPosition)
         glUniform1ui(self.location['in_colormap'], np.uint(self.colormap))
         glUniform1f(self.location['in_scaleRate'], np.float32(self.scaleRate))
+        glUniform1f(self.location['in_ambientRate'], np.float32(self.ambientRate))
+        glUniform1f(self.location['in_lightRate'], np.float32(self.lightRate))
 
         models =[self.functionModel, self.axesModel]
         if self.pointsSize > 0:
