@@ -112,16 +112,29 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_ambientRate_change(self, value):
         for w in self.widgets:
             w.ambientRate = value/100
+            print(w.lightRate, w.ambientRate)
             w.update()
 
     def on_lightRate_change(self, value):
         for w in self.widgets:
             w.lightRate = value/100
+            print(w.lightRate, w.ambientRate)
             w.update()
 
     def on_light_toggle(self, state):
         for w in self.widgets:
             w.light = state == 2
+            #Todo: Fix this execute once.
+            if w.light:
+                w.lightRate = 0.83
+                w.ambientRate = 0.65
+                self.ambientRateS.setValue(w.ambientRate)
+                self.lightRateS.setValue(w.lightRate)
+            else:
+                w.lightRate = 0.5
+                w.ambientRate = 0.56
+                self.ambientRateS.setValue(w.ambientRate)
+                self.lightRateS.setValue(w.lightRate)
             w.update()
 
     def on_iterationPause_change(self, value):
