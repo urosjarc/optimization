@@ -12,7 +12,7 @@ from pyrr import Matrix44, Vector3
 from src import utils
 from src.gui.plot import Model, View
 from src.gui.plot.colormap import colormaps
-from src.gui.plot.model import CMAP
+from src.gui.plot.model import CMAP, SCALE
 
 
 class OpenGLWidget(QOpenGLWidget):
@@ -25,13 +25,10 @@ class OpenGLWidget(QOpenGLWidget):
 
         self.programLocations: Dict[str, GLuint]
 
-        self.functionModel = Model(GL_TRIANGLES, 3, initBuffers=False, colormap=CMAP.NORMAL, shading=True, scale=True)
-        self.axesModel = Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.NONE, shading=False, scale=False)
-        self.evalPointsModel = Model(GL_POINTS, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=True)
-        self.evalLinesModel = [
-            Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=False)
-            for i in range(20)
-        ]
+        self.functionModel = Model(GL_TRIANGLES, 3, initBuffers=False, colormap=CMAP.NORMAL, shading=True, scale=SCALE.NORMAL)
+        self.axesModel = Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.NONE, shading=False, scale=SCALE.NONE)
+        self.evalPointsModel = Model(GL_POINTS, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=SCALE.NORMAL)
+        self.evalLinesModel = Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=SCALE.ELEVATE)
 
         self.transperency = True
         self.ortogonalView = False
@@ -39,8 +36,8 @@ class OpenGLWidget(QOpenGLWidget):
         self.birdsEye = False
         self.scaleRate = 0
         self.pointsSize = 10
-        self.ambientRate = 0.5
-        self.lightRate = 0.8
+        self.ambientRate = .56
+        self.lightRate = .5
         self.linesSize = 2
         self.view = View()
         self.colormap: int = 0
@@ -105,6 +102,7 @@ class OpenGLWidget(QOpenGLWidget):
             'in_colormap': glGetUniformLocation(program, 'in_colormap'),
             'in_ambientRate': glGetUniformLocation(program, 'in_ambientRate'),
             'in_lightRate': glGetUniformLocation(program, 'in_lightRate'),
+            'in_linesSize': glGetUniformLocation(program, 'in_linesSize'),
 
             'in_modelShading': glGetUniformLocation(program, 'in_modelShading'),
             'in_modelColormap': glGetUniformLocation(program, 'in_modelColormap'),
@@ -132,8 +130,7 @@ class OpenGLWidget(QOpenGLWidget):
         glEnable(GL_LINE_SMOOTH)
 
         self.evalPointsModel.initBuffers()
-        for m in self.evalLinesModel:
-            m.initBuffers()
+        self.evalLinesModel.initBuffers()
         self.functionModel.initBuffers()
         self.axesModel.initBuffers()
 
@@ -159,22 +156,22 @@ class OpenGLWidget(QOpenGLWidget):
         glUniform1f(self.location['in_scaleRate'], np.float32(self.scaleRate))
         glUniform1f(self.location['in_ambientRate'], np.float32(self.ambientRate))
         glUniform1f(self.location['in_lightRate'], np.float32(self.lightRate))
+        glUniform1f(self.location['in_linesSize'], np.float32(self.linesSize))
 
-        models =[self.functionModel, self.axesModel]
+
+        models = [self.functionModel, self.axesModel, self.evalLinesModel]
         if self.pointsSize > 0:
             models.append(self.evalPointsModel)
-        if self.linesSize >= 0:
-            models.append(self.evalLinesModel[self.linesSize])
 
         for model in models:
 
             glEnable(GL_DEPTH_TEST)
-            if self.transperency and model in [self.evalPointsModel] + self.evalLinesModel:
+            if self.transperency and model in [self.evalPointsModel, self.evalLinesModel]:
                 glDisable(GL_DEPTH_TEST)
 
             glUniform1ui(self.location['in_modelShading'], np.uint(model.shading))
             glUniform1ui(self.location['in_modelColormap'], np.uint(model.colormap.value))
-            glUniform1ui(self.location['in_modelScale'], np.uint(model.scale))
+            glUniform1ui(self.location['in_modelScale'], np.uint(model.scale.value))
 
             bd = model.bdata
 

@@ -12,10 +12,11 @@ uniform vec3 in_lightPosition;
 uniform uint in_colormap;
 uniform float in_ambientRate;
 uniform float in_lightRate;
+uniform float in_linesSize;
 
 uniform bool in_modelShading;
 uniform uint in_modelColormap;
-uniform bool in_modelScale;
+uniform uint in_modelScale;
 
 in vec3 in_position;
 in vec3 in_normal;
@@ -39,8 +40,17 @@ void main() {
     vec4 lightColor = vec4(in_lightRate, in_lightRate, in_lightRate, 1.0);
 
     vec4 modelPosition = modelView * position;
-    if(in_modelScale)
-        modelPosition.z = height_scalling(modelPosition.z, in_scaleRate);
+    switch(in_modelScale){
+        case 1:
+            modelPosition.z = height_scalling(modelPosition.z, in_scaleRate);
+            break;
+        case 2:
+            modelPosition.z = height_scalling(modelPosition.z, in_scaleRate);
+            if(normal.z == 1) //TODO: THIS MEANS ITS FINISH POINT (ITS A HACK)
+                modelPosition.z += in_linesSize;
+
+            break;
+    }
 
     vec4 cameraModelPosition = cameraView * modelPosition;
     vec4 screenPosition = screenView * cameraModelPosition;

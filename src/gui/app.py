@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDouble
 from src import utils
 from src.gui.plot import Shape, Model
 from src.gui.plot.colormap import colormaps
-from src.gui.plot.model import CMAP
+from src.gui.plot.model import CMAP, SCALE
 from src.gui.widgets import OpenGLWidget
 from src.gui.worker import Worker
 from src.optimization.space import functions, Function
@@ -106,13 +106,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_linesSize_change(self, value):
         for w in self.widgets:
-            w.linesSize = value
+            w.linesSize = (value/60)**2
             w.update()
 
     def on_ambientRate_change(self, value):
         for w in self.widgets:
             w.ambientRate = value/100
-            print(w.lightRate, w.ambientRate)
             w.update()
 
     def on_lightRate_change(self, value):
@@ -122,19 +121,18 @@ class MainWindow(QtWidgets.QMainWindow):
             w.update()
 
     def on_light_toggle(self, state):
+        lightOn = state == 2
+        if lightOn:
+            self.ambientRateS.setValue(65)
+            self.lightRateS.setValue(83)
+        else:
+            self.ambientRateS.setValue(56)
+            self.lightRateS.setValue(50)
+
         for w in self.widgets:
-            w.light = state == 2
-            #Todo: Fix this execute once.
-            if w.light:
-                w.lightRate = 0.83
-                w.ambientRate = 0.65
-                self.ambientRateS.setValue(w.ambientRate)
-                self.lightRateS.setValue(w.lightRate)
-            else:
-                w.lightRate = 0.5
-                w.ambientRate = 0.56
-                self.ambientRateS.setValue(w.ambientRate)
-                self.lightRateS.setValue(w.lightRate)
+            w.light = lightOn
+            w.lightRate = self.lightRateS.value()/100.0
+            w.ambientRate = self.ambientRateS.value()/100.0
             w.update()
 
     def on_iterationPause_change(self, value):
@@ -148,13 +146,11 @@ class MainWindow(QtWidgets.QMainWindow):
             funBB = w.functionModel.boundBox
             if w == self.zoomW and not(funBB.xMin <= point[0] <= funBB.xMax and funBB.yMin <= point[1] <= funBB.yMax):
                 continue
-            height = funBB.zMax - funBB.zMin
 
-            for i in range(len(w.evalLinesModel)-1):
-                lineShape = Shape().add_line(point, [point[0], point[1], point[2]+(height/15)*(i+1)], [1,1,1,1])
-                w.evalLinesModel[i].addShape(lineShape)
-            lineShape = Shape().add_line(point, [point[0], point[1], point[2]+10**10], [1,1,1,1])
-            w.evalLinesModel[-1].addShape(lineShape)
+            #TODO: THIS IS A HACK (IN NORMAL IS WRITTEN WHICH POINT IS STARTING AND NEDING POINT)
+            lineShape = Shape().add_line(point, point, [1,1,1,1])
+            # =============================================================================
+            w.evalLinesModel.addShape(lineShape)
             w.evalPointsModel.addShape(pointShape)
             w.update()
         self.iterationsLeft -= 1
@@ -235,7 +231,7 @@ class MainWindow(QtWidgets.QMainWindow):
             models = []
 
             # Create model with scalled x,y,z to ~1
-            funModel = Model(GL_TRIANGLES, 3, initBuffers=False, shading=True, colormap=CMAP.NORMAL, scale=True)
+            funModel = Model(GL_TRIANGLES, 3, initBuffers=False, shading=True, colormap=CMAP.NORMAL, scale=SCALE.NORMAL)
             funModel.addShape(shape)
             funModel.view.translate(*-center)
             funModel.view.scale(*scale)
@@ -269,8 +265,7 @@ class MainWindow(QtWidgets.QMainWindow):
             widget.functionModel = models[0]
             widget.axesModel = models[1]
             widget.evalPointsModel.view = models[0].view
-            for m in widget.evalLinesModel:
-                m.view = models[0].view
+            widget.evalLinesModel.view = models[0].view
             for m in models:
                 m.initBuffers()
             widget.update(cameraView=True)

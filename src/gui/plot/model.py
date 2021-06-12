@@ -14,15 +14,20 @@ class CMAP(Enum):
     NORMAL = 1
     INVERSE = 2
 
+class SCALE(Enum):
+    NONE = 0
+    NORMAL = 1
+    ELEVATE = 2
+
 
 class Model:
-    def __init__(self, drawMode, dim, initBuffers=True, colormap: CMAP = CMAP.NONE, shading=True, scale=False):
+    def __init__(self, drawMode, dim, initBuffers=True, colormap: CMAP = CMAP.NONE, shading=True, scale=SCALE.NONE):
         self.bdata = BufferData(drawMode, dim)
         self.view = View()
         self.shapes: List[Shape] = []
         self.boundBox: BoundBox = BoundBox()
         self.colormap: CMAP = colormap
-        self.scale: bool = scale
+        self.scale: SCALE = scale
         self.shading = shading
 
         self.buffersInited = initBuffers
