@@ -3,15 +3,14 @@ from typing import List
 import numpy as np
 from OpenGL.GL import GL_TRIANGLES, GL_LINES
 from PyQt5 import QtWidgets, uic
-from PyQt5.QtCore import QTimer, QThreadPool, Qt, QSize
+from PyQt5.QtCore import QTimer, QThreadPool, Qt
 from PyQt5.QtGui import QKeySequence, QIcon
-from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox, QHBoxLayout, QSlider, \
+from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QHBoxLayout, QSlider, \
     QShortcut, QLabel
 
 from src import utils
+from src.gui.glsl import shader
 from src.gui.plot import Shape, Model
-from src.gui.plot.colormap import colormaps
-from src.gui.plot.model import CMAP, SCALE
 from src.gui.widgets import OpenGLWidget
 from src.gui.worker import Worker
 from src.optimization.space import functions, Function
@@ -87,8 +86,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for f in functions(2):
             self.nameCB.addItem(f'{f.name:<33}{f.hardness:>.2f}', f)
 
-        for cmap in colormaps():
-            self.colormapCB.addItem(QIcon(cmap.preview),'', userData=cmap.id)
+        for cmap in shader.colormaps():
+            self.colormapCB.addItem(QIcon(cmap.preview), '', userData=cmap.id)
 
     def on_load(self):
         self.inited = True
@@ -106,17 +105,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_linesSize_change(self, value):
         for w in self.widgets:
-            w.linesSize = (value/60)**2
+            w.linesSize = (value / 60) ** 2
             w.update()
 
     def on_ambientRate_change(self, value):
         for w in self.widgets:
-            w.ambientRate = value/100
+            w.ambientRate = value / 100
             w.update()
 
     def on_lightRate_change(self, value):
         for w in self.widgets:
-            w.lightRate = value/100
+            w.lightRate = value / 100
             print(w.lightRate, w.ambientRate)
             w.update()
 
@@ -131,8 +130,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         for w in self.widgets:
             w.light = lightOn
-            w.lightRate = self.lightRateS.value()/100.0
-            w.ambientRate = self.ambientRateS.value()/100.0
+            w.lightRate = self.lightRateS.value() / 100.0
+            w.ambientRate = self.ambientRateS.value() / 100.0
             w.update()
 
     def on_iterationPause_change(self, value):
@@ -144,11 +143,11 @@ class MainWindow(QtWidgets.QMainWindow):
         pointShape = Shape().add_point(point, [0, 0, 0, 1])
         for w in self.widgets:
             funBB = w.functionModel.boundBox
-            if w == self.zoomW and not(funBB.xMin <= point[0] <= funBB.xMax and funBB.yMin <= point[1] <= funBB.yMax):
+            if w == self.zoomW and not (funBB.xMin <= point[0] <= funBB.xMax and funBB.yMin <= point[1] <= funBB.yMax):
                 continue
 
-            #TODO: THIS IS A HACK (IN NORMAL IS WRITTEN WHICH POINT IS STARTING AND NEDING POINT)
-            lineShape = Shape().add_line(point, point, [1,1,1,1])
+            # TODO: THIS IS A HACK (IN NORMAL IS WRITTEN WHICH POINT IS STARTING AND NEDING POINT)
+            lineShape = Shape().add_line(point, point, [1, 1, 1, 1])
             # =============================================================================
             w.evalLinesModel.addShape(lineShape)
             w.evalPointsModel.addShape(pointShape)
@@ -196,7 +195,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_scaleRate_change(self, value: float):
         for w in self.widgets:
-            w.scaleRate = (value / 100)**2
+            w.scaleRate = (value / 100) ** 2
             w.update()
 
     def on_birdsEye_toggle(self, state: int):
@@ -242,9 +241,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 minVector = np.array(min2DVector + [fun.minValue])
                 minAxis = Shape()
                 for i in range(3):
-                    color = [1,0,0,1,0,0][i:i+3] + [1]
-                    base = np.array([int(i==j)*(1/scale[j]) for j in range(3)])
-                    minAxis.add_line((minVector - base).tolist(), (minVector+base).tolist(),color)
+                    color = [1, 0, 0, 1, 0, 0][i:i + 3] + [1]
+                    base = np.array([int(i == j) * (1 / scale[j]) for j in range(3)])
+                    minAxis.add_line((minVector - base).tolist(), (minVector + base).tolist(), color)
                 minAxisModel = Model(GL_LINES, 3, initBuffers=False)
                 minAxisModel.addShape(minAxis)
                 minAxisModel.view.translate(*-center)

@@ -1,133 +1,73 @@
-from typing import Dict, List
+from types import ModuleType
+from typing import Dict
 
-import numpy as np
-from OpenGL.GL import *
 from OpenGL.GL import shaders
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QMouseEvent, QWheelEvent, QSurfaceFormat
-from PyQt5.QtOpenGL import QGLFormat
+from PyQt5.QtGui import QMouseEvent, QWheelEvent
 from PyQt5.QtWidgets import QOpenGLWidget
-from pyrr import Matrix44, Vector3
 
-from src import utils
-from src.gui.plot import Model, View
-from src.gui.plot.colormap import colormaps
-from src.gui.plot.model import CMAP, SCALE
+from src.gui.glsl import shader
+from src.gui.plot.model import *
+from src.gui.ui import config
 
 
 class OpenGLWidget(QOpenGLWidget):
 
     def __init__(self, parent):
-        format = QSurfaceFormat()
-        format.setSamples(8)
         QOpenGLWidget.__init__(self, parent=parent)
-        self.setFormat(format)
-
         self.programLocations: Dict[str, GLuint]
 
-        self.functionModel = Model(GL_TRIANGLES, 3, initBuffers=False, colormap=CMAP.NORMAL, shading=True, scale=SCALE.NORMAL)
-        self.axesModel = Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.NONE, shading=False, scale=SCALE.NONE)
-        self.evalPointsModel = Model(GL_POINTS, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=SCALE.NORMAL)
-        self.evalLinesModel = Model(GL_LINES, 3, initBuffers=False, colormap=CMAP.INVERSE, shading=False, scale=SCALE.ELEVATE)
-
-        self.transperency = True
-        self.ortogonalView = False
-        self.lightPosition = [10,10,100]
-        self.birdsEye = False
-        self.scaleRate = 0
-        self.pointsSize = 10
-        self.ambientRate = .56
-        self.lightRate = .5
-        self.linesSize = 2
-        self.view = View()
-        self.colormap: int = 0
-        self.inverseColormap: bool = False
-        self.light: bool = False
+        self.view: View = View()
+        self.functionModel = FunctionModel()
+        self.axesModel = AxisModel()
+        self.evalPointsModel = EvalPointsModel()
+        self.evalLinesModel = EvalLinesModel()
+        self.locations = {}
 
         self.screenView = None
         self.mouse: List[int] = None
         self.setMouseTracking(True)
 
-    def initializeGL(self):
-        maps = ""
-        cases = 'switch(in_colormap){\n'
-        for i,cmap in enumerate(colormaps()):
-            maps += cmap.parsedSrc + "\n"
-            cases += f'''        case {cmap.id}:
-            colormap = {cmap.name}(modelPosition.z+0.5);
-            colormap_inverse = {cmap.name}(-modelPosition.z+0.5);
-            break;
-'''
-        cases += '        default:\n'
-        cases += '            colormap = in_color;\n'
-        cases += '            colormap_inverse = in_color*-1;\n'
-        cases += '            break;\n'
-        cases += '    }'
-
-        # Activate program and use it
-        with open(utils.getPath(__file__, 'glsl/shader_vertex.glsl')) as f:
-            src = f.read()
-            src = src.replace("#include <colormap_shaders>", maps)
-            src = src.replace("#include <colormap_shaders_switch>", cases)
-            vs = shaders.compileShader(src, GL_VERTEX_SHADER)
-        with open(utils.getPath(__file__, 'glsl/shader_fragments.glsl')) as f:
-            fs = shaders.compileShader(f.read(), GL_FRAGMENT_SHADER)
-
-        program = shaders.compileProgram(vs, fs)
-        glUseProgram(program)
-
-        # Get program atributes locations
-        '''
-        glUniformMatrix4fv(self.location['cameraView'], 1, GL_FALSE, self.cameraView)
-        glUniformMatrix4fv(self.location['screenView'], 1, GL_FALSE, self.screenView)
-
-        glUniform3fv(self.location['in_lightPosition'], 1, self.lightPosition)
-        glUniform1ui(self.location['in_colormap'], np.uint(self.colormap))
-        glUniform1f(self.location['in_scaleRate'], np.float32(self.scaleRate))
-
-        for model in [self.functionModel, self.axesModel, self.evalLinesModel, self.evalPointsModel]:
-
-            glUniform1ui(self.location['in_modelShading'], np.uint(model.shading))
-            glUniform1ui(self.location['in_modelColormap'], np.uint(model.colormap))
-            glUniform1ui(self.location['in_modelScale'], np.uint(model.scale))
-        '''
+    def initLocation(self, program):
+        # Set program atributes locations
         self.location = {
-            'modelView': glGetUniformLocation(program, 'modelView'),
-            'cameraView': glGetUniformLocation(program, 'cameraView'),
-            'normalView': glGetUniformLocation(program, 'normalView'),
-            'screenView': glGetUniformLocation(program, 'screenView'),
-
-            'in_scaleRate': glGetUniformLocation(program, 'in_scaleRate'),
-            'in_lightPosition': glGetUniformLocation(program, 'in_lightPosition'),
-            'in_colormap': glGetUniformLocation(program, 'in_colormap'),
-            'in_ambientRate': glGetUniformLocation(program, 'in_ambientRate'),
-            'in_lightRate': glGetUniformLocation(program, 'in_lightRate'),
-            'in_linesSize': glGetUniformLocation(program, 'in_linesSize'),
-
-            'in_modelShading': glGetUniformLocation(program, 'in_modelShading'),
-            'in_modelColormap': glGetUniformLocation(program, 'in_modelColormap'),
-            'in_modelScale': glGetUniformLocation(program, 'in_modelScale'),
-
+            'view_model': glGetUniformLocation(program, 'view_model'),
+            'view_camera': glGetUniformLocation(program, 'view_camera'),
+            'view_normal': glGetUniformLocation(program, 'view_normal'),
+            'view_screen': glGetUniformLocation(program, 'view_screen'),
             'in_position': glGetAttribLocation(program, 'in_position'),
             'in_normal': glGetAttribLocation(program, 'in_normal'),
             'in_color': glGetAttribLocation(program, 'in_color'),
         }
 
+        # Add config items to location
+        for name, _ in config.getAll().items():
+            self.location[f'ui_{name}'] = glGetAttribLocation(program, f'ui_{name}')
+
         # Activate program "in" atributes to be rendered in a process of rendering
-        glEnableVertexAttribArray(self.location['in_position'])
-        glEnableVertexAttribArray(self.location['in_color'])
-        glEnableVertexAttribArray(self.location['in_normal'])
+        for name, val in self.location.items():
+            if name.startswith('in_'):
+                glEnableVertexAttribArray(val)
+
+    def initializeGL(self):
+
+        fs = shaders.compileShader(shader.fragmentSrc(), GL_FRAGMENT_SHADER)
+        vs = shaders.compileShader(shader.vertexSrc(), GL_VERTEX_SHADER)
+        program = shaders.compileProgram(vs, fs)
+        glUseProgram(program)
+
+        self.initLocation(program)
 
         # Anable depth testing in z-buffer, replace old value in z-buffer if value is less or equal to old one.
         glEnable(GL_DEPTH_TEST)
-        glDepthFunc(GL_LEQUAL)
-
-        # Configure what will happend at glClear call
-        glClearDepth(1.0)
-
-        # Update widget
         glEnable(GL_MULTISAMPLE)
         glEnable(GL_LINE_SMOOTH)
+
+        glDepthFunc(GL_LEQUAL)
+        glClearDepth(1.0)
+
+        # Adding samples
+        self.format().setSamples(8)
 
         self.evalPointsModel.initBuffers()
         self.evalLinesModel.initBuffers()
@@ -157,7 +97,6 @@ class OpenGLWidget(QOpenGLWidget):
         glUniform1f(self.location['in_ambientRate'], np.float32(self.ambientRate))
         glUniform1f(self.location['in_lightRate'], np.float32(self.lightRate))
         glUniform1f(self.location['in_linesSize'], np.float32(self.linesSize))
-
 
         models = [self.functionModel, self.axesModel, self.evalLinesModel]
         if self.pointsSize > 0:
@@ -208,11 +147,11 @@ class OpenGLWidget(QOpenGLWidget):
             dx = self.mouse[0] - event.x()
             dy = self.mouse[1] - event.y()
             dist = self.view.translationMatrix.m43
-            transScale = 8.9*10e-5*abs(dist)
+            transScale = 8.9 * 10e-5 * abs(dist)
 
             if self.birdsEye:
                 if btns == Qt.LeftButton:
-                    self.view.translate(dx=-dx*transScale, dy=dy*transScale)
+                    self.view.translate(dx=-dx * transScale, dy=dy * transScale)
                     self.update()
             else:
                 if btns == Qt.LeftButton:
@@ -241,7 +180,7 @@ class OpenGLWidget(QOpenGLWidget):
         elif btns == Qt.NoButton:
 
             dist = abs(self.view.translationMatrix.m43)
-            zoomScale = 5*10e-5*dist
+            zoomScale = 5 * 10e-5 * dist
             dz = event.angleDelta().y() * zoomScale
             self.view.translate(dz=dz)
 

@@ -1,5 +1,5 @@
-from OpenGL.GL import *
 import numpy as np
+from OpenGL.GL import *
 
 
 class BufferData:
@@ -23,7 +23,8 @@ class BufferData:
     def initBuffers(self):
         self.positionBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.positionBuffer)
-        glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * self.maxNumVectors, dtype=np.float32), GL_DYNAMIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * self.maxNumVectors, dtype=np.float32),
+                     GL_DYNAMIC_DRAW)
 
         self.colorBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.colorBuffer)
@@ -31,7 +32,8 @@ class BufferData:
 
         self.normalBuffer = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.normalBuffer)
-        glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * self.maxNumVectors, dtype=np.float32), GL_DYNAMIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, np.empty(self.positionDim * self.maxNumVectors, dtype=np.float32),
+                     GL_DYNAMIC_DRAW)
 
     def __del__(self):
         glDeleteBuffers(3, [

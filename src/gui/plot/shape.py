@@ -100,7 +100,7 @@ class Shape:
     def add_line(self, start: List[float], finish: List[float], color: List[float]):
         self.positions += start + finish
         self.colors += color + color
-        self.normals += [0,0,0,1,1,1] #TODO: HERE IS WRITTEN WHICH POINT IS STARTING AND ENDING POINT :P
+        self.normals += [0,0,0] + start #TODO: HERE IS WRITTEN WHICH POINT IS STARTING AND ENDING POINT :P
         self.boundBox.resize(points=[start, finish])
         return self
 

@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import List
 
+from OpenGL.GL import *
 import numpy as np
 from pyrr import Matrix44
 
@@ -9,26 +10,21 @@ from src.gui.plot.shape import Shape, BoundBox
 from src.gui.plot.view import View
 
 
-class CMAP(Enum):
-    NONE = 0
-    NORMAL = 1
-    INVERSE = 2
-
-class SCALE(Enum):
-    NONE = 0
-    NORMAL = 1
-    ELEVATE = 2
+class MODEL(Enum):
+    GENERIC = 0
+    FUNCTION = 1
+    AXIS = 2
+    EVAL_POINT = 3
+    EVAL_LINE = 4
 
 
 class Model:
-    def __init__(self, drawMode, dim, initBuffers=True, colormap: CMAP = CMAP.NONE, shading=True, scale=SCALE.NONE):
+    def __init__(self, modelType: MODEL, drawMode, dim, initBuffers=True):
         self.bdata = BufferData(drawMode, dim)
         self.view = View()
         self.shapes: List[Shape] = []
         self.boundBox: BoundBox = BoundBox()
-        self.colormap: CMAP = colormap
-        self.scale: SCALE = scale
-        self.shading = shading
+        self.type: MODEL = modelType
 
         self.buffersInited = initBuffers
         if initBuffers:
@@ -79,3 +75,23 @@ class Model:
     @property
     def modelView(self) -> Matrix44:
         return self.view.scaleMatrix * self.view.rotationMatrix * self.view.translationMatrix
+
+
+class FunctionModel(Model):
+    def __init__(self, initBuffers=True):
+        super().__init__(MODEL.FUNCTION, GL_TRIANGLES, 3, initBuffers=initBuffers)
+
+
+class AxisModel(Model):
+    def __init__(self, initBuffers=True):
+        super().__init__(MODEL.AXIS, GL_LINES, 3, initBuffers=initBuffers)
+
+
+class EvalPointsModel(Model):
+    def __init__(self, initBuffers=True):
+        super().__init__(MODEL.EVAL_POINT, GL_POINTS, 3, initBuffers=initBuffers)
+
+
+class EvalLinesModel(Model):
+    def __init__(self, initBuffers=True):
+        super().__init__(MODEL.EVAL_LINE, GL_LINES, 3, initBuffers=initBuffers)

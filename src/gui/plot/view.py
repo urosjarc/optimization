@@ -1,5 +1,5 @@
-from pyrr import Vector3, Matrix44, Quaternion
 import numpy as np
+from pyrr import Vector3, Matrix44, Quaternion
 
 
 class View:

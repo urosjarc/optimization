@@ -3,16 +3,19 @@ import traceback
 
 from PyQt5.QtCore import QRunnable, pyqtSignal, QObject, pyqtSlot
 
+
 class WorkerSignals(QObject):
     finished = pyqtSignal()
     error = pyqtSignal(tuple)
     result = pyqtSignal(object)
+
 
 class Worker(QRunnable):
     '''
     Worker thread
     Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
     '''
+
     def __init__(self, fn, *args, **kwargs):
         super(Worker, self).__init__()
         # Store constructor arguments (re-used for processing)
