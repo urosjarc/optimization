@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QHBoxLa
 from src import utils
 from src.gui.glsl import shader
 from src.gui.plot import Shape, Model
+from src.gui.plot.model import FunctionModel, AxisModel
 from src.gui.widgets import OpenGLWidget
 from src.gui.worker import Worker
 from src.optimization.space import functions, Function
@@ -230,7 +231,7 @@ class MainWindow(QtWidgets.QMainWindow):
             models = []
 
             # Create model with scalled x,y,z to ~1
-            funModel = Model(GL_TRIANGLES, 3, initBuffers=False, shading=True, colormap=CMAP.NORMAL, scale=SCALE.NORMAL)
+            funModel = FunctionModel(initBuffers=False)
             funModel.addShape(shape)
             funModel.view.translate(*-center)
             funModel.view.scale(*scale)
@@ -244,7 +245,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     color = [1, 0, 0, 1, 0, 0][i:i + 3] + [1]
                     base = np.array([int(i == j) * (1 / scale[j]) for j in range(3)])
                     minAxis.add_line((minVector - base).tolist(), (minVector + base).tolist(), color)
-                minAxisModel = Model(GL_LINES, 3, initBuffers=False)
+                minAxisModel = AxisModel(initBuffers=False)
                 minAxisModel.addShape(minAxis)
                 minAxisModel.view.translate(*-center)
                 minAxisModel.view.scale(*scale)

@@ -1,4 +1,7 @@
 from typing import List
+from OpenGL.GL import *
+
+import numpy as np
 
 from src import utils
 from src.gui.ui import config
@@ -40,39 +43,46 @@ def colormaps() -> List[Colormap]:
 
 def uiConfig():
     mapping = {
-        'bool': 'bool',
-        'list': 'vec3',
-        'float': 'float',
-        'int': 'int'
+        'bool': (np.uint32, 'bool', glUniform1ui),
+        'list': (lambda v: np.array(v, dtype=np.float32), 'vec3', glUniform3fv),
+        'float': (np.float32, 'float', glUniform1f),
+        'int': (np.int32, 'int', glUniform1i)
     }
-    src = []
+
+    configDict = {}
     for name, value in config.getAll().items():
-        mapedType = mapping[type(value).__name__]
-        src.append(f'uniform {mapedType} ui_{name};')
-    return '\n'.join(src)
+        toRawValue, mappedType, uniform = mapping[type(value).__name__]
+        configDict[f'ui_{name}'] = {
+            'type': mappedType,
+            'value': toRawValue(value),
+            'unimapFun': uniform
+        }
+    return configDict
 
 
 def vertexSrc() -> str:
     shaders = ""
-    function = 'vec4 colormap(int i, z){\n'
+    function = 'vec4 colormap(int i, float z){\n'
     function += '    switch(i){\n'
     for i, cmap in enumerate(colormaps()):
         shaders += cmap.parsedSrc + "\n"
-        function += f'''        case {cmap.id}:
-            return {cmap.name}(z);
-'''
+        function += f'        case {cmap.id}:\n'
+        function += f'            return {cmap.name}(z);\n'
     function += '        default:\n'
     function += '            return vec4(0,0,0,1);\n'
     function += '    }\n'
     function += '}'
 
+    config = ''
+    for name, conf in uiConfig().items():
+        config += f'uniform {conf["type"]} {name}; // {conf["value"]}\n'
 
     # Activate program and use it
     with open(utils.getPath(__file__, 'shader_vertex.glsl')) as f:
         src = f.read()
         src = src.replace("#include <colormap_shaders>", shaders)
         src = src.replace("#include <colormap_function>", function)
-        src = src.replace("#include <ui_config>", uiConfig())
+        src = src.replace("#include <ui_config>", config)
         with open('test.glsl', 'w') as f:
             f.write(src)
         return src
