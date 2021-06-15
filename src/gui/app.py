@@ -12,6 +12,7 @@ from src import utils
 from src.gui.glsl import shader
 from src.gui.plot import Shape, Model
 from src.gui.plot.model import FunctionModel, AxisModel
+from src.gui.ui import config
 from src.gui.widgets import OpenGLWidget
 from src.gui.worker import Worker
 from src.optimization.space import functions, Function
@@ -94,31 +95,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.inited = True
         self.on_name_change()
 
-    def on_transperency_toggle(self, state):
+    def updateWidgets(self, screenView=False):
         for w in self.widgets:
-            w.transperency = state == 2
-            w.update()
+            w.update(screenView=screenView)
+
+    def on_transperency_toggle(self, state):
+        config.transperency = state == 2
+        self.updateWidgets()
 
     def on_pointsSize_change(self, value):
-        for w in self.widgets:
-            w.pointsSize = value
-            w.update()
+        config.pointsSize = value
+        self.updateWidgets()
 
     def on_linesSize_change(self, value):
-        for w in self.widgets:
-            w.linesSize = (value / 60) ** 2
-            w.update()
+        config.linesSize = (value / 60) ** 2
+        self.updateWidgets()
 
     def on_ambientRate_change(self, value):
-        for w in self.widgets:
-            w.ambientRate = value / 100
-            w.update()
+        config.ambientRate = value / 100
+        self.updateWidgets()
 
     def on_lightRate_change(self, value):
-        for w in self.widgets:
-            w.lightRate = value / 100
-            print(w.lightRate, w.ambientRate)
-            w.update()
+        config.lightRate = value / 100
+        self.updateWidgets()
 
     def on_light_toggle(self, state):
         lightOn = state == 2
@@ -129,11 +128,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ambientRateS.setValue(56)
             self.lightRateS.setValue(50)
 
-        for w in self.widgets:
-            w.light = lightOn
-            w.lightRate = self.lightRateS.value() / 100.0
-            w.ambientRate = self.ambientRateS.value() / 100.0
-            w.update()
+        config.light = lightOn
+        config.lightRate = self.lightRateS.value() / 100.0
+        config.ambientRate = self.ambientRateS.value() / 100.0
+        self.updateWidgets()
 
     def on_iterationPause_change(self, value):
         self.nextPointTimer.setInterval(value)
@@ -175,39 +173,27 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_name_change(self):
         fun = self.nameCB.currentData()
         if fun and self.inited:
-            # shape = Shape().add_cone([1,1,1,1])
-            # model = Model(GL_TRIANGLES, 3)
-            # model.addShape(shape)
-            # wireModel = Model(GL_LINES, 3).addShape(Shape().add_boundBox(shape.boundBox))
-            # self.normalW.models = [model, wireModel]
-            # self.zoomW.models = [model, wireModel]
-            # self.normalW.update()
             self.loadFunction(fun)
 
     def on_colormap_change(self):
-        colormap = self.colormapCB.currentData()
-        for w in self.widgets:
-            w.colormap = colormap
-            w.update()
+        config.colormap = self.colormapCB.currentData()
+        self.updateWidgets()
 
     def on_find_shortcut(self):
         self.nameCB.setEditText('')
         self.nameCB.setFocus()
 
     def on_scaleRate_change(self, value: float):
-        for w in self.widgets:
-            w.scaleRate = (value / 100) ** 2
-            w.update()
+        config.scaleRate = (value / 100) ** 2
+        self.updateWidgets()
 
     def on_birdsEye_toggle(self, state: int):
-        for w in self.widgets:
-            w.birdsEye = state == 2
-            w.update(screenView=True)
+        config.birdsEye = state == 2
+        self.updateWidgets(screenView=True)
 
     def on_ortogonalView_toggle(self, state: int):
-        for w in self.widgets:
-            w.ortogonalView = state == 2
-            w.update(screenView=True)
+        config.ortogonalView = state == 2
+        self.updateWidgets(screenView=True)
 
     def loadFunction(self, fun: Function):
 

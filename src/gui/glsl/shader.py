@@ -69,7 +69,7 @@ def vertexSrc() -> str:
         function += f'        case {cmap.id}:\n'
         function += f'            return {cmap.name}(z);\n'
     function += '        default:\n'
-    function += '            return vec4(0,0,0,1);\n'
+    function += '            return vec4(1,0,0,1);\n'
     function += '    }\n'
     function += '}'
 
