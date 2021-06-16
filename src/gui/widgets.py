@@ -42,8 +42,8 @@ class OpenGLWidget(QOpenGLWidget):
         }
 
         # Add config items to location
-        for name, _ in config.getAll().items():
-            self.locations[f'ui_{name}'] = glGetAttribLocation(program, f'ui_{name}')
+        for name, conf in shader.uiConfig().items():
+            self.locations[name] = glGetUniformLocation(program, name)
 
         # Activate program "in" atributes to be rendered in a process of rendering
         for name, val in self.locations.items():
@@ -51,7 +51,6 @@ class OpenGLWidget(QOpenGLWidget):
                 glEnableVertexAttribArray(val)
 
     def initializeGL(self):
-
         fs = shaders.compileShader(shader.fragmentSrc(), GL_FRAGMENT_SHADER)
         vs = shaders.compileShader(shader.vertexSrc(), GL_VERTEX_SHADER)
         program = shaders.compileProgram(vs, fs)
@@ -95,6 +94,7 @@ class OpenGLWidget(QOpenGLWidget):
         # Set GLSL configs
         for name, conf in shader.uiConfig().items():
             arg = (self.locations[name], conf['value'])
+            print(conf['unimapFun'], name, arg)
             conf['unimapFun'](*arg)
 
         models = [self.functionModel, self.axesModel, self.evalLinesModel]
