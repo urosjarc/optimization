@@ -95,8 +95,6 @@ class OpenGLWidget(QOpenGLWidget):
         # Set GLSL configs
         for name, conf in shader.uiConfig().items():
             arg = (self.locations[name], conf['value'])
-            if conf['type'].startswith('vec'):
-                arg = (self.locations[name], 1, conf['value'])
             conf['unimapFun'](*arg)
 
         models = [self.functionModel, self.axesModel, self.evalLinesModel]
@@ -109,15 +107,14 @@ class OpenGLWidget(QOpenGLWidget):
             if config.transperency and model in [self.evalPointsModel, self.evalLinesModel]:
                 glDisable(GL_DEPTH_TEST)
 
-            glUniform1ui(self.locations['type_model'], np.uint(model.type.value))
-
             bd = model.bdata
 
             # Compute views
             cameraModelView = self.cameraView * model.modelView
             normalView = cameraModelView.inverse.transpose()
 
-            # Set views
+            # Set model uniforms
+            glUniform1ui(self.locations['type_model'], np.uint(model.type.value))
             glUniformMatrix4fv(self.locations['view_model'], 1, GL_FALSE, model.modelView)
             glUniformMatrix4fv(self.locations['view_normal'], 1, GL_FALSE, normalView)
 

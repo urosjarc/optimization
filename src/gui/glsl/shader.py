@@ -44,7 +44,7 @@ def colormaps() -> List[Colormap]:
 def uiConfig():
     mapping = {
         'bool': (np.uint32, 'bool', glUniform1ui),
-        'list': (lambda v: np.array(v, dtype=np.float32), 'vec3', glUniform3fv),
+        'list': (lambda v: np.array(v, dtype=np.float32), 'vec3', lambda n, v: glUniform3fv(n, 1, v)),
         'float': (np.float32, 'float', glUniform1f),
         'int': (np.int32, 'int', glUniform1i)
     }
