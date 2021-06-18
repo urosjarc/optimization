@@ -11,7 +11,7 @@ float height_scalling(float x, float s){
     return (2-2*p+b*(x+x0)*(3*p-4))/(2-3*p+4*b*(x+x0)*(p-1)) * 2 - 1.5;
 }
 
-uniform uint model_type;
+uniform uint type_model;
 uniform mat4 view_model;
 uniform mat4 view_camera;
 uniform mat4 view_normal;
@@ -22,6 +22,7 @@ in vec4 in_color;
 out vec4 out_color;
 
 #include <ui_config>
+#include <model_types>
 
 void main() {
 
@@ -36,11 +37,19 @@ void main() {
     vec4 model = view_model * position;
 
     /* HEIGHT SCALLING FOR EVAL POINTS AND LINES */
-    if(model_type >= 3)
-        if(ui_scaleRate != 0)
+    switch(type_model){
+        case FUNCTION_MODEL:
             model.z = height_scalling(model.z, ui_scaleRate);
-        if(length(normal) != 0) //Increase line after chosing color for point.
-            model.z += ui_linesSize;
+            break;
+        case EVAL_POINT_MODEL:
+            model.z = height_scalling(model.z, ui_scaleRate);
+            break;
+        case EVAL_LINE_MODEL:
+            model.z = height_scalling(model.z, ui_scaleRate);
+            if (length(normal) != 0)//Increase line after chosing color for point.
+                model.z += ui_linesSize;
+            break;
+    }
 
     //Compute position and normal
     vec4 cameraModelPosition = view_camera * model;
@@ -50,15 +59,23 @@ void main() {
 
     //Compute diffuse rate
     float diffuseRate = 1;
-    if(model_type == 1) // Shading if function
+    if(type_model == FUNCTION_MODEL) // Shading if function
         diffuseRate = abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
 
     //Compute colormap
-    vec4 surfaceColor = colormap(ui_colormap, 0.5);
-    if(model_type >= 2){
-        surfaceColor = 1 - surfaceColor;
-    } else {
-        surfaceColor = in_color;
+    vec4 surfaceColor = colormap(ui_colormap, model.z+0.5);
+
+    switch(type_model){
+        case EVAL_POINT_MODEL:
+            surfaceColor = 1 - surfaceColor;
+            break;
+        case EVAL_LINE_MODEL:
+            surfaceColor = 1 - surfaceColor;
+            break;
+        case FUNCTION_MODEL:
+            break;
+        default:
+            surfaceColor = in_color;
     }
 
     //Push values to fragment

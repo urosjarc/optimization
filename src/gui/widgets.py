@@ -31,7 +31,7 @@ class OpenGLWidget(QOpenGLWidget):
     def initLocation(self, program):
         # Set program atributes locations
         self.locations = {
-            'type_model': glGetAttribLocation(program, 'type_model'),
+            'type_model': glGetUniformLocation(program, 'type_model'),
             'view_model': glGetUniformLocation(program, 'view_model'),
             'view_camera': glGetUniformLocation(program, 'view_camera'),
             'view_normal': glGetUniformLocation(program, 'view_normal'),
@@ -93,9 +93,7 @@ class OpenGLWidget(QOpenGLWidget):
 
         # Set GLSL configs
         for name, conf in shader.uiConfig().items():
-            arg = (self.locations[name], conf['value'])
-            print(conf['unimapFun'], name, arg)
-            conf['unimapFun'](*arg)
+            conf['unimapFun'](self.locations[name], conf['value'])
 
         models = [self.functionModel, self.axesModel, self.evalLinesModel]
         if config.pointsSize > 0:

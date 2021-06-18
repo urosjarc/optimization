@@ -3,10 +3,10 @@ from typing import List
 
 transperency: bool = True
 ortogonalView: bool = False
-lightPosition: List[float] = [10, 10, 100]
+lightPosition: List[float] = [10., 10., 100.]
 birdsEye: bool = False
-scaleRate: float = 0
-pointsSize: float = 10
+scaleRate: float = 0.
+pointsSize: float = 10.0
 ambientRate: float = .56
 lightRate: float = .5
 linesSize: float = 0.1

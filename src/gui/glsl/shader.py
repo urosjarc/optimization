@@ -43,10 +43,10 @@ def colormaps() -> List[Colormap]:
 
 def uiConfig():
     mapping = {
-        'bool': (lambda v: np.uint32(int(v)), 'bool', glUniform1ui),
+        'bool': (np.uint32, 'bool', glUniform1ui),
         'list': (lambda v: np.array(v, dtype=np.float32), 'vec3', lambda n, v: glUniform3fv(n, 1, v)),
-        'float': (lambda v: np.float32(v), 'float', glUniform1f),
-        'int': (lambda v: np.int32(v), 'int', glUniform1i)
+        'float': (np.float32, 'float', glUniform1f),
+        'int': (np.int32, 'int', glUniform1i)
     }
 
     configDict = {}
@@ -59,6 +59,15 @@ def uiConfig():
         }
     return configDict
 
+def modelTypes():
+    from src.gui.plot.model import MODEL
+    src = ""
+    for name, val in MODEL.__dict__.items():
+        if not name.startswith('_'):
+            val = MODEL.__getattr__(name).value
+            src += f'const uint {name}_MODEL = {val};\n'
+
+    return src
 
 def vertexSrc() -> str:
     shaders = ""
@@ -83,7 +92,8 @@ def vertexSrc() -> str:
         src = src.replace("#include <colormap_shaders>", shaders)
         src = src.replace("#include <colormap_function>", function)
         src = src.replace("#include <ui_config>", config)
-        with open('test.glsl', 'w') as f:
+        src = src.replace("#include <model_types>", modelTypes())
+        with open('shader_vertex_compiled.glsl', 'w') as f:
             f.write(src)
         return src
 

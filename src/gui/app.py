@@ -213,17 +213,16 @@ class MainWindow(QtWidgets.QMainWindow):
             center = bb.center()  # Todo: Comment this!!!
             scale = (1 / (bb.xMax - bb.xMin), 1 / (bb.yMax - bb.yMin), 1 / (bb.zMax - bb.zMin))
 
-            # Create models
-            models = []
-
             # Create model with scalled x,y,z to ~1
             funModel = FunctionModel(initBuffers=False)
             funModel.addShape(shape)
             funModel.view.translate(*-center)
             funModel.view.scale(*scale)
-            models.append(funModel)
 
             # Minimum models
+            minAxisModel = AxisModel(initBuffers=False)
+            minAxisModel.view.translate(*-center)
+            minAxisModel.view.scale(*scale)
             for min2DVector in fun.minVectors:
                 minVector = np.array(min2DVector + [fun.minValue])
                 minAxis = Shape()
@@ -231,11 +230,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     color = [1, 0, 0, 1, 0, 0][i:i + 3] + [1]
                     base = np.array([int(i == j) * (1 / scale[j]) for j in range(3)])
                     minAxis.add_line((minVector - base).tolist(), (minVector + base).tolist(), color)
-                minAxisModel = AxisModel(initBuffers=False)
                 minAxisModel.addShape(minAxis)
-                minAxisModel.view.translate(*-center)
-                minAxisModel.view.scale(*scale)
-                models.append(minAxisModel)
 
             # Create box grid
             # boundBoxModel = Model(GL_LINES, 3, initBuffers=False)
@@ -245,7 +240,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # boundBoxModel.view.scale(*scale)
             # models.append(boundBoxModel)
 
-            return models
+            return [funModel, minAxisModel]
 
         def on_result(widget: OpenGLWidget, models: List[Model]):
             widget.functionModel = models[0]
