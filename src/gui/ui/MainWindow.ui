@@ -109,20 +109,20 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="pushButton">
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>33</height>
-           </size>
+         <widget class="QCheckBox" name="stopCB">
+          <property name="enabled">
+           <bool>false</bool>
           </property>
           <property name="text">
-           <string>Pause</string>
+           <string>Stop</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="stopPB">
+         <widget class="QPushButton" name="endPB">
           <property name="minimumSize">
            <size>
             <width>0</width>
@@ -136,7 +136,7 @@
            </size>
           </property>
           <property name="text">
-           <string>Stop</string>
+           <string>End</string>
           </property>
          </widget>
         </item>

@@ -1,7 +1,6 @@
 from typing import List
 
 import numpy as np
-from OpenGL.GL import GL_TRIANGLES, GL_LINES
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QTimer, QThreadPool, Qt
 from PyQt5.QtGui import QKeySequence, QIcon
@@ -23,7 +22,7 @@ class MainWindow(QtWidgets.QMainWindow):
     widgetsHL: QHBoxLayout
 
     startPB: QPushButton
-    stopPB: QPushButton
+    endPB: QPushButton
 
     iterationsSB: QSpinBox
     iterationPauseSB: QSpinBox
@@ -32,6 +31,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     showPointsCB: QCheckBox
     showLinesCB: QCheckBox
+    stopCB: QCheckBox
     pointsSizeS: QSlider
     linesSizeS: QSlider
     ambientRateS: QSlider
@@ -56,10 +56,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.widgetsHL.addWidget(self.zoomW)
 
         self.startPB.clicked.connect(self.on_start)
-        self.stopPB.clicked.connect(self.on_stop)
+        self.endPB.clicked.connect(self.on_end)
         self.nameCB.currentIndexChanged.connect(self.on_name_change)
         self.birdsEyeCB.stateChanged.connect(self.on_birdsEye_toggle)
         self.ortogonalViewCB.stateChanged.connect(self.on_ortogonalView_toggle)
+        self.stopCB.stateChanged.connect(self.on_stop_toggle)
         self.scaleRateS.valueChanged.connect(self.on_scaleRate_change)
         self.iterationPauseSB.valueChanged.connect(self.on_iterationPause_change)
         self.colormapCB.currentIndexChanged.connect(self.on_colormap_change)
@@ -90,6 +91,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         for cmap in shader.colormaps():
             self.colormapCB.addItem(QIcon(cmap.preview), '', userData=cmap.id)
+
+    def on_stop_toggle(self, state):
+        if(state == 2):
+            self.nextPointTimer.stop()
+        else:
+            self.nextPointTimer.start()
+
 
     def on_load(self):
         self.inited = True
@@ -162,10 +170,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.nextPointTimer.setInterval(self.iterationPauseSB.value())
         self.nextPointTimer.start()
 
-    def on_stop(self):
+        self.stopCB.setDisabled(False)
+        self.stopCB.setChecked(False)
+
+    def on_end(self):
+        self.stopCB.setDisabled(True)
         for w in self.widgets:
-            for m in w.evalLinesModel:
-                m.setShapes([])
+            w.evalLinesModel.setShapes([])
             w.evalPointsModel.setShapes([])
             w.update()
         self.nextPointTimer.stop()

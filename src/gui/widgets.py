@@ -1,9 +1,8 @@
-from types import ModuleType
 from typing import Dict
 
 from OpenGL.GL import shaders
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QMouseEvent, QWheelEvent
+from PyQt5.QtGui import QMouseEvent, QWheelEvent, QSurfaceFormat
 from PyQt5.QtWidgets import QOpenGLWidget
 
 from src.gui.glsl import shader
@@ -15,6 +14,12 @@ class OpenGLWidget(QOpenGLWidget):
 
     def __init__(self, parent):
         QOpenGLWidget.__init__(self, parent=parent)
+
+        # Adding samples
+        format = QSurfaceFormat()
+        format.setSamples(8)
+        self.setFormat(format)
+
         self.programLocations: Dict[str, GLuint]
 
         self.view: View = View()
@@ -62,12 +67,10 @@ class OpenGLWidget(QOpenGLWidget):
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_MULTISAMPLE)
         glEnable(GL_LINE_SMOOTH)
+        glEnable(GL_POINT_SMOOTH)
 
         glDepthFunc(GL_LEQUAL)
         glClearDepth(1.0)
-
-        # Adding samples
-        self.format().setSamples(8)
 
         self.evalPointsModel.initBuffers()
         self.evalLinesModel.initBuffers()
