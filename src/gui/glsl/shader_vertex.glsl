@@ -28,7 +28,7 @@ void main() {
 
     //Prepare variables
     vec4 position = vec4(in_position, 1);
-    vec4 normal = vec4(in_normal, 0);
+    vec4 normal = vec4(in_normal, 1);
     vec4 light = vec4(ui_lightPosition, 0);
     vec4 ambientColor = vec4(vec3(ui_ambientRate), 1.0);
     vec4 lightColor = vec4(vec3(ui_lightRate), 1.0);
@@ -37,7 +37,7 @@ void main() {
     vec4 model = view_model * position;
 
     /* HEIGHT SCALLING FOR EVAL POINTS AND LINES */
-    switch(type_model){
+    switch (type_model){
         case FUNCTION_MODEL:
             model.z = height_scalling(model.z, ui_scaleRate);
             break;
@@ -46,8 +46,11 @@ void main() {
             break;
         case EVAL_LINE_MODEL:
             model.z = height_scalling(model.z, ui_scaleRate);
-            if (length(normal) != 0)//Increase line after chosing color for point.
+            if (length(in_normal) != 0){ //Increase line after chosing color for point.
+                normal = view_model * normal;
+                normal.z = height_scalling(normal.z, ui_scaleRate);
                 model.z += ui_linesSize;
+            }
             break;
     }
 
@@ -59,18 +62,20 @@ void main() {
 
     //Compute diffuse rate
     float diffuseRate = 1;
-    if(type_model == FUNCTION_MODEL) // Shading if function
-        diffuseRate = abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
+    if (type_model == FUNCTION_MODEL)// Shading if function
+    diffuseRate = abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
 
     //Compute colormap
     vec4 surfaceColor = colormap(ui_colormap, model.z+0.5);
 
-    switch(type_model){
+    switch (type_model){
         case EVAL_POINT_MODEL:
             surfaceColor = 1 - surfaceColor;
             break;
         case EVAL_LINE_MODEL:
             surfaceColor = 1 - surfaceColor;
+            if (length(in_normal) != 0)//Increase line after chosing color for point.
+                surfaceColor = 1-colormap(ui_colormap, normal.z+0.5);
             break;
         case FUNCTION_MODEL:
             break;
