@@ -77,8 +77,6 @@ class OpenGLWidget(QOpenGLWidget):
         self.functionModel.initBuffers()
         self.axesModel.initBuffers()
 
-        self.update(context=False, cameraView=True, screenView=True)
-
     def paintGL(self):
         glPointSize(config.pointsSize)
 

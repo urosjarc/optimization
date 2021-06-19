@@ -1,4 +1,7 @@
+import logging
+import sys
 from typing import List
+from autologging import traced, logged, TRACE
 
 import numpy as np
 from PyQt5 import QtWidgets, uic
@@ -45,59 +48,65 @@ class MainWindow(QtWidgets.QMainWindow):
     infoL: QLabel
 
     def __init__(self):
+        self.inited = False
+        self.optimizer = None
+        self.iterationsLeft = None
+
         super(MainWindow, self).__init__()  # Call the inherited classes __init__ method
         uic.loadUi(utils.getPath(__file__, 'ui/MainWindow.ui'), self)  # Load the .ui file
 
         self.normalW: OpenGLWidget = OpenGLWidget(self)
         self.zoomW: OpenGLWidget = OpenGLWidget(self)
-        self.widgets = [self.normalW, self.zoomW]
-
         self.widgetsHL.addWidget(self.normalW)
         self.widgetsHL.addWidget(self.zoomW)
+        self.widgets = [self.normalW, self.zoomW]
 
-        self.startPB.clicked.connect(self.on_start)
-        self.endPB.clicked.connect(self.on_end)
-        self.nameCB.currentIndexChanged.connect(self.on_name_change)
-        self.birdsEyeCB.stateChanged.connect(self.on_birdsEye_toggle)
-        self.ortogonalViewCB.stateChanged.connect(self.on_ortogonalView_toggle)
-        self.stopCB.stateChanged.connect(self.on_stop_toggle)
-        self.scaleRateS.valueChanged.connect(self.on_scaleRate_change)
-        self.iterationPauseSB.valueChanged.connect(self.on_iterationPause_change)
-        self.colormapCB.currentIndexChanged.connect(self.on_colormap_change)
-        self.transperencyCB.stateChanged.connect(self.on_transperency_toggle)
-        self.lightCB.stateChanged.connect(self.on_light_toggle)
-        self.pointsSizeS.valueChanged.connect(self.on_pointsSize_change)
-        self.linesSizeS.valueChanged.connect(self.on_linesSize_change)
-        self.ambientRateS.valueChanged.connect(self.on_ambientRate_change)
-        self.lightRateS.valueChanged.connect(self.on_lightRate_change)
+        self.__initValues()
+        self.__initController()
+        self.__initShortcuts()
+        self.__initTimers()
 
-        self.lightCB.stateChanged.connect(self.on_light_toggle)
-
-        self.inited = False
-
-        self.findAction = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_F), self)
-        self.findAction.activated.connect(self.on_find_shortcut)
+    def __initTimers(self):
         self.nextPointTimer = QTimer(self)
         self.nextPointTimer.timeout.connect(self.on_nextPoint)
 
-        self.optimizer = None
-        self.iterationsLeft = None
+    def __initController(self):
+        self.startPB.clicked.connect(self.on_start)
+        self.stopCB.stateChanged.connect(self.on_stop_toggle)
+        self.endPB.clicked.connect(self.on_end)
 
-        self.__init()
+        self.iterationPauseSB.valueChanged.connect(self.on_iterationPause_change)
+        self.nameCB.currentIndexChanged.connect(self.on_name_change)
 
-    def __init(self):
+        self.ortogonalViewCB.stateChanged.connect(self.on_ortogonalView_toggle)
+        self.birdsEyeCB.stateChanged.connect(self.on_birdsEye_toggle)
+        self.scaleRateS.valueChanged.connect(self.on_scaleRate_change)
+        self.colormapCB.currentIndexChanged.connect(self.on_colormap_change)
+
+        self.pointsSizeS.valueChanged.connect(self.on_pointsSize_change)
+        self.linesSizeS.valueChanged.connect(self.on_linesSize_change)
+        self.transperencyCB.stateChanged.connect(self.on_transperency_toggle)
+
+        self.ambientRateS.valueChanged.connect(self.on_ambientRate_change)
+        self.lightRateS.valueChanged.connect(self.on_lightRate_change)
+        self.lightCB.stateChanged.connect(self.on_light_toggle)
+
+    def __initValues(self):
         for f in functions(2):
             self.nameCB.addItem(f'{f.name:<33}{f.hardness:>.2f}', f)
 
         for cmap in shader.colormaps():
             self.colormapCB.addItem(QIcon(cmap.preview), '', userData=cmap.id)
 
+    def __initShortcuts(self):
+        self.findAction = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_F), self)
+        self.findAction.activated.connect(self.on_find_shortcut)
+
     def on_stop_toggle(self, state):
         if(state == 2):
             self.nextPointTimer.stop()
         else:
             self.nextPointTimer.start()
-
 
     def on_load(self):
         self.inited = True
