@@ -4,7 +4,7 @@ from typing import List
 transperency: bool = True
 ortogonalView: bool = False
 lightPosition: List[float] = [10., 10., 100.]
-birdsEye: bool = False
+birdsEye: int = 0
 scaleRate: float = 0.
 pointsSize: float = 10.0
 ambientRate: float = .56

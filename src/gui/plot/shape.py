@@ -1,3 +1,4 @@
+import copy
 from typing import List
 
 import meshio
@@ -11,65 +12,42 @@ from src.optimization.space import Function
 class BoundBox:
 
     def __init__(self):
-        self.xMax, self.xMin = None, None
-        self.yMax, self.yMin = None, None
-        self.zMax, self.zMin = None, None
+        self.start = []
+        self.end = []
+        self.dim = 0
 
     @staticmethod
     def calculate(points):
         b = BoundBox()
-
-        b.xMax, b.xMin = points[0][0], points[0][0]
-        b.yMax, b.yMin = points[0][1], points[0][1]
-        b.zMax, b.zMin = points[0][2], points[0][2]
+        b.dim = len(points[0])
+        b.start = copy.deepcopy(points[0])
+        b.end = copy.deepcopy(points[0])
 
         for i in range(len(points)):
-            x = points[i][0]
-            y = points[i][1]
-            z = points[i][2]
-
-            if x < b.xMin:
-                b.xMin = x
-            elif x > b.xMax:
-                b.xMax = x
-
-            if y < b.yMin:
-                b.yMin = y
-            elif y > b.yMax:
-                b.yMax = y
-
-            if z < b.zMin:
-                b.zMin = z
-            elif z > b.zMax:
-                b.zMax = z
+            for axis in range(b.dim):
+                axisLength = points[i][axis]
+                if b.start[axis] > axisLength:
+                    b.start[axis] = axisLength
+                elif b.end[axis] < axisLength:
+                    b.end[axis] = axisLength
 
         return b
 
     def resize(self, boundBox=None, points=None):
         bb = BoundBox.calculate(points) if points is not None else boundBox
 
-        if self.xMin is None:
+        if not self.start:
             self.__dict__ = bb.__dict__
             return
 
-        if bb.xMin < self.xMin:
-            self.xMin = bb.xMin
-        if bb.xMax > self.xMax:
-            self.xMax = bb.xMax
-        if bb.yMin < self.yMin:
-            self.yMin = bb.yMin
-        if bb.yMax > self.yMax:
-            self.yMax = bb.yMax
-        if bb.zMin < self.zMin:
-            self.zMin = bb.zMin
-        if bb.zMax > self.zMax:
-            self.zMax = bb.zMax
+        for axis in range(bb.dim):
+            if bb.start[axis] < self.start[axis]:
+                self.start[axis] = bb.start[axis]
+            if bb.end[axis] > self.end[axis]:
+                self.end[axis] = bb.end[axis]
 
     def center(self):
-        return np.mean([
-            [self.xMax, self.yMax, self.zMax],
-            [self.xMin, self.yMin, self.zMin]
-        ], axis=0)
+        return np.mean([self.end, self.start], axis=0)
 
 class Shape:
 

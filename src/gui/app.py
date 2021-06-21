@@ -1,7 +1,4 @@
-import logging
-import sys
 from typing import List
-from autologging import traced, logged, TRACE
 
 import numpy as np
 from PyQt5 import QtWidgets, uic
@@ -17,8 +14,8 @@ from src.gui.plot.model import FunctionModel, AxisModel
 from src.gui.ui import config
 from src.gui.widgets import OpenGLWidget
 from src.gui.worker import Worker
+from src.optimization.kdtree import KDTreeOptimizer
 from src.optimization.space import functions, Function
-from src.optimization.test import TestOptimizer
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -103,7 +100,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.findAction.activated.connect(self.on_find_shortcut)
 
     def on_stop_toggle(self, state):
-        if(state == 2):
+        if state == 2:
             self.nextPointTimer.stop()
         else:
             self.nextPointTimer.start()
@@ -112,9 +109,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.inited = True
         self.on_name_change()
 
-    def updateWidgets(self, screenView=False):
+    def updateWidgets(self, screenView=False, cameraView=False):
         for w in self.widgets:
-            w.update(screenView=screenView)
+            w.update(screenView=screenView, cameraView=cameraView)
 
     def on_transperency_toggle(self, state):
         config.transperency = state == 2
@@ -155,26 +152,41 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_nextPoint(self):
         point = self.optimizer.nextPoint()
-        point[-1] += 0.001
         pointShape = Shape().add_point(point, [0, 0, 0, 1])
+        models = self.optimizer.models()
+        for m in models:
+            m.view = self.normalW.functionModel.view
+
         for w in self.widgets:
+            w.userModels = models
+
             funBB = w.functionModel.boundBox
-            if w == self.zoomW and not (funBB.xMin <= point[0] <= funBB.xMax and funBB.yMin <= point[1] <= funBB.yMax):
-                continue
+            if w == self.zoomW:
+                inZoomRange = True
+                for axis in range(funBB.dim):
+                    if not (funBB.start[axis] <= point[axis] <= funBB.end[axis]):
+                        inZoomRange = False
+                        break
+                if not inZoomRange:
+                    continue
 
             # TODO: THIS IS A HACK (IN NORMAL IS WRITTEN WHICH POINT IS STARTING AND NEDING POINT)
             lineShape = Shape().add_line(point, point, [1, 1, 1, 1])
             # =============================================================================
+
             w.evalLinesModel.addShape(lineShape)
             w.evalPointsModel.addShape(pointShape)
             w.update()
-        self.iterationsLeft -= 1
         self.infoL.setText('\n'.join([
-            f'Iterations left: {self.iterationsLeft}',
+            f'Iterations left: {self.iterationsLeft - self.fun.evaluation}',
         ]))
 
     def on_start(self):
-        self.optimizer = TestOptimizer(self.nameCB.currentData())
+        self.fun: Function = self.nameCB.currentData()
+        self.fun.evaluation = 0
+        self.optimizer = KDTreeOptimizer(self.nameCB.currentData())
+        for m in self.optimizer.models():
+            m.initBuffers()
         self.iterationsLeft = self.iterationsSB.value()
         self.nextPointTimer.setInterval(self.iterationPauseSB.value())
         self.nextPointTimer.start()
@@ -187,6 +199,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for w in self.widgets:
             w.evalLinesModel.setShapes([])
             w.evalPointsModel.setShapes([])
+            for m in w.userModels:
+                m.setShapes([])
             w.update()
         self.nextPointTimer.stop()
 
@@ -208,8 +222,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.updateWidgets()
 
     def on_birdsEye_toggle(self, state: int):
-        config.birdsEye = state == 2
-        self.updateWidgets(screenView=True)
+        config.birdsEye = state
+        self.updateWidgets(cameraView=True)
 
     def on_ortogonalView_toggle(self, state: int):
         config.ortogonalView = state == 2
@@ -230,8 +244,8 @@ class MainWindow(QtWidgets.QMainWindow):
             )
 
             bb = shape.boundBox
-            center = bb.center()  # Todo: Comment this!!!
-            scale = (1 / (bb.xMax - bb.xMin), 1 / (bb.yMax - bb.yMin), 1 / (bb.zMax - bb.zMin))
+            center = bb.center()
+            scale = [1 / (bb.end[i] - bb.start[i]) for i in range(bb.dim)]
 
             # Create model with scalled x,y,z to ~1
             funModel = FunctionModel(initBuffers=False)

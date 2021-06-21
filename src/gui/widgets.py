@@ -27,6 +27,7 @@ class OpenGLWidget(QOpenGLWidget):
         self.axesModel = AxisModel()
         self.evalPointsModel = EvalPointsModel()
         self.evalLinesModel = EvalLinesModel()
+        self.userModels = []
         self.locations = {}
 
         self.screenView = None
@@ -100,7 +101,7 @@ class OpenGLWidget(QOpenGLWidget):
         if config.pointsSize > 0:
             models.append(self.evalPointsModel)
 
-        for model in models:
+        for model in models + self.userModels:
 
             glEnable(GL_DEPTH_TEST)
             if config.transperency and model in [self.evalPointsModel, self.evalLinesModel]:
@@ -158,7 +159,7 @@ class OpenGLWidget(QOpenGLWidget):
                     self.update()
 
             if btns == Qt.MidButton:
-                config.birdsEye = not config.birdsEye
+                config.birdsEye = 0 if config.birdsEye > 0 else 1
                 self.update(screenView=True, cameraView=True)
 
         self.mouse = [event.x(), event.y()]
@@ -170,7 +171,7 @@ class OpenGLWidget(QOpenGLWidget):
         btns = event.buttons()
 
         if btns == Qt.MidButton:
-            self.birdsEye = not self.birdsEye
+            config.birdsEye = 0 if config.birdsEye > 0 else 1
             self.update(screenView=True)
         elif btns == Qt.NoButton:
 
@@ -183,8 +184,10 @@ class OpenGLWidget(QOpenGLWidget):
 
     @property
     def cameraView(self):
-        if config.birdsEye:
+        if config.birdsEye == 1:
             return self.view.translationMatrix * self.view.scaleMatrix
+        elif config.birdsEye == 2:
+            return self.view.translationMatrix * Matrix44.from_x_rotation(np.pi) * self.view.scaleMatrix
         return self.view.translationMatrix * self.view.rotationMatrix * self.view.scaleMatrix
 
     def update(self, screenView=False, cameraView=False, context=True) -> None:
