@@ -12,7 +12,9 @@ from src.optimization.space import Function
 
 
 class Cube:
-    model = Model(MODEL.GENERIC, GL.GL_LINES, 3, initBuffers=False)
+    grid = Model(MODEL.GENERIC, GL.GL_LINES, 2, initBuffers=False)
+    adjecentPoints = Model(MODEL.GENERIC, GL.GL_POINTS, 2, initBuffers=False)
+    adjecentLines = Model(MODEL.GENERIC, GL.GL_LINES, 2, initBuffers=False)
 
     def __init__(self, bounds: List[List[float]]):
         self.bounds = bounds
@@ -20,8 +22,9 @@ class Cube:
         self.start = [b[0] for b in bounds]
         self.end = [b[1] for b in bounds]
         self.value = None
-        Cube.model.addShape(self.shape3D())
+        Cube.grid.addShape(self.gridShape())
 
+        self.parent: Cube = None
         self.children: List[Cube] = []
 
     def longestAxis(self):
@@ -49,6 +52,8 @@ class Cube:
             Cube(lowerBounds),
             Cube(upperBounds)
         ]
+        for child in self.children:
+            child.parent = self
 
     def partition(self):
         cubes = [self]
@@ -78,12 +83,12 @@ class Cube:
     def setValue(self, value):
         self.value = value
 
-    def shape3D(self):
+    def gridShape(self):
         shape = Shape()
-        shape.add_line(self.start + [0], [self.bounds[0][1], self.bounds[1][0], 0], [1, 0, 0, 1])
-        shape.add_line(self.start + [0], [self.bounds[0][0], self.bounds[1][1], 0], [1, 0, 0, 1])
-        shape.add_line([self.bounds[0][1], self.bounds[1][0], 0], self.end + [0], [1, 0, 0, 1])
-        shape.add_line([self.bounds[0][0], self.bounds[1][1], 0], self.end + [0], [1, 0, 0, 1])
+        shape.add_line(self.start, [self.bounds[0][1], self.bounds[1][0]], [1, 0, 0, 1])
+        shape.add_line(self.start, [self.bounds[0][0], self.bounds[1][1]], [1, 0, 0, 1])
+        shape.add_line([self.bounds[0][1], self.bounds[1][0]], self.end, [1, 0, 0, 1])
+        shape.add_line([self.bounds[0][0], self.bounds[1][1]], self.end, [1, 0, 0, 1])
         return shape
 
 class KDTreeOptimizer:
@@ -101,7 +106,7 @@ class KDTreeOptimizer:
 
         self.queue = [self.rootCube.center() + [self.rootCube.value]]
         self.endCubes = [self.rootCube]
-        Cube.model.setShapes([self.endCubes[0].shape3D()])
+        Cube.grid.setShapes([self.endCubes[0].gridShape()])
 
     def nextCube(self):
         info = {'value': [], 'volume': []}
@@ -132,13 +137,20 @@ class KDTreeOptimizer:
         self.endCubes += cubes
 
         #Add paritioned cubes to queue
+        centralPoint = cube.center()
+        points = Shape()
+        lines = Shape()
         for cube in cubes:
             center = cube.center()
             cube.setValue(self.fun(center))
+            points.add_point(center, [0,1,1,1])
+            lines.add_line(centralPoint, center, [0, 1, 1, 1])
             vector = center + [cube.value]
             self.queue.append(vector)
+        Cube.adjecentPoints.setShapes([points])
+        Cube.adjecentLines.setShapes([lines])
 
         return self.nextPoint()
 
     def models(self):
-        return [Cube.model]
+        return [Cube.grid, Cube.adjecentPoints, Cube.adjecentLines]
