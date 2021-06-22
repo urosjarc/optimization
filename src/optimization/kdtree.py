@@ -12,32 +12,56 @@ from src.optimization.space import Function
 
 
 class Cube:
-    grid = Model(MODEL.GENERIC, GL.GL_LINES, 2, initBuffers=False)
-    adjecentPoints = Model(MODEL.GENERIC, GL.GL_POINTS, 2, initBuffers=False)
-    adjecentLines = Model(MODEL.GENERIC, GL.GL_LINES, 2, initBuffers=False)
 
     def __init__(self, bounds: List[List[float]]):
         self.bounds = bounds
         self.dim = len(bounds)
         self.start = [b[0] for b in bounds]
         self.end = [b[1] for b in bounds]
+
         self.value = None
-        Cube.grid.addShape(self.gridShape())
+        self.center = []
+        self.volume = 1
 
         self.parent: Cube = None
         self.children: List[Cube] = []
+        self.neighbours: List[Cube] = []
 
-    def longestAxis(self):
-        maxAxis = 0
-        maxDist = 0
+        self.__init()
 
-        for i in range(self.dim):
-            dist = abs(self.end[i] - self.start[i])
-            if dist > maxDist:
-                maxAxis = i
-                maxDist = dist
+    def __init(self):
+        if 2 <= self.dim <= 3:
+            Models.drawGrid(self)
 
-        return maxAxis
+        # INIT CENTER
+        for bound in self.bounds:
+            self.center.append(mean(bound))
+
+        # INIT VOLUME
+        for axis in range(self.dim):
+            self.volume *= abs(self.bounds[axis][1] - self.bounds[axis][0])
+
+    @property
+    def vector(self):
+        if not self.value:
+            raise Exception("Cant get vector because cube is not jet evaluated!")
+        return self.center + [self.value]
+
+    def connect(self, cube):
+        if cube not in self.neighbours:
+            self.neighbours.append(cube)
+        else:
+            raise Exception("Cube is allready in this cubes neighbours, this should not happend!")
+
+        if self not in cube.neighbours:
+            cube.neighbours.append(self)
+        else:
+            raise Exception("Self is allready in cubes neighbours, this should not happend!")
+
+    def disconnect(self):
+        for neighbour in self.neighbours:
+            neighbour.neighbours.remove(self)
+        self.neighbours = None
 
     def divide(self, axis):
         middleAxisPoint = mean(self.bounds[axis])
@@ -56,40 +80,69 @@ class Cube:
             child.parent = self
 
     def partition(self):
-        cubes = [self]
+        partCubes = [self]
         splitedCubes = []
         for axis in range(self.dim):
-            for cube in cubes:
-                cube.divide(axis)
-                splitedCubes += cube.children
-            cubes = splitedCubes
+            for partCube in partCubes:
+                partCube.divide(axis)
+                splitedCubes += partCube.children
+            partCubes = splitedCubes
             splitedCubes = []
 
-        return cubes
+        # CONNECT PARTITIONED CUBES WITH THEM SELFS
+        for i in range(len(partCubes) - 1):
+            for j in range(i + 1, len(partCubes)):
+                partCubes[i].connect(partCubes[j])
 
-    def center(self):
-        middle = []
-        for bound in self.bounds:
-            middle.append(mean(bound))
-        return middle
+        # CONNECT PARTITIONED CUBES WITH PARENT NEIGHBOURS
+        for parentNeighbour in self.neighbours:
+            for partCube in partCubes:
+                if parentNeighbour.adjecentTo(partCube):
+                    parentNeighbour.connect(partCube)
 
-    def volume(self):
-        v = 1
-        for axis in range(self.dim):
-            v *= abs(self.bounds[axis][1] - self.bounds[axis][0])
-        print(v)
-        return v
+        # DISCONNECT NEIGHBOURS WITH OLD CUBE THAT HAVE BEEN PARTITIONED
+        self.disconnect()
 
-    def setValue(self, value):
-        self.value = value
+        return partCubes
 
-    def gridShape(self):
-        shape = Shape()
-        shape.add_line(self.start, [self.bounds[0][1], self.bounds[1][0]], [1, 0, 0, 1])
-        shape.add_line(self.start, [self.bounds[0][0], self.bounds[1][1]], [1, 0, 0, 1])
-        shape.add_line([self.bounds[0][1], self.bounds[1][0]], self.end, [1, 0, 0, 1])
-        shape.add_line([self.bounds[0][0], self.bounds[1][1]], self.end, [1, 0, 0, 1])
-        return shape
+    def adjecentTo(self, cube):
+        smallCube, bigCube = (self, cube) if cube.volume > self.volume else (cube, self)
+
+        testingPoints = [smallCube.start, smallCube.end]
+        for axis, bound in enumerate(smallCube.bounds):
+            testingPoint = copy.copy(smallCube.start)
+            testingPoint[axis] = bound[1]
+            testingPoints.append(testingPoint)
+
+        for point in testingPoints:
+            inRange = True
+            for axis, bound in enumerate(bigCube.bounds):
+                if not (bound[0] <= point[axis] <= bound[1]):
+                    inRange = False
+                    break
+            if inRange:
+                return True
+
+        return False
+
+    def contains(self, point: List[float]):
+        for axis, bound in enumerate(self.bounds):
+            if not (bound[0] <= point[axis] <= bound[1]):
+                return False
+        return True
+
+    @property
+    def nearestCubes(self):
+        nearestCubes = []
+
+        parent = self.parent
+        while parent:
+            if parent.value and self.contains(parent.center):
+                nearestCubes.append(parent)
+            parent = parent.parent
+
+        return self.neighbours + nearestCubes
+
 
 class KDTreeOptimizer:
     def __init__(self, fun: Function):
@@ -102,55 +155,97 @@ class KDTreeOptimizer:
 
     def init(self):
         self.rootCube = Cube(self.fun.bounds)
-        self.rootCube.setValue(self.fun(self.rootCube.center()))
+        self.rootCube.value = self.fun(self.rootCube.center)
 
-        self.queue = [self.rootCube.center() + [self.rootCube.value]]
+        self.queue = [self.rootCube.vector]
         self.endCubes = [self.rootCube]
-        Cube.grid.setShapes([self.endCubes[0].gridShape()])
 
     def nextCube(self):
         info = {'value': [], 'volume': []}
         for cube in self.endCubes:
             info['value'].append(cube.value)
-            info['volume'].append(cube.volume())
+            info['volume'].append(cube.volume)
 
         lowValue = 1 - normalizeVector(info['value'])
         highVolume = normalizeVector(info['volume'])
 
-        rank = 5*highVolume + lowValue*3
+        rank = 2 * highVolume + lowValue * 3
 
         bestRank = np.argsort(rank)[-1]
         return (self.endCubes[bestRank], bestRank)
 
     def nextPoint(self):
+        # RETURN POINTS FROM QUEUE IF EXISTS
         if self.queue:
             point = self.queue[0]
             self.queue.pop(0)
             return point
 
-        #Search next cube for partitioning
-        cube, i = self.nextCube()
-        self.endCubes.pop(i)
+        # SEARCH NEXT CUBE FOR PARTITIONING
+        nextCube, i = self.nextCube()
 
-        #Partition cube and add partitioned cubes to endcubes
-        cubes = cube.partition()
-        self.endCubes += cubes
+        # DRAW NEIGHBOUR CUBES
+        Models.drawNearestPoints(nextCube)
 
-        #Add paritioned cubes to queue
-        centralPoint = cube.center()
-        points = Shape()
-        lines = Shape()
-        for cube in cubes:
-            center = cube.center()
-            cube.setValue(self.fun(center))
-            points.add_point(center, [0,1,1,1])
-            lines.add_line(centralPoint, center, [0, 1, 1, 1])
-            vector = center + [cube.value]
-            self.queue.append(vector)
-        Cube.adjecentPoints.setShapes([points])
-        Cube.adjecentLines.setShapes([lines])
+        # PARTITION CUBE
+        paritionedCubes = nextCube.partition()
 
+        # Remove CUBE FROM END CUBES AND ADD CUBE TO PARENT CUBES
+        self.endCubes.remove(nextCube)
+        self.endCubes += paritionedCubes
+
+        # ADD PARTITIONED CUBES CENTERS TO QUEUE
+        for partitionedCube in paritionedCubes:
+            partitionedCube.value = self.fun(partitionedCube.center)
+            self.queue.append(partitionedCube.vector)
+
+        # RETURN NEXT POINT
         return self.nextPoint()
 
     def models(self):
-        return [Cube.grid, Cube.adjecentPoints, Cube.adjecentLines]
+        return [Models.grids, Models.adjecentLines]
+
+
+class Models:
+    grids = Model(MODEL.GENERIC, GL.GL_LINES, 2, initBuffers=False)
+    adjecentLines = Model(MODEL.GENERIC, GL.GL_LINES, 2, initBuffers=False)
+
+    @classmethod
+    def initGrid(cls, cubes: List[Cube]):
+        cls.grids.setShapes(cubes)
+
+    @classmethod
+    def initAdjecent(cls):
+        cls.adjecentLines.setShapes([])
+
+    @classmethod
+    def drawGrid(cls, cube: Cube):
+        shape = Shape()
+        shape.add_line(cube.start, [cube.bounds[0][1], cube.bounds[1][0]], [1, 0, 0, 1])
+        shape.add_line(cube.start, [cube.bounds[0][0], cube.bounds[1][1]], [1, 0, 0, 1])
+        shape.add_line([cube.bounds[0][1], cube.bounds[1][0]], cube.end, [1, 0, 0, 1])
+        shape.add_line([cube.bounds[0][0], cube.bounds[1][1]], cube.end, [1, 0, 0, 1])
+        cls.grids.addShape(shape)
+
+    @classmethod
+    def drawAdjecentLine(cls, startPoint, endPoint):
+        line = Shape()
+        line.add_line(
+            startPoint, endPoint, [0, 1, 1, 1]
+        ).add_line(
+            [endPoint[0] - 0.2, endPoint[1] - 0.2], [endPoint[0] + 0.2, endPoint[1] + 0.2], [0, 1, 1, 1]
+        ).add_line(
+            [endPoint[0] - 0.2, endPoint[1] + 0.2], [endPoint[0] + 0.2, endPoint[1] - 0.2], [0, 1, 1, 1]
+        ).add_line(
+            [endPoint[0], endPoint[1] + 0.2], [endPoint[0], endPoint[1] - 0.2], [0, 1, 1, 1]
+        ).add_line(
+            [endPoint[0] + 0.2, endPoint[1]], [endPoint[0] - 0.2, endPoint[1]], [0, 1, 1, 1]
+        )
+        cls.adjecentLines.addShape(line)
+
+    @classmethod
+    def drawNearestPoints(cls, cube: Cube):
+        Models.initAdjecent()
+        center = cube.center
+        for neighbour in cube.nearestCubes:
+            Models.drawAdjecentLine(center, neighbour.center)
