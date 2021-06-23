@@ -2,9 +2,9 @@ import sys
 from typing import List
 
 transperency: bool = True
-ortogonalView: bool = False
+ortogonalView: bool = True
 lightPosition: List[float] = [10., 10., 100.]
-birdsEye: int = 0
+birdsEye: int = 2
 scaleRate: float = 0.
 pointsSize: float = 10.0
 ambientRate: float = .56

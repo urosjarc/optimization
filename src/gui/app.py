@@ -58,7 +58,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.widgetsHL.addWidget(self.zoomW)
         self.widgets = [self.normalW, self.zoomW]
 
-        self.__initValues()
+        self.__initUI()
         self.__initController()
         self.__initShortcuts()
         self.__initTimers()
@@ -88,7 +88,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lightRateS.valueChanged.connect(self.on_lightRate_change)
         self.lightCB.stateChanged.connect(self.on_light_toggle)
 
-    def __initValues(self):
+    def __initUI(self):
         for f in functions(2):
             self.nameCB.addItem(f'{f.name:<33}{f.hardness:>.2f}', f)
 
@@ -108,6 +108,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_load(self):
         self.inited = True
         self.on_name_change()
+        self.updateWidgets(screenView=True, cameraView=True)
 
     def updateWidgets(self, screenView=False, cameraView=False):
         for w in self.widgets:
@@ -179,6 +180,8 @@ class MainWindow(QtWidgets.QMainWindow):
             w.update()
         self.infoL.setText('\n'.join([
             f'Iterations left: {self.iterationsLeft - self.fun.evaluation}',
+            f'Min point: {self.optimizer.minPoint}',
+            f'Min value: {self.optimizer.minValue}',
         ]))
 
     def on_start(self):

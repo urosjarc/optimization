@@ -26,6 +26,7 @@ class Cube:
         self.parent: Cube = None
         self.children: List[Cube] = []
         self.neighbours: List[Cube] = []
+        self.nearPredecessors: List[Cube] = []
 
         self.__init()
 
@@ -94,6 +95,13 @@ class Cube:
             for j in range(i + 1, len(partCubes)):
                 partCubes[i].connect(partCubes[j])
 
+        # CONNECT PARTITIONED CUBES WITH PARENT AND PARENTS PREACESSORS
+        for partCube in partCubes:
+            partCube.nearPredecessors.append(self)
+            for preacessor in self.nearPredecessors:
+                if partCube.contains(preacessor.center):
+                    partCube.nearPredecessors.append(self)
+
         # CONNECT PARTITIONED CUBES WITH PARENT NEIGHBOURS
         for parentNeighbour in self.neighbours:
             for partCube in partCubes:
@@ -104,6 +112,15 @@ class Cube:
         self.disconnect()
 
         return partCubes
+
+    @property
+    def roughness(self):
+        diffSum = 0
+        c = 0
+        for cube in self.neighbours + self.nearPredecessors:
+            diffSum += abs(self.value - cube.value)
+            c += 1
+        return diffSum / c if c > 0 else 0
 
     def adjecentTo(self, cube):
         smallCube, bigCube = (self, cube) if cube.volume > self.volume else (cube, self)
@@ -148,6 +165,8 @@ class KDTreeOptimizer:
     def __init__(self, fun: Function):
         self.fun: Function = fun
 
+        self.minValue = 10**10
+        self.minPoint = None
         self.rootCube: Cube = None
         self.queue: List[List[float]] = []
         self.endCubes: List[Cube] = []
@@ -161,15 +180,17 @@ class KDTreeOptimizer:
         self.endCubes = [self.rootCube]
 
     def nextCube(self):
-        info = {'value': [], 'volume': []}
+        info = {'value': [], 'volume': [], 'roughness': []}
         for cube in self.endCubes:
             info['value'].append(cube.value)
             info['volume'].append(cube.volume)
+            info['roughness'].append(cube.roughness)
 
         lowValue = 1 - normalizeVector(info['value'])
         highVolume = normalizeVector(info['volume'])
+        highRoughness = normalizeVector(info['roughness'])
 
-        rank = 2 * highVolume + lowValue * 3
+        rank = highVolume + highRoughness + lowValue
 
         bestRank = np.argsort(rank)[-1]
         return (self.endCubes[bestRank], bestRank)
@@ -197,6 +218,9 @@ class KDTreeOptimizer:
         # ADD PARTITIONED CUBES CENTERS TO QUEUE
         for partitionedCube in paritionedCubes:
             partitionedCube.value = self.fun(partitionedCube.center)
+            if partitionedCube.value < self.minValue:
+                self.minValue = partitionedCube.value
+                self.minPoint = partitionedCube.center
             self.queue.append(partitionedCube.vector)
 
         # RETURN NEXT POINT
@@ -247,5 +271,5 @@ class Models:
     def drawNearestPoints(cls, cube: Cube):
         Models.initAdjecent()
         center = cube.center
-        for neighbour in cube.nearestCubes:
+        for neighbour in cube.nearestCubes + cube.nearPredecessors:
             Models.drawAdjecentLine(center, neighbour.center)
