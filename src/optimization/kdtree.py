@@ -1,4 +1,5 @@
 import copy
+import math
 from statistics import mean
 from typing import List
 
@@ -113,6 +114,12 @@ class Cube:
 
         return partCubes
 
+    def distance(self, cube):
+        dist = 0
+        for i, axis in enumerate(self.center):
+            dist += (axis - cube.center[i])**2
+        return math.sqrt(dist)
+
     @property
     def roughness(self):
         diffSum = 0
@@ -121,6 +128,26 @@ class Cube:
             diffSum += abs(self.value - cube.value)
             c += 1
         return diffSum / c if c > 0 else 0
+
+    @property
+    def isLocalMin(self):
+        for cube in self.neighbours + self.nearPredecessors:
+            if self.value > cube.value:
+                return False
+        return True
+
+    @property
+    def isLocalMinCand(self):
+        connCubes = self.neighbours + self.nearPredecessors
+        connCubes.sort(key=lambda cube: cube.distance(self))
+
+        size = len(connCubes)//2
+        if size == 0:
+            return False
+        for i in range(size):
+            if self.value > connCubes[i].value:
+                return False
+        return True
 
     def adjecentTo(self, cube):
         smallCube, bigCube = (self, cube) if cube.volume > self.volume else (cube, self)
@@ -170,6 +197,7 @@ class KDTreeOptimizer:
         self.rootCube: Cube = None
         self.queue: List[List[float]] = []
         self.endCubes: List[Cube] = []
+        self.parentCubes: List[Cube] = []
         self.init()
 
     def init(self):
@@ -208,10 +236,22 @@ class KDTreeOptimizer:
         # DRAW NEIGHBOUR CUBES
         Models.drawNearestPoints(nextCube)
 
+        mins = []
+        minsCand = []
+        for cube in self.endCubes:
+            if cube.isLocalMin:
+                mins.append(cube)
+            if cube.isLocalMinCand:
+                minsCand.append(cube)
+        print(f'Local mins: {len(mins)}, candidates: {len(minsCand)}')
+        Models.drawLocalMins(mins)
+        Models.drawLocalMinsCandidates(minsCand)
+
         # PARTITION CUBE
         paritionedCubes = nextCube.partition()
 
         # Remove CUBE FROM END CUBES AND ADD CUBE TO PARENT CUBES
+        self.parentCubes.append(nextCube)
         self.endCubes.remove(nextCube)
         self.endCubes += paritionedCubes
 
@@ -227,12 +267,14 @@ class KDTreeOptimizer:
         return self.nextPoint()
 
     def models(self):
-        return [Models.grids, Models.adjecentLines]
+        return [Models.grids, Models.adjecentLines, Models.localMins, Models.localMinsCandidates]
 
 
 class Models:
     grids = Model(MODEL.GENERIC, GL.GL_LINES, 2, initBuffers=False)
     adjecentLines = Model(MODEL.GENERIC, GL.GL_LINES, 2, initBuffers=False)
+    localMins = Model(MODEL.GENERIC, GL.GL_POINTS, 2, initBuffers=False)
+    localMinsCandidates = Model(MODEL.GENERIC, GL.GL_POINTS, 2, initBuffers=False)
 
     @classmethod
     def initGrid(cls, cubes: List[Cube]):
@@ -273,3 +315,17 @@ class Models:
         center = cube.center
         for neighbour in cube.nearestCubes + cube.nearPredecessors:
             Models.drawAdjecentLine(center, neighbour.center)
+
+    @classmethod
+    def drawLocalMins(cls, cubes: List[Cube]):
+        mins = Shape()
+        for cube in cubes:
+            mins.add_point(cube.center, [0,0,0,1])
+        cls.localMins.setShapes([mins])
+
+    @classmethod
+    def drawLocalMinsCandidates(cls, cubes: List[Cube]):
+        mins = Shape()
+        for cube in cubes:
+            mins.add_point(cube.center, [0,0,0,1])
+        cls.localMins.setShapes([mins])

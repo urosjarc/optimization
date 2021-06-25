@@ -155,12 +155,12 @@ class MainWindow(QtWidgets.QMainWindow):
         point = self.optimizer.nextPoint()
         pointShape = Shape().add_point(point, [0, 0, 0, 1])
         models = self.optimizer.models()
+
         for m in models:
             m.view = self.normalW.functionModel.view
+        self.normalW.userModels = models
 
         for w in self.widgets:
-            w.userModels = models
-
             funBB = w.functionModel.boundBox
             if w == self.zoomW:
                 inZoomRange = True
