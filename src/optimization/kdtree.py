@@ -5,6 +5,7 @@ from typing import List
 
 import numpy as np
 from OpenGL import GL
+from sortedcontainers import SortedDict
 
 from src.gui.plot import Model, Shape
 from src.gui.plot.model import MODEL
@@ -26,8 +27,8 @@ class Cube:
 
         self.parent: Cube = None
         self.children: List[Cube] = []
-        self.neighbours: List[Cube] = []
-        self.nearPredecessors: List[Cube] = []
+        self.adjacentCubes: List[Cube] = []
+        self.intersectingCubes: List[Cube] = []
 
         self.__init()
 
@@ -50,20 +51,15 @@ class Cube:
         return self.center + [self.value]
 
     def connect(self, cube):
-        if cube not in self.neighbours:
-            self.neighbours.append(cube)
+        if cube not in self.adjacentCubes:
+            self.adjacentCubes.append(cube)
         else:
             raise Exception("Cube is allready in this cubes neighbours, this should not happend!")
 
-        if self not in cube.neighbours:
-            cube.neighbours.append(self)
+        if self not in cube.adjacentCubes:
+            cube.adjacentCubes.append(self)
         else:
             raise Exception("Self is allready in cubes neighbours, this should not happend!")
-
-    def disconnect(self):
-        for neighbour in self.neighbours:
-            neighbour.neighbours.remove(self)
-        self.neighbours = None
 
     def divide(self, axis):
         middleAxisPoint = mean(self.bounds[axis])
@@ -84,6 +80,8 @@ class Cube:
     def partition(self):
         partCubes = [self]
         splitedCubes = []
+
+        # DIVIDE CUBE TO CHILDRENS
         for axis in range(self.dim):
             for partCube in partCubes:
                 partCube.divide(axis)
@@ -98,58 +96,66 @@ class Cube:
 
         # CONNECT PARTITIONED CUBES WITH PARENT AND PARENTS PREACESSORS
         for partCube in partCubes:
-            partCube.nearPredecessors.append(self)
-            for preacessor in self.nearPredecessors:
+            partCube.intersectingCubes.append(self)
+            for preacessor in self.intersectingCubes:
                 if partCube.contains(preacessor.center):
-                    partCube.nearPredecessors.append(self)
+                    partCube.intersectingCubes.append(preacessor)
 
         # CONNECT PARTITIONED CUBES WITH PARENT NEIGHBOURS
-        for parentNeighbour in self.neighbours:
+        for parentNeighbour in self.adjacentCubes:
             for partCube in partCubes:
-                if parentNeighbour.adjecentTo(partCube):
+                if parentNeighbour.overlapsWith(partCube):
                     parentNeighbour.connect(partCube)
 
-        # DISCONNECT NEIGHBOURS WITH OLD CUBE THAT HAVE BEEN PARTITIONED
-        self.disconnect()
+        # DISCONNECT NEIGHBOURS WITH FROM OLD CUBE THAT HAVE BEEN PARTITIONED
+        # TODO: Removing parent from neighbours is problematic for searching connected cubes!
+        for neighbour in self.adjacentCubes:
+            neighbour.adjacentCubes.remove(self)
+        self.adjacentCubes = None
 
         return partCubes
 
     def distance(self, cube):
         dist = 0
         for i, axis in enumerate(self.center):
-            dist += (axis - cube.center[i])**2
+            dist += (axis - cube.center[i]) ** 2
         return math.sqrt(dist)
 
     @property
-    def roughness(self):
-        diffSum = 0
-        c = 0
-        for cube in self.neighbours + self.nearPredecessors:
-            diffSum += abs(self.value - cube.value)
-            c += 1
-        return diffSum / c if c > 0 else 0
-
-    @property
     def isLocalMin(self):
-        for cube in self.neighbours + self.nearPredecessors:
-            if self.value > cube.value:
+        for cube in self.nearCubes:
+            if self.value >= cube.value:
                 return False
         return True
 
     @property
-    def isLocalMinCand(self):
-        connCubes = self.neighbours + self.nearPredecessors
-        connCubes.sort(key=lambda cube: cube.distance(self))
+    def cubesInLocalMin(self):
+        walleyCubes = SortedDict()
+        queue = [self]
 
-        size = len(connCubes)//2
-        if size == 0:
-            return False
-        for i in range(size):
-            if self.value > connCubes[i].value:
-                return False
-        return True
+        i = 0
+        while len(queue) < 10 and i < len(queue):
+            for cube in queue[i].adjacentCubes:
+                if cube not in queue:
+                    queue.append(cube)
+                    dist = self.distance(cube)
+                    if dist not in walleyCubes:
+                        walleyCubes[dist] = [cube]
+                    else:
+                        walleyCubes[dist].append(cube)
+            i += 1
+        return queue
 
-    def adjecentTo(self, cube):
+    @property
+    def nearCubes(self):
+        nearCubes = []
+        if self.adjacentCubes:
+            nearCubes += self.adjacentCubes
+        if self.intersectingCubes:
+            nearCubes += self.intersectingCubes
+        return nearCubes
+
+    def overlapsWith(self, cube):
         smallCube, bigCube = (self, cube) if cube.volume > self.volume else (cube, self)
 
         testingPoints = [smallCube.start, smallCube.end]
@@ -175,24 +181,12 @@ class Cube:
                 return False
         return True
 
-    @property
-    def nearestCubes(self):
-        nearestCubes = []
-
-        parent = self.parent
-        while parent:
-            if parent.value and self.contains(parent.center):
-                nearestCubes.append(parent)
-            parent = parent.parent
-
-        return self.neighbours + nearestCubes
-
 
 class KDTreeOptimizer:
     def __init__(self, fun: Function):
         self.fun: Function = fun
 
-        self.minValue = 10**10
+        self.minValue = 10 ** 10
         self.minPoint = None
         self.rootCube: Cube = None
         self.queue: List[List[float]] = []
@@ -207,18 +201,16 @@ class KDTreeOptimizer:
         self.queue = [self.rootCube.vector]
         self.endCubes = [self.rootCube]
 
-    def nextCube(self):
-        info = {'value': [], 'volume': [], 'roughness': []}
+    def nextEndCube(self):
+        info = {'value': [], 'volume': []}
         for cube in self.endCubes:
             info['value'].append(cube.value)
             info['volume'].append(cube.volume)
-            info['roughness'].append(cube.roughness)
 
         lowValue = 1 - normalizeVector(info['value'])
         highVolume = normalizeVector(info['volume'])
-        highRoughness = normalizeVector(info['roughness'])
 
-        rank = highVolume + highRoughness + lowValue
+        rank = highVolume + lowValue
 
         bestRank = np.argsort(rank)[-1]
         return (self.endCubes[bestRank], bestRank)
@@ -231,21 +223,19 @@ class KDTreeOptimizer:
             return point
 
         # SEARCH NEXT CUBE FOR PARTITIONING
-        nextCube, i = self.nextCube()
+        nextCube, i = self.nextEndCube()
 
-        # DRAW NEIGHBOUR CUBES
-        Models.drawNearestPoints(nextCube)
-
+        # DRAW NEIGHBOUR CUBES, MINS, CANDIDATES
         mins = []
-        minsCand = []
         for cube in self.endCubes:
             if cube.isLocalMin:
                 mins.append(cube)
-            if cube.isLocalMinCand:
-                minsCand.append(cube)
-        print(f'Local mins: {len(mins)}, candidates: {len(minsCand)}')
-        Models.drawLocalMins(mins)
-        Models.drawLocalMinsCandidates(minsCand)
+        Models.drawNearestPoints(nextCube)
+
+        Models.localMins.setShapes([])
+        print(f'Local mins:', len(mins))
+        for min in mins:
+            Models.drawLocalMins(min.cubesInLocalMin)
 
         # PARTITION CUBE
         paritionedCubes = nextCube.partition()
@@ -313,19 +303,19 @@ class Models:
     def drawNearestPoints(cls, cube: Cube):
         Models.initAdjecent()
         center = cube.center
-        for neighbour in cube.nearestCubes + cube.nearPredecessors:
-            Models.drawAdjecentLine(center, neighbour.center)
+        for nearCube in cube.nearCubes:
+            Models.drawAdjecentLine(center, nearCube.center)
 
     @classmethod
     def drawLocalMins(cls, cubes: List[Cube]):
         mins = Shape()
         for cube in cubes:
-            mins.add_point(cube.center, [0,0,0,1])
-        cls.localMins.setShapes([mins])
+            mins.add_point(cube.center, [0, 0, 0, 1])
+        cls.localMins.addShape(mins)
 
     @classmethod
     def drawLocalMinsCandidates(cls, cubes: List[Cube]):
         mins = Shape()
         for cube in cubes:
-            mins.add_point(cube.center, [0,0,0,1])
+            mins.add_point(cube.center, [0, 0, 0, 1])
         cls.localMins.setShapes([mins])

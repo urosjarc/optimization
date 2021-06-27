@@ -2,6 +2,7 @@ gym
 numpy
 pyrr
 numba
+sortedcontainers
 
 gmsh
 pygmsh
