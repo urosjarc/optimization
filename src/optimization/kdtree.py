@@ -1,5 +1,4 @@
 import copy
-import math
 from statistics import mean
 from typing import List
 
@@ -14,9 +13,16 @@ from src.optimization.space import Function
 # TODO: THEN AFTER FIRST PASS DIVIDE CUBES
 
 class Point:
-    def __init__(self, vector):
-        self.vector = vector
-        self.intersectingCubes = []
+    def __init__(self, center, parentCube):
+        self.value = None
+        self.center = center
+        self.intersectingCubes = [parentCube]
+
+    @property
+    def vector(self):
+        if not self.value:
+            raise Exception("Cant get vector because point is not jet evaluated!")
+        return self.center + [self.value]
 
 class Cube:
 
@@ -26,116 +32,37 @@ class Cube:
         self.start = [b[0] for b in bounds]
         self.end = [b[1] for b in bounds]
 
-        self.value = None
-        self.center = []
-        self.volume = 1
+        self.volume = None
 
-        self.adjacentEndCubes: List[Cube] = []
-        self.centerIntersectingParents: List[Cube] = []
+        self.centralPoint:Point = Point([], self)
+        self.parentsPoints: List[Point] = []
+        self.adjacentCubes: List[Cube] = []
 
         self.__init()
 
     def __init(self):
-        if 2 <= self.dim <= 3:
-            Models.drawGrid(self)
-
-        # INIT CENTER
+        # INIT CENTER POINT
         for bound in self.bounds:
-            self.center.append(mean(bound))
+            self.centralPoint.center.append(mean(bound))
 
         # INIT VOLUME
+        self.volume = 1
         for axis in range(self.dim):
             self.volume *= abs(self.bounds[axis][1] - self.bounds[axis][0])
 
-    def connectAdjacentEndCubes(self, cube):
-        if cube not in self.adjacentEndCubes:
-            self.adjacentEndCubes.append(cube)
-        else:
-            raise Exception("Cube is allready in this cubes neighbours, this should not happend!")
-
-        if self not in cube.adjacentEndCubes:
-            cube.adjacentEndCubes.append(self)
-        else:
-            raise Exception("Self is allready in cubes neighbours, this should not happend!")
-
-    @property
-    def vector(self):
-        if not self.value:
-            raise Exception("Cant get vector because cube is not jet evaluated!")
-        return self.center + [self.value]
+        if 2 <= self.dim <= 3:
+            Models.drawGrid(self)
 
     def divide(self, axis):
-        middleAxisPoint = mean(self.bounds[axis])
-        lowerAxisBound = [self.bounds[axis][0], middleAxisPoint]
-        upperAxisBound = [middleAxisPoint, self.bounds[axis][1]]
-        lowerBounds = copy.deepcopy(self.bounds)
-        upperBounds = copy.deepcopy(self.bounds)
-        lowerBounds[axis] = lowerAxisBound
-        upperBounds[axis] = upperAxisBound
+        middleaxispoint = mean(self.bounds[axis])
+        loweraxisbound = [self.bounds[axis][0], middleaxispoint]
+        upperaxisbound = [middleaxispoint, self.bounds[axis][1]]
+        lowerbounds = copy.deepcopy(self.bounds)
+        upperbounds = copy.deepcopy(self.bounds)
+        lowerbounds[axis] = loweraxisbound
+        upperbounds[axis] = upperaxisbound
 
-        return [Cube(lowerBounds), Cube(upperBounds)]
-
-    def partition(self):
-        partCubes = [self]
-        splitedCubes = []
-
-        # DIVIDE CUBE TO CHILDRENS
-        for axis in range(self.dim):
-            for partCube in partCubes:
-                splitedCubes += partCube.divide(axis)
-            partCubes = splitedCubes
-            splitedCubes = []
-
-        # SET CUBE GENERATION NUMBER
-        for partCube in partCubes:
-            partCube.generation = self.generation + 1
-
-        # CONNECT PARTITIONED CUBES WITH THEM SELFS
-        for i in range(len(partCubes) - 1):
-            for j in range(i + 1, len(partCubes)):
-                partCubes[i].connectAdjacentEndCubes(partCubes[j])
-
-        # CONNECT PARTITIONED CUBES WITH PARENT AND PARENTS PREACESSORS
-        # ONLY IF PARTITIONED CUBES CONTAINS PREAESSOR
-        for partCube in partCubes:
-            partCube.centerIntersectingParents.append(self)
-            for preacessor in self.centerIntersectingParents:
-                if partCube.contains(preacessor.center):
-                    partCube.centerIntersectingParents.append(preacessor)
-
-        # CONNECT PARTITIONED CUBES WITH PARENT NEIGHBOURS
-        # ONLY IF PARTITIONED CUBE OVERLAPS WITH PARENT NEIGHBOUR
-        for parentNeighbour in self.adjacentEndCubes:
-            for partCube in partCubes:
-                if parentNeighbour.overlapsWith(partCube):
-                    partCube.connectAdjacentEndCubes(parentNeighbour)
-
-        # DISCONNECT NEIGHBOURS WITH FROM OLD CUBE THAT HAVE BEEN PARTITIONED
-        for neighbour in self.adjacentEndCubes:
-            neighbour.adjacentEndCubes.remove(self)
-
-        # REMOVE ANY CONNECTION WITH NEAR RECTANGLES
-        self.adjacentEndCubes = None
-        self.centerIntersectingParents = None
-
-        return partCubes
-
-    def distance(self, cube):
-        dist = 0
-        for i, axis in enumerate(self.center):
-            dist += (axis - cube.center[i]) ** 2
-        return math.sqrt(dist)
-
-    @property
-    def isLocalMin(self):
-        for cube in self.nearCubes:
-            if self.value >= cube.value:
-                return False
-        return True
-
-    @property
-    def nearCubes(self):
-        return self.adjacentEndCubes + self.centerIntersectingParents
+        return [Cube(lowerbounds), Cube(upperbounds)]
 
     def overlapsWith(self, cube):
         smallCube, bigCube = (self, cube) if cube.volume > self.volume else (cube, self)
@@ -157,64 +84,148 @@ class Cube:
 
         return False
 
-    def contains(self, point: List[float]):
+    def contains(self, vector: List[float]):
         for axis, bound in enumerate(self.bounds):
-            if not (bound[0] <= point[axis] <= bound[1]):
+            if not (bound[0] <= vector[axis] <= bound[1]):
                 return False
         return True
 
+    def connectWithAdjacentCube(self, cube):
+        if cube not in self.adjacentCubes:
+            self.adjacentCubes.append(cube)
+        else:
+            raise Exception("Cube is already in this cubes neighbours list, this should not happened!")
+
+        if self not in cube.adjacentCubes:
+            cube.adjacentCubes.append(self)
+        else:
+            raise Exception("Self is already in cubes neighbours list, this should not happened!")
+
+    def connectWithParentPoint(self, point:Point):
+        if point not in self.parentsPoints:
+            self.parentsPoints.append(point)
+        else:
+            raise Exception("Point is already in this parents points list, this should not happened!")
+
+        if self not in point.intersectingCubes:
+            point.intersectingCubes.append(self)
+        else:
+            raise Exception("Self is already in point's intersecting cubes list, this should not happened!")
+
+    def partition(self):
+        partCubes = [self]
+        splitedCubes = []
+
+        # DIVIDE CUBE TO CHILDRENS
+        for axis in range(self.dim):
+            for partCube in partCubes:
+                splitedCubes += partCube.divide(axis)
+            partCubes = splitedCubes
+            splitedCubes = []
+
+        # CONNECT PARTITIONED CUBES WITH CURENT CUBES PARENTS POINT
+        # CREATE POINT FOR CURRENT PARITIONED CUBE
+        for partCube in partCubes:
+            partCube.connectWithParentPoint(self.centralPoint)
+            for parentPoint in self.parentsPoints:
+                if partCube.contains(parentPoint.vector):
+                    partCube.connectWithParentPoint(parentPoint)
+
+        # CONNECT PARTITIONED CUBES WITH THEM SELFS
+        for i in range(len(partCubes) - 1):
+            for j in range(i + 1, len(partCubes)):
+                partCubes[i].connectWithAdjacentCube(partCubes[j])
+
+        # CONNECT PARTITIONED CUBES WITH PARENT NEIGHBOURS
+        for partCube in partCubes:
+            for adjacentCube in self.adjacentCubes:
+                if adjacentCube.overlapsWith(partCube):
+                    partCube.connectWithAdjacentCube(adjacentCube)
+
+        # DISCONNECT FROM ALL ASSOCIATED POINTS AND CUBES
+        self.disconnect()
+
+        return partCubes
+
+    def disconnect(self):
+        # DISCONNECT NEIGHBOURS WITH FROM OLD CUBE THAT HAVE BEEN PARTITIONED
+        for adjacentCube in self.adjacentCubes:
+            adjacentCube.adjacentCubes.remove(self)
+
+        # DISCONNECT FROM ALL POINTS THAT ARE IN CUBE
+        for point in [self.centralPoint] + self.parentsPoints:
+            point.intersectingCubes.remove(self)
 
 class KDTreeOptimizer:
     def __init__(self, fun: Function):
         self.fun: Function = fun
 
-        self.rootCube: Cube = None
-        self.queueCubes: List[Cube] = []
-        self.queue: List[List[float]] = []
-        self.endCubes: List[Cube] = []
+        self.cubes: List[Cube] = []
+        self.points: List[Point] = []
+
+        self.partitioningQueue: List[Cube] = []
+        self.returningQueue: List[Point] = []
+
         self.init()
 
     def init(self):
-        self.rootCube = Cube(self.fun.bounds)
-        self.rootCube.value = self.fun(self.rootCube.center)
+        cube = Cube(self.fun.bounds)
+        cube.centralPoint.value = self.fun(cube.centralPoint.center)
 
-        self.queue = [self.rootCube.vector]
-        self.endCubes = [self.rootCube]
-        self.queueCubes = [self.rootCube]
+        self.cubes = [cube]
+        self.points = [cube.centralPoint]
 
-    def nextEndCubes(self):
-        minCube = self.endCubes[0]
-        for cube in self.endCubes:
-            if cube.value < minCube.value:
-                minCube = cube
-        return [minCube] + minCube.adjacentEndCubes
+        self.partitioningQueue = [cube]
+        self.returningQueue = [cube.centralPoint]
+
+
+    def minCubes(self):
+        minPoint = self.points[0]
+        for point in self.points:
+            if point.value < minPoint.value:
+                minPoint = point
+
+        if len(minPoint.intersectingCubes) == 1: # Ce je pika v centru kvadrata, vrni povezane kvadrate z kvadratom.
+            cube = minPoint.intersectingCubes[0]
+            return [cube] + cube.adjacentCubes # V nasprotnem primeru ce je pika povezana z vec kvadrati vrni kvadrate povezane z piko.
+        else:
+            return minPoint.intersectingCubes
 
     def nextPoint(self):
         # RETURN POINTS FROM QUEUE IF EXISTS
-        if self.queue:
-            point = self.queue[0]
-            self.queue.pop(0)
-            return point
+        if self.returningQueue:
+            point = self.returningQueue[0]
+            self.returningQueue.pop(0)
+            return point.vector
 
-        if not self.queueCubes:
-            self.queueCubes += self.nextEndCubes()
+        if not self.partitioningQueue:
+            self.partitioningQueue += self.minCubes()
 
         # GET CUBE FROM QUEUE CUBES LIST
-        nextCube = self.queueCubes[0]
-        self.queueCubes.pop(0)
+        cube = self.partitioningQueue[0]
+        self.partitioningQueue.pop(0)
 
         # PARTITION CUBE
-        paritionedCubes = nextCube.partition()
+        children = cube.partition()
 
         # Remove CUBE FROM END CUBES AND ADD CUBE TO PARENT CUBES
-        self.parentCubes.append(nextCube)
-        self.endCubes.remove(nextCube)
-        self.endCubes += paritionedCubes
+        self.cubes.remove(cube)
+        self.cubes += children
 
         # ADD PARTITIONED CUBES CENTERS TO QUEUE
-        for partitionedCube in paritionedCubes:
-            partitionedCube.value = self.fun(partitionedCube.center)
-            self.queue.append(partitionedCube.vector)
+        for child in children:
+            if child.centralPoint not in self.points:
+                self.points.append(child.centralPoint)
+            else:
+                raise Exception("Point is allready in list of all points!")
+
+            child.centralPoint.value = self.fun(child.centralPoint.center)
+
+            if child.centralPoint in self.returningQueue:
+                self.returningQueue.append(child.centralPoint)
+            else:
+                raise Exception("Point is allready in queue list!")
+
 
         # RETURN NEXT POINT
         return self.nextPoint()
