@@ -9,6 +9,14 @@ from src.gui.plot import Model, Shape
 from src.gui.plot.model import MODEL
 from src.optimization.space import Function
 
+# TODO: DO NOT MAKE A TREE THERE SHALL BE ONLY END CUBES WITH DOUBLE CONNECTED POINTS CONNECTIONS
+# TODO: SEARCH MIN CUBE FROM LIST OF CONNECTED CUBES TO A POINT!
+# TODO: THEN AFTER FIRST PASS DIVIDE CUBES
+
+class Point:
+    def __init__(self, vector):
+        self.vector = vector
+        self.intersectingCubes = []
 
 class Cube:
 
@@ -22,9 +30,6 @@ class Cube:
         self.center = []
         self.volume = 1
 
-        self.generation = None
-        self.parent: Cube = None
-        self.children: List[Cube] = []
         self.adjacentEndCubes: List[Cube] = []
         self.centerIntersectingParents: List[Cube] = []
 
@@ -160,37 +165,28 @@ class Cube:
 
 
 class KDTreeOptimizer:
-    def __init__(self, fun: Function, maxSearchGeneration=12):
-        self.maxSearchGeneration = maxSearchGeneration
+    def __init__(self, fun: Function):
         self.fun: Function = fun
 
-        self.currentSearchGeneration = 0
         self.rootCube: Cube = None
-        self.queue: List[List[float]] = []
         self.queueCubes: List[Cube] = []
+        self.queue: List[List[float]] = []
         self.endCubes: List[Cube] = []
-        self.parentCubes: List[Cube] = []
         self.init()
 
     def init(self):
         self.rootCube = Cube(self.fun.bounds)
-
-        self.rootCube.generation = 0
         self.rootCube.value = self.fun(self.rootCube.center)
 
         self.queue = [self.rootCube.vector]
         self.endCubes = [self.rootCube]
         self.queueCubes = [self.rootCube]
 
-    def nextEndCubes(self, generation):
-        minCube = None
+    def nextEndCubes(self):
+        minCube = self.endCubes[0]
         for cube in self.endCubes:
-            if cube.generation == generation:
-                if not minCube:
-                    minCube = cube
-                elif cube.value < minCube.value:
-                    minCube = cube
-        print('Current cube gen:', minCube.generation)
+            if cube.value < minCube.value:
+                minCube = cube
         return [minCube] + minCube.adjacentEndCubes
 
     def nextPoint(self):
@@ -201,13 +197,9 @@ class KDTreeOptimizer:
             return point
 
         if not self.queueCubes:
-            if self.currentSearchGeneration == self.maxSearchGeneration:
-                self.currentSearchGeneration = 0 #TODO: What is no cube exists anymore from this generation?
-            self.currentSearchGeneration += 1
-            self.queueCubes += self.nextEndCubes(self.currentSearchGeneration)
+            self.queueCubes += self.nextEndCubes()
 
         # GET CUBE FROM QUEUE CUBES LIST
-        print(f'  - {len(self.queueCubes)}')
         nextCube = self.queueCubes[0]
         self.queueCubes.pop(0)
 
