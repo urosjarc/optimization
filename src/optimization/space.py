@@ -39,8 +39,8 @@ class Function:
             b = list(b)
             if self.randomize:
                 diff = abs(b[0] - b[1])
-                b[0] += diff / 50 * (1 + random())
-                b[1] -= diff / 10 * (1 + random())
+                b[0] += diff / 20 * (1 + random())
+                b[1] -= diff / 50 * (1 + random())
             self.bounds.append(b)
 
         if self.name == 'ZeroSum':
@@ -66,7 +66,7 @@ def functions(dim) -> List[Function]:
                 fun = Function(
                     f=benchmark,
                     hardness=info.get('hardness', -1),
-                    randomize=True
+                    randomize=False
                 )
 
                 if fun.dimensions == dim:

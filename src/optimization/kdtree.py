@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 from statistics import mean
 from typing import List
@@ -12,15 +14,17 @@ from src.optimization.space import Function
 # TODO: SEARCH MIN CUBE FROM LIST OF CONNECTED CUBES TO A POINT!
 # TODO: THEN AFTER FIRST PASS DIVIDE CUBES
 
+
 class Point:
-    def __init__(self, center, parentCube):
+    def __init__(self, center, parentCube: Cube):
         self.value = None
         self.center = center
+        self.parentCube: Cube = parentCube
         self.intersectingCubes = [parentCube]
 
     @property
     def vector(self):
-        if not self.value:
+        if self.value is None:
             raise Exception("Cant get vector because point is not jet evaluated!")
         return self.center + [self.value]
 
@@ -33,6 +37,8 @@ class Cube:
         self.end = [b[1] for b in bounds]
 
         self.volume = None
+        self.generation = None
+
 
         self.centralPoint:Point = Point([], self)
         self.parentsPoints: List[Point] = []
@@ -126,6 +132,7 @@ class Cube:
         # CONNECT PARTITIONED CUBES WITH CURENT CUBES PARENTS POINT
         # CREATE POINT FOR CURRENT PARITIONED CUBE
         for partCube in partCubes:
+            partCube.generation = self.generation + 1
             partCube.connectWithParentPoint(self.centralPoint)
             for parentPoint in self.parentsPoints:
                 if partCube.contains(parentPoint.vector):
@@ -157,11 +164,14 @@ class Cube:
             point.intersectingCubes.remove(self)
 
 class KDTreeOptimizer:
-    def __init__(self, fun: Function):
+    def __init__(self, fun: Function, maxGeneration=15):
         self.fun: Function = fun
 
         self.cubes: List[Cube] = []
         self.points: List[Point] = []
+
+        self.maxGeneration=maxGeneration
+        self.localMinimums: List[Point] = []
 
         self.partitioningQueue: List[Cube] = []
         self.returningQueue: List[Point] = []
@@ -170,6 +180,7 @@ class KDTreeOptimizer:
 
     def init(self):
         cube = Cube(self.fun.bounds)
+        cube.generation = 0
         cube.centralPoint.value = self.fun(cube.centralPoint.center)
 
         self.cubes = [cube]
@@ -178,8 +189,7 @@ class KDTreeOptimizer:
         self.partitioningQueue = [cube]
         self.returningQueue = [cube.centralPoint]
 
-
-    def minCubes(self):
+    def nextCubes(self):
         minPoint = self.points[0]
         for point in self.points:
             if point.value < minPoint.value:
@@ -192,14 +202,17 @@ class KDTreeOptimizer:
             return minPoint.intersectingCubes
 
     def nextPoint(self):
-        # RETURN POINTS FROM QUEUE IF EXISTS
+        # EVALUATE POINT AND THEN RETURN POINTS FROM QUEUE IF EXISTS
         if self.returningQueue:
             point = self.returningQueue[0]
             self.returningQueue.pop(0)
+            point.value = self.fun(point.center)
             return point.vector
 
         if not self.partitioningQueue:
-            self.partitioningQueue += self.minCubes()
+            self.partitioningQueue += self.nextCubes()
+
+        print(len(self.partitioningQueue), end=', ')
 
         # GET CUBE FROM QUEUE CUBES LIST
         cube = self.partitioningQueue[0]
@@ -219,20 +232,16 @@ class KDTreeOptimizer:
             else:
                 raise Exception("Point is allready in list of all points!")
 
-            child.centralPoint.value = self.fun(child.centralPoint.center)
-
-            if child.centralPoint in self.returningQueue:
+            if child.centralPoint not in self.returningQueue:
                 self.returningQueue.append(child.centralPoint)
             else:
                 raise Exception("Point is allready in queue list!")
-
 
         # RETURN NEXT POINT
         return self.nextPoint()
 
     def models(self):
         return [Models.grids, Models.adjecentLines, Models.localMins, Models.localMinsCandidates]
-
 
 class Models:
     grids = Model(MODEL.GENERIC, GL.GL_LINES, 2, initBuffers=False)
