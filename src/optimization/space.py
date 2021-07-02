@@ -66,7 +66,7 @@ def functions(dim) -> List[Function]:
                 fun = Function(
                     f=benchmark,
                     hardness=info.get('hardness', -1),
-                    randomize=False
+                    randomize=True
                 )
 
                 if fun.dimensions == dim:
