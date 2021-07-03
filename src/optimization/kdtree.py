@@ -35,6 +35,14 @@ class Point:
         else:
             return self.intersectingCubes
 
+    @property
+    def isLocalMinimum(self):
+        for cube in self.connectedCubes:
+            for point in [cube.centralPoint] + cube.parentsPoints:
+                if self.value > point.value:
+                    return False
+        return True
+
 class Cube:
 
     def __init__(self, bounds: List[List[float]]):
@@ -45,6 +53,7 @@ class Cube:
 
         self.volume = None
         self.generation = None
+        self.disconnected = False
 
 
         self.centralPoint:Point = Point([], self)
@@ -162,6 +171,8 @@ class Cube:
         return partCubes
 
     def disconnect(self):
+        self.disconnected = True
+
         # DISCONNECT NEIGHBOURS WITH FROM OLD CUBE THAT HAVE BEEN PARTITIONED
         for adjacentCube in self.adjacentCubes:
             adjacentCube.adjacentCubes.remove(self)
@@ -171,7 +182,7 @@ class Cube:
             point.intersectingCubes.remove(self)
 
 class KDTreeOptimizer:
-    def __init__(self, fun: Function, maxGeneration=5):
+    def __init__(self, fun: Function, maxGeneration=10):
         self.fun: Function = fun
 
         self.cubes: List[Cube] = []
@@ -179,8 +190,7 @@ class KDTreeOptimizer:
 
         self.maxGeneration=maxGeneration
         self.maxGenerationReached = False
-        self.currentSearchGeneration = None
-        self.currentMinimum = None
+        self.currentSearchGeneration = 0
 
         self.partitioningQueue: List[Cube] = []
         self.returningQueue: List[Point] = []
@@ -198,10 +208,9 @@ class KDTreeOptimizer:
         self.partitioningQueue = [cube]
         self.returningQueue = [cube.centralPoint]
 
-    def minConnectedCubesFromGeneration(self):
+    def minCubeFromCurrentSearchGeneration(self):
         minCube = None
         while minCube is None:
-            print('MIN CON CUBES FROM', self.currentSearchGeneration)
             for cube in self.cubes:
                 if cube.generation == self.currentSearchGeneration:
                     if minCube is None or cube.centralPoint.value < minCube.centralPoint.value:
@@ -211,35 +220,40 @@ class KDTreeOptimizer:
                 self.currentSearchGeneration += 1
 
         self.currentSearchGeneration += 1
-        if self.currentSearchGeneration == self.maxGeneration:
+        if self.currentSearchGeneration >= self.maxGeneration:
             self.currentSearchGeneration = 0
-        return [minCube] + minCube.adjacentCubes
+        return minCube
 
     def minConnectedCubes(self):
-        print('MIN CON CUBES')
-        minPoint = self.points[0]
+        minPoint = None
         for point in self.points:
-            if point.value < minPoint.value:
-                minPoint = point
+            if point.parentCube.generation < self.maxGeneration:
+                if minPoint is None:
+                    minPoint = point
+                elif point.value < minPoint.value:
+                    minPoint = point
 
-        return minPoint.connectedCubes
+        if minPoint is None:
+            return []
+        else:
+            return minPoint.connectedCubes
 
-    def unfinishedLocalMins(self):
-        #TODO: You stayed here!
-        mins = []
+    def unfinishedLocalMinimums(self):
+        points = []
         for point in self.points:
-            isMin = True
-            for cube in point.intersectingCubes:
-                for point in [cube.centralPoint] + cube.parentsPoints:
-                    if point.value > cube.centralPoint:
-                        isMin = False
-                        break
-                if not isMin:
-                    break
-            if isMin:
-                mins.append(point)
-        return mins
+            if point.parentCube.generation < self.maxGeneration:
+                if point.isLocalMinimum:
+                    points.append(point)
 
+
+        cubes = []
+        if len(points) > 0:
+            bestPoint = sorted(points, key=lambda point: point.value)[0]
+            for cub in bestPoint.connectedCubes:
+                if cub.generation < self.maxGeneration:
+                    cubes.append(cub)
+
+        return cubes
 
     def nextPoint(self):
         # EVALUATE POINT AND THEN RETURN POINTS FROM QUEUE IF EXISTS
@@ -247,26 +261,46 @@ class KDTreeOptimizer:
             point = self.returningQueue[0]
             self.returningQueue.pop(0)
             point.value = self.fun(point.center)
-            if self.currentMinimum and point.value < self.currentMinimum.value: #RESET SEARCHING FOR NEW MINIMUM IF NEW MINIMUM IS FOUND!
-                self.currentSearchGeneration = None
+            if point.parentCube.generation > self.maxGeneration:
+                raise Exception("Generation exceded!")
             return point.vector
 
         if not self.partitioningQueue:
-            if not self.maxGenerationReached:
-                self.partitioningQueue += self.minConnectedCubes()
+            if self.maxGenerationReached:
+                cubes = self.unfinishedLocalMinimums()
+                if len(cubes) > 0:
+                    print("LOCAL MIN MODE")
+                    self.partitioningQueue += cubes
+                else:
+                    print("SEARCH MODE")
+                    self.partitioningQueue.append(self.minCubeFromCurrentSearchGeneration())
             else:
-                self.partitioningQueue += self.minConnectedCubesFromGeneration()
+                print("NORMAL MODE")
+                self.partitioningQueue += self.minConnectedCubes()
 
         # GET CUBE FROM QUEUE CUBES LIST
-        cube = self.partitioningQueue[0]
-        self.partitioningQueue.pop(0)
+        while True:
+            if not self.partitioningQueue:
+                self.maxGenerationReached = True
+                self.currentSearchGeneration = 0
+                print('No cube in partitioning queue list satisfy requirements: Entering search mode...')
+                return self.nextPoint()
+
+            cube = self.partitioningQueue[0]
+            self.partitioningQueue.pop(0)
+            if cube.generation < self.maxGeneration:
+                break
+
+        print(f' - {len(self.partitioningQueue)} [{cube.generation}]')
 
         # CHECK IF MAX GEN IS REACHED
-        print('CUBE GEN:', cube.generation)
-        if not self.maxGenerationReached and cube.generation - 1 >= self.maxGeneration:
+        if not self.maxGenerationReached and cube.generation - 1 == self.maxGeneration:
+            input('Max gen reached in normal mode: Entering search mode...')
             self.maxGenerationReached = True
-            self.currentSearchGeneration = 0
 
+        return self.partition(cube)
+
+    def partition(self, cube: Cube):
         children = cube.partition()
 
         # Remove CUBE FROM END CUBES AND ADD CUBE TO PARENT CUBES
