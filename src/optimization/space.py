@@ -1,6 +1,7 @@
 import csv
 import inspect
 from random import random
+from statistics import mean
 from typing import List
 
 from libs import go_benchmark_functions
@@ -22,11 +23,10 @@ class Function:
         }
         return parameters.get('dimensions')
 
-    def __init__(self, f: Benchmark, hardness=-1, randomize=False):
+    def __init__(self, f: Benchmark, hardness=-1):
         self.benchmark: Benchmark = f()
         self.hardness = hardness
         self.dimensions = self.__function_dim(f)
-        self.randomize = randomize
         self.name = str(f).split('.')[-1][:-2]
         self.minValue = np.nan_to_num(self.benchmark.fglob)
         self.minVectors = [list(ele) for ele in self.benchmark.global_optimum]
@@ -35,16 +35,26 @@ class Function:
         self.init()
 
     def init(self):
-        for i, b in enumerate(self.benchmark.bounds):
-            b = list(b)
-            if self.randomize:
-                diff = abs(b[0] - b[1])
-                b[0] += diff / 20 * (1 + random())
-                b[1] -= diff / 50 * (1 + random())
-            self.bounds.append(b)
-
         if self.name == 'ZeroSum':
             self.minVectors = [[0, 0]]
+
+        for i, b in enumerate(self.benchmark.bounds):
+            self.bounds.append(list(b))
+
+        center = []
+        for bound in self.bounds:
+            center.append(mean(bound))
+
+        minOnCenter = False
+        for minVec in self.minVectors:
+            if minVec == center:
+                minOnCenter = True
+                break
+
+        if minOnCenter:
+            for i in range(len(self.bounds)):
+                diff = self.bounds[i][1] - self.bounds[i][0]
+                self.bounds[i][0] += diff / 20 * (1 + random())
 
     def __call__(self, vector):
         self.evaluation += 1
@@ -63,11 +73,7 @@ def functions(dim) -> List[Function]:
         if inspect.isclass(benchmark):
             if issubclass(benchmark, Benchmark) and funName not in ['Benchmark']:
                 info = gbfh.get(funName, {})
-                fun = Function(
-                    f=benchmark,
-                    hardness=info.get('hardness', -1),
-                    randomize=True
-                )
+                fun = Function(f=benchmark, hardness=info.get('hardness', -1))
 
                 if fun.dimensions == dim:
                     funs.append(fun);

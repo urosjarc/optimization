@@ -10,6 +10,7 @@ from src.gui.plot import Model, Shape
 from src.gui.plot.model import MODEL
 from src.optimization.space import Function
 
+
 # TODO: DO NOT MAKE A TREE THERE SHALL BE ONLY END CUBES WITH DOUBLE CONNECTED POINTS CONNECTIONS
 # TODO: SEARCH MIN CUBE FROM LIST OF CONNECTED CUBES TO A POINT!
 # TODO: THEN AFTER FIRST PASS DIVIDE CUBES
@@ -30,8 +31,9 @@ class Point:
 
     @property
     def connectedCubes(self):
-        if len(self.intersectingCubes) == 1: # Ce je pika v centru kvadrata, vrni povezane kvadrate z kvadratom.
-            return [self.parentCube] + self.parentCube.adjacentCubes # V nasprotnem primeru ce je pika povezana z vec kvadrati vrni kvadrate povezane z piko.
+        if len(self.intersectingCubes) == 1:  # Ce je pika v centru kvadrata, vrni povezane kvadrate z kvadratom.
+            return [
+                       self.parentCube] + self.parentCube.adjacentCubes  # V nasprotnem primeru ce je pika povezana z vec kvadrati vrni kvadrate povezane z piko.
         else:
             return self.intersectingCubes
 
@@ -42,6 +44,7 @@ class Point:
                 if self.value > point.value:
                     return False
         return True
+
 
 class Cube:
 
@@ -55,8 +58,7 @@ class Cube:
         self.generation = None
         self.disconnected = False
 
-
-        self.centralPoint:Point = Point([], self)
+        self.centralPoint: Point = Point([], self)
         self.parentsPoints: List[Point] = []
         self.adjacentCubes: List[Cube] = []
 
@@ -123,7 +125,7 @@ class Cube:
         else:
             raise Exception("Self is already in cubes neighbours list, this should not happened!")
 
-    def connectWithParentPoint(self, point:Point):
+    def connectWithParentPoint(self, point: Point):
         if point not in self.parentsPoints:
             self.parentsPoints.append(point)
         else:
@@ -151,7 +153,7 @@ class Cube:
             partCube.generation = self.generation + 1
             partCube.connectWithParentPoint(self.centralPoint)
             for parentPoint in self.parentsPoints:
-                if partCube.contains(parentPoint.vector):
+                if partCube.contains(parentPoint.center):
                     partCube.connectWithParentPoint(parentPoint)
 
         # CONNECT PARTITIONED CUBES WITH THEM SELFS
@@ -181,19 +183,23 @@ class Cube:
         for point in [self.centralPoint] + self.parentsPoints:
             point.intersectingCubes.remove(self)
 
+
 class KDTreeOptimizer:
     def __init__(self, fun: Function, maxGeneration=8, finishedLocalMinGeneration=20):
         self.fun: Function = fun
 
-        self.cubes: List[Cube] = []
-        self.points: List[Point] = []
-        self.finishedMinimums: List[Point] = []
         self.globalMin = None
 
-        self.finishedLocalMinGeneration = finishedLocalMinGeneration
-        self.maxGeneration=maxGeneration
+        self.cubes: List[Cube] = []
+        self.points: List[Point] = []
+
+        self.finishedMinimums: List[Point] = []
+        self.unfinishedMinimums: List[Point] = []
+
         self.firstPassSearchFinished = False
+        self.maxGeneration = maxGeneration
         self.currentSearchGeneration = 0
+        self.finishedLocalMinGeneration = finishedLocalMinGeneration
 
         self.partitioningQueue: List[Cube] = []
         self.returningQueue: List[Point] = []
@@ -240,25 +246,31 @@ class KDTreeOptimizer:
         else:
             return minPoint.connectedCubes
 
-    def unfinishedLocalMinimums(self):
-        points = []
-        localMins = []
-        for point in self.points:
-            if point.parentCube.generation < self.finishedLocalMinGeneration:
-                if point.isLocalMinimum:
-                    points.append(point)
-            elif point.isLocalMinimum:
-                localMins.append(point)
+    def isLocalMinFinished(self, point: Point):
+        for cub in point.connectedCubes:
+            if cub.generation < self.finishedLocalMinGeneration:
+                return False
+        return True
 
-        self.finishedMinimums = sorted(localMins, key=lambda point: point.value)
+    def unfinishedLocalMinimums(self):
+        unFinishedMins = []
+        finishedMins = []
+        for point in self.points:
+            if point.isLocalMinimum:
+                if self.isLocalMinFinished(point):
+                    finishedMins.append(point)
+                else:
+                    unFinishedMins.append(point)
+
+        self.finishedMinimums = sorted(finishedMins, key=lambda point: point.value)
+        self.unfinishedMinimums = sorted(unFinishedMins, key=lambda point: point.value)
 
         cubes = []
-        if len(points) > 0:
-            bestPoint = sorted(points, key=lambda point: point.value)[0]
-            for cub in bestPoint.connectedCubes:
+        if len(unFinishedMins) > 0:
+            unFinMin = self.unfinishedMinimums[0]
+            for cub in unFinMin.connectedCubes:
                 if cub.generation < self.finishedLocalMinGeneration:
                     cubes.append(cub)
-
         return cubes
 
     def nextPoint(self):
@@ -269,7 +281,7 @@ class KDTreeOptimizer:
             point.value = self.fun(point.center)
             if self.globalMin is None or point.value < self.globalMin.value:
                 self.globalMin = point
-            print(' - POINT:', point.parentCube.generation)
+            print('   - POINT:', point.parentCube.generation)
             return point.vector
 
         if not self.partitioningQueue:
@@ -289,6 +301,7 @@ class KDTreeOptimizer:
         return self.partitionNextQueueCube(self.maxGeneration)
 
     def partitionNextQueueCube(self, maxGeneration):
+
         # GET CUBE FROM QUEUE CUBES LIST
         while True:
             if not self.partitioningQueue:
@@ -302,8 +315,6 @@ class KDTreeOptimizer:
             if cube.generation < maxGeneration:
                 break
 
-        print(f' - {len(self.partitioningQueue)} [{cube.generation}]')
-
         # CHECK IF MAX GEN IS REACHED
         if not self.firstPassSearchFinished and cube.generation - 1 == maxGeneration:
             input('Max gen reached in normal mode: Entering search mode...')
@@ -312,6 +323,7 @@ class KDTreeOptimizer:
         return self.partition(cube)
 
     def partition(self, cube: Cube):
+        print(" - CUBE: ", cube.generation)
         children = cube.partition()
 
         # Remove CUBE FROM END CUBES AND ADD CUBE TO PARENT CUBES
@@ -335,7 +347,6 @@ class KDTreeOptimizer:
 
     def models(self):
         return [Models.grids, Models.adjecentLines, Models.localMins, Models.localMinsCandidates]
-
 
 
 class Models:
