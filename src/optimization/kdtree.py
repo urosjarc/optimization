@@ -188,6 +188,7 @@ class KDTreeOptimizer:
         self.cubes: List[Cube] = []
         self.points: List[Point] = []
         self.finishedMinimums: List[Point] = []
+        self.globalMin = None
 
         self.finishedLocalMinGeneration = finishedLocalMinGeneration
         self.maxGeneration=maxGeneration
@@ -202,7 +203,6 @@ class KDTreeOptimizer:
     def init(self):
         cube = Cube(self.fun.bounds)
         cube.generation = 0
-        cube.centralPoint.value = self.fun(cube.centralPoint.center)
 
         self.cubes = [cube]
         self.points = [cube.centralPoint]
@@ -267,6 +267,9 @@ class KDTreeOptimizer:
             point = self.returningQueue[0]
             self.returningQueue.pop(0)
             point.value = self.fun(point.center)
+            if self.globalMin is None or point.value < self.globalMin.value:
+                self.globalMin = point
+            print(' - POINT:', point.parentCube.generation)
             return point.vector
 
         if not self.partitioningQueue:

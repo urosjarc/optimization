@@ -180,7 +180,8 @@ class MainWindow(QtWidgets.QMainWindow):
             w.update()
         self.infoL.setText('\n'.join([
             f'Iterations left: {self.iterationsLeft - self.fun.evaluation}',
-            f'Best point diff: {self.fun.minValue - self.optimizer.finishedMinimums[0].value if len(self.optimizer.finishedMinimums)>0 else 0}'
+            f'Num of minimums: {len(self.optimizer.finishedMinimums)}',
+            f'Best point diff: {self.fun.minValue - self.optimizer.globalMin.value}'
         ]))
 
     def on_start(self):
