@@ -182,14 +182,16 @@ class Cube:
             point.intersectingCubes.remove(self)
 
 class KDTreeOptimizer:
-    def __init__(self, fun: Function, maxGeneration=10):
+    def __init__(self, fun: Function, maxGeneration=8, finishedLocalMinGeneration=20):
         self.fun: Function = fun
 
         self.cubes: List[Cube] = []
         self.points: List[Point] = []
+        self.finishedMinimums: List[Point] = []
 
+        self.finishedLocalMinGeneration = finishedLocalMinGeneration
         self.maxGeneration=maxGeneration
-        self.maxGenerationReached = False
+        self.firstPassSearchFinished = False
         self.currentSearchGeneration = 0
 
         self.partitioningQueue: List[Cube] = []
@@ -240,17 +242,21 @@ class KDTreeOptimizer:
 
     def unfinishedLocalMinimums(self):
         points = []
+        localMins = []
         for point in self.points:
-            if point.parentCube.generation < self.maxGeneration:
+            if point.parentCube.generation < self.finishedLocalMinGeneration:
                 if point.isLocalMinimum:
                     points.append(point)
+            elif point.isLocalMinimum:
+                localMins.append(point)
 
+        self.finishedMinimums = sorted(localMins, key=lambda point: point.value)
 
         cubes = []
         if len(points) > 0:
             bestPoint = sorted(points, key=lambda point: point.value)[0]
             for cub in bestPoint.connectedCubes:
-                if cub.generation < self.maxGeneration:
+                if cub.generation < self.finishedLocalMinGeneration:
                     cubes.append(cub)
 
         return cubes
@@ -261,16 +267,15 @@ class KDTreeOptimizer:
             point = self.returningQueue[0]
             self.returningQueue.pop(0)
             point.value = self.fun(point.center)
-            if point.parentCube.generation > self.maxGeneration:
-                raise Exception("Generation exceded!")
             return point.vector
 
         if not self.partitioningQueue:
-            if self.maxGenerationReached:
+            if self.firstPassSearchFinished:
                 cubes = self.unfinishedLocalMinimums()
                 if len(cubes) > 0:
                     print("LOCAL MIN MODE")
                     self.partitioningQueue += cubes
+                    return self.partitionNextQueueCube(self.finishedLocalMinGeneration)
                 else:
                     print("SEARCH MODE")
                     self.partitioningQueue.append(self.minCubeFromCurrentSearchGeneration())
@@ -278,25 +283,28 @@ class KDTreeOptimizer:
                 print("NORMAL MODE")
                 self.partitioningQueue += self.minConnectedCubes()
 
+        return self.partitionNextQueueCube(self.maxGeneration)
+
+    def partitionNextQueueCube(self, maxGeneration):
         # GET CUBE FROM QUEUE CUBES LIST
         while True:
             if not self.partitioningQueue:
-                self.maxGenerationReached = True
+                self.firstPassSearchFinished = True
                 self.currentSearchGeneration = 0
                 print('No cube in partitioning queue list satisfy requirements: Entering search mode...')
                 return self.nextPoint()
 
             cube = self.partitioningQueue[0]
             self.partitioningQueue.pop(0)
-            if cube.generation < self.maxGeneration:
+            if cube.generation < maxGeneration:
                 break
 
         print(f' - {len(self.partitioningQueue)} [{cube.generation}]')
 
         # CHECK IF MAX GEN IS REACHED
-        if not self.maxGenerationReached and cube.generation - 1 == self.maxGeneration:
+        if not self.firstPassSearchFinished and cube.generation - 1 == maxGeneration:
             input('Max gen reached in normal mode: Entering search mode...')
-            self.maxGenerationReached = True
+            self.firstPassSearchFinished = True
 
         return self.partition(cube)
 

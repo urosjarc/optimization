@@ -179,7 +179,8 @@ class MainWindow(QtWidgets.QMainWindow):
             w.evalPointsModel.addShape(pointShape)
             w.update()
         self.infoL.setText('\n'.join([
-            f'Iterations left: {self.iterationsLeft - self.fun.evaluation}'
+            f'Iterations left: {self.iterationsLeft - self.fun.evaluation}',
+            f'Best point diff: {self.fun.minValue - self.optimizer.finishedMinimums[0].value if len(self.optimizer.finishedMinimums)>0 else 0}'
         ]))
 
     def on_start(self):
