@@ -30,21 +30,34 @@ class Point:
         return self.center + [self.value]
 
     @property
-    def connectedCubes(self):
+    def generation(self):
+        return mean([cube.generation for cube in self.intersectingCubes])
+
+    @property
+    def closeCubes(self):
         if len(self.intersectingCubes) == 1:  # Ce je pika v centru kvadrata, vrni povezane kvadrate z kvadratom.
-            return [
-                       self.parentCube] + self.parentCube.adjacentCubes  # V nasprotnem primeru ce je pika povezana z vec kvadrati vrni kvadrate povezane z piko.
+            return [self.parentCube] + self.parentCube.adjacentCubes  # V nasprotnem primeru ce je pika povezana z vec kvadrati vrni kvadrate povezane z piko.
         else:
             return self.intersectingCubes
 
-    @property
-    def isLocalMinimum(self):
-        for cube in self.connectedCubes:
-            for point in [cube.centralPoint] + cube.parentsPoints:
-                if self.value > point.value:
+    def isLocalMin(self, parentPoints=False, searchDepth=0):
+        conCubes = []
+        if searchDepth > 0:
+            for connCube in self.closeCubes:
+                for cCube in connCube.connectedCubes(searchDepth):
+                    if cCube not in conCubes:
+                        conCubes.append(cCube)
+        else:
+            conCubes += self.closeCubes
+
+        for connCube in conCubes:
+            connCubePoints = [connCube.centralPoint]
+            if parentPoints:
+                connCubePoints += connCube.parentsPoints
+            for connCubePoint in connCubePoints:
+                if self.value > connCubePoint.value:
                     return False
         return True
-
 
 class Cube:
 
@@ -76,6 +89,23 @@ class Cube:
 
         if 2 <= self.dim <= 3:
             Models.drawGrid(self)
+
+    def connectedCubes(self, maxDepth):
+        queue = [self]
+        found = [self]
+        depth = 0
+
+        while depth < maxDepth:
+            while queue:
+                newQueue = []
+                cube = queue.pop(0)
+                for adjacentCube in cube.adjacentCubes:
+                    if adjacentCube not in found:
+                        found.append(adjacentCube)
+                        newQueue.append(adjacentCube)
+            queue = newQueue
+            depth += 1
+        return found
 
     def divide(self, axis):
         middleaxispoint = mean(self.bounds[axis])
@@ -183,9 +213,8 @@ class Cube:
         for point in [self.centralPoint] + self.parentsPoints:
             point.intersectingCubes.remove(self)
 
-
 class KDTreeOptimizer:
-    def __init__(self, fun: Function, maxGeneration=8, finishedLocalMinGeneration=20):
+    def __init__(self, fun: Function, maxGeneration=6, finishedLocalMinGeneration=20):
         self.fun: Function = fun
 
         self.globalMin = None
@@ -216,7 +245,7 @@ class KDTreeOptimizer:
         self.partitioningQueue = [cube]
         self.returningQueue = [cube.centralPoint]
 
-    def minCubeFromCurrentSearchGeneration(self):
+    def lowestCubeFromCurrentSearchGeneration(self):
         minCube = None
         while minCube is None:
             for cube in self.cubes:
@@ -232,10 +261,10 @@ class KDTreeOptimizer:
             self.currentSearchGeneration = 0
         return minCube
 
-    def minConnectedCubes(self):
+    def lowestPointConnectedCubes(self):
         minPoint = None
         for point in self.points:
-            if point.parentCube.generation < self.maxGeneration:
+            if point.generation < self.maxGeneration:
                 if minPoint is None:
                     minPoint = point
                 elif point.value < minPoint.value:
@@ -244,10 +273,10 @@ class KDTreeOptimizer:
         if minPoint is None:
             return []
         else:
-            return minPoint.connectedCubes
+            return minPoint.closeCubes
 
     def isLocalMinFinished(self, point: Point):
-        for cub in point.connectedCubes:
+        for cub in point.closeCubes:
             if cub.generation < self.finishedLocalMinGeneration:
                 return False
         return True
@@ -256,8 +285,8 @@ class KDTreeOptimizer:
         unFinishedMins = []
         finishedMins = []
         for point in self.points:
-            if point.isLocalMinimum:
-                if self.isLocalMinFinished(point):
+            if point.isLocalMin(False, 0):
+                if point.generation == self.finishedLocalMinGeneration:
                     finishedMins.append(point)
                 else:
                     unFinishedMins.append(point)
@@ -266,11 +295,23 @@ class KDTreeOptimizer:
         self.unfinishedMinimums = sorted(unFinishedMins, key=lambda point: point.value)
 
         cubes = []
-        if len(unFinishedMins) > 0:
-            unFinMin = self.unfinishedMinimums[0]
-            for cub in unFinMin.connectedCubes:
-                if cub.generation < self.finishedLocalMinGeneration:
-                    cubes.append(cub)
+        if len(self.unfinishedMinimums) > 0:
+            i = 0
+            while True:
+                unFinMin = self.unfinishedMinimums[i]
+
+                if unFinMin.generation > self.maxGeneration:
+                    if not unFinMin.isLocalMin(parentPoints=True, searchDepth=3):
+                        i+=1
+                        if i == len(self.unfinishedMinimums):
+                            break
+                        continue
+
+                for cub in unFinMin.closeCubes:
+                    if cub.generation < self.finishedLocalMinGeneration:
+                        cubes.append(cub)
+                break
+
         return cubes
 
     def nextPoint(self):
@@ -281,22 +322,24 @@ class KDTreeOptimizer:
             point.value = self.fun(point.center)
             if self.globalMin is None or point.value < self.globalMin.value:
                 self.globalMin = point
-            print('   - POINT:', point.parentCube.generation)
+            print('   - POINT:', point.generation)
             return point.vector
 
         if not self.partitioningQueue:
             if self.firstPassSearchFinished:
                 cubes = self.unfinishedLocalMinimums()
+                for c in cubes:
+                    Models.drawLocalMin(c.centralPoint)
                 if len(cubes) > 0:
                     print("LOCAL MIN MODE")
                     self.partitioningQueue += cubes
                     return self.partitionNextQueueCube(self.finishedLocalMinGeneration)
                 else:
                     print("SEARCH MODE")
-                    self.partitioningQueue.append(self.minCubeFromCurrentSearchGeneration())
+                    self.partitioningQueue.append(self.lowestCubeFromCurrentSearchGeneration())
             else:
                 print("NORMAL MODE")
-                self.partitioningQueue += self.minConnectedCubes()
+                self.partitioningQueue += self.lowestPointConnectedCubes()
 
         return self.partitionNextQueueCube(self.maxGeneration)
 
@@ -346,22 +389,20 @@ class KDTreeOptimizer:
         return self.nextPoint()
 
     def models(self):
-        return [Models.grids, Models.adjecentLines, Models.localMins, Models.localMinsCandidates]
+        return [Models.grids, Models.localMins]
 
 
 class Models:
     grids = Model(MODEL.GENERIC, GL.GL_LINES, 2, initBuffers=False)
-    adjecentLines = Model(MODEL.GENERIC, GL.GL_LINES, 2, initBuffers=False)
-    localMins = Model(MODEL.GENERIC, GL.GL_POINTS, 2, initBuffers=False)
-    localMinsCandidates = Model(MODEL.GENERIC, GL.GL_POINTS, 2, initBuffers=False)
+    localMins = Model(MODEL.GENERIC, GL.GL_LINES, 3, initBuffers=False)
 
     @classmethod
     def initGrid(cls, cubes: List[Cube]):
         cls.grids.setShapes(cubes)
 
     @classmethod
-    def initAdjecent(cls):
-        cls.adjecentLines.setShapes([])
+    def initLocalMins(cls, points: List[Point]):
+        cls.localMins.setShapes(points)
 
     @classmethod
     def drawGrid(cls, cube: Cube):
@@ -371,3 +412,9 @@ class Models:
         shape.add_line([cube.bounds[0][1], cube.bounds[1][0]], cube.end, [1, 0, 0, 1])
         shape.add_line([cube.bounds[0][0], cube.bounds[1][1]], cube.end, [1, 0, 0, 1])
         cls.grids.addShape(shape)
+
+    @classmethod
+    def drawLocalMin(cls, point: Point):
+        shape = Shape()
+        shape.add_line(point.center + [-100], [point.center[0]+0.01, point.center[1]+0.01] + [100],[1, 0, 0, 1])
+        cls.localMins.addShape(shape)
