@@ -40,14 +40,6 @@ class Point:
         else:
             return self.intersectingCubes
 
-    def isLocalMin(self):
-        for cube in self.closeCubes:
-            if cube.centralPoint.value < self.value:
-                return False
-
-        return True
-
-
 class Cube:
 
     def __init__(self, bounds: List[List[float]]):
@@ -186,7 +178,7 @@ class Cube:
             point.intersectingCubes.remove(self)
 
 class KDTreeOptimizer:
-    def __init__(self, fun: Function, maxGeneration=8, finishedLocalMinGeneration=20):
+    def __init__(self, fun: Function, maxGeneration=15):
         self.fun: Function = fun
 
         self.globalMin = None
@@ -194,13 +186,9 @@ class KDTreeOptimizer:
         self.cubes: List[Cube] = []
         self.points: List[Point] = []
 
-        self.finishedMinimums: List[Point] = []
-        self.unfinishedMinimums: List[Point] = []
-
         self.firstPassSearchFinished = False
         self.maxGeneration = maxGeneration
         self.currentSearchGeneration = 0
-        self.finishedLocalMinGeneration = finishedLocalMinGeneration
 
         self.partitioningQueue: List[Cube] = []
         self.returningQueue: List[Point] = []
@@ -247,41 +235,6 @@ class KDTreeOptimizer:
         else:
             return minPoint.closeCubes
 
-    def isLocalMinFinished(self, point: Point):
-        for cub in point.closeCubes:
-            if cub.generation < self.finishedLocalMinGeneration:
-                return False
-        return True
-
-    def unfinishedLocalMinimums(self):
-        unFinishedMins = []
-        finishedMins = []
-        for point in self.points:
-            if point.isLocalMin:
-                if point.generation == self.finishedLocalMinGeneration:
-                    finishedMins.append(point)
-                else:
-                    unFinishedMins.append(point)
-
-        self.finishedMinimums = sorted(finishedMins, key=lambda point: point.value)
-        self.unfinishedMinimums = sorted(unFinishedMins, key=lambda point: point.value)
-
-        cubes = []
-        i = 0
-        if len(self.unfinishedMinimums) > 0:
-            while i < len(self.unfinishedMinimums):
-                unFinMin = self.unfinishedMinimums[i]
-                for cub in unFinMin.closeCubes:
-                    if cub.generation < self.finishedLocalMinGeneration:
-                        cubes.append(cub)
-                if not cubes:
-                    self.finishedMinimums.append(unFinMin)
-                    self.unfinishedMinimums.remove(unFinMin)
-                else:
-                    break
-                i+=1
-        return cubes
-
     def nextPoint(self):
         # EVALUATE POINT AND THEN RETURN POINTS FROM QUEUE IF EXISTS
         if self.returningQueue:
@@ -295,16 +248,8 @@ class KDTreeOptimizer:
 
         if not self.partitioningQueue:
             if self.firstPassSearchFinished:
-                cubes = self.unfinishedLocalMinimums()
-                for c in cubes:
-                    Models.drawLocalMin(c.centralPoint)
-                if len(cubes) > 0:
-                    print("LOCAL MIN MODE")
-                    self.partitioningQueue += cubes
-                    return self.partitionNextQueueCube(self.finishedLocalMinGeneration)
-                else:
-                    print("SEARCH MODE")
-                    self.partitioningQueue.append(self.lowestCubeFromCurrentSearchGeneration())
+                print("SEARCH MODE")
+                self.partitioningQueue.append(self.lowestCubeFromCurrentSearchGeneration())
             else:
                 print("NORMAL MODE")
                 self.partitioningQueue += self.lowestPointConnectedCubes()
