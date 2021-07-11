@@ -186,7 +186,7 @@ class KDTreeOptimizer:
         self.cubes: List[Cube] = []
         self.points: List[Point] = []
 
-        self.firstPassSearchFinished = False
+        self.searchMode = False
         self.maxGeneration = maxGeneration
         self.currentSearchGeneration = 0
 
@@ -206,20 +206,23 @@ class KDTreeOptimizer:
         self.returningQueue = [cube.centralPoint]
 
     def lowestCubeFromCurrentSearchGeneration(self):
-        minCube = None
-        while minCube is None:
+        minPoint = None
+        while minPoint is None:
             for cube in self.cubes:
-                if cube.generation == self.currentSearchGeneration:
-                    if minCube is None or cube.centralPoint.value < minCube.centralPoint.value:
-                        minCube = cube
+                if cube.generation <= self.currentSearchGeneration:
+                    for point in [cube.centralPoint] + cube.parentsPoints:
+                        if minPoint is None or point.value < minPoint.value:
+                            minPoint = point
 
-            if minCube is None:
+            if minPoint is None:
                 self.currentSearchGeneration += 1
 
         self.currentSearchGeneration += 1
         if self.currentSearchGeneration >= self.maxGeneration:
             self.currentSearchGeneration = 0
-        return minCube
+
+        #Search for best neighbour
+        return sorted(minPoint.closeCubes, key=lambda cube: cube.generation)[0:minPoint.closeCubes[0].dim]
 
     def lowestPointConnectedCubes(self):
         minPoint = None
@@ -243,13 +246,14 @@ class KDTreeOptimizer:
             point.value = self.fun(point.center)
             if self.globalMin is None or point.value < self.globalMin.value:
                 self.globalMin = point
+                self.searchMode = False
             print('   - POINT:', point.generation)
             return point.vector
 
         if not self.partitioningQueue:
-            if self.firstPassSearchFinished:
+            if self.searchMode:
                 print("SEARCH MODE")
-                self.partitioningQueue.append(self.lowestCubeFromCurrentSearchGeneration())
+                self.partitioningQueue += self.lowestCubeFromCurrentSearchGeneration()
             else:
                 print("NORMAL MODE")
                 self.partitioningQueue += self.lowestPointConnectedCubes()
@@ -261,7 +265,7 @@ class KDTreeOptimizer:
         # GET CUBE FROM QUEUE CUBES LIST
         while True:
             if not self.partitioningQueue:
-                self.firstPassSearchFinished = True
+                self.searchMode = True
                 self.currentSearchGeneration = 0
                 print('No cube in partitioning queue list satisfy requirements: Entering search mode...')
                 return self.nextPoint()
@@ -272,9 +276,9 @@ class KDTreeOptimizer:
                 break
 
         # CHECK IF MAX GEN IS REACHED
-        if not self.firstPassSearchFinished and cube.generation - 1 == maxGeneration:
-            input('Max gen reached in normal mode: Entering search mode...')
-            self.firstPassSearchFinished = True
+        if not self.searchMode and cube.generation - 1 == maxGeneration:
+            raise Exception('Max gen reached in normal mode: Entering search mode...')
+            self.searchMode = True
 
         return self.partition(cube)
 

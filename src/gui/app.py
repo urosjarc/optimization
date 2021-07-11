@@ -181,7 +181,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.infoL.setText('\n'.join([
             f'Iterations left: {self.iterationsLeft - self.fun.evaluation}',
             f'Best point diff: {round(self.fun.minValue - self.optimizer.globalMin.value, 8)}',
-            f'Best point cent: {self.optimizer.globalMin.center}'
+            f'Best point cent: {self.optimizer.globalMin.center}',
+            f'Optimizer mode: {"search" if self.optimizer.searchMode else "normal"}'
         ]))
 
     def on_start(self):
