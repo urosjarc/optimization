@@ -181,8 +181,8 @@ class MainWindow(QtWidgets.QMainWindow):
             w.update()
         self.infoL.setText('\n'.join([
             f'Iterations left: {iterLeft}',
-            f'Best point diff: {round(self.fun.minValue - self.optimizer.globalMin.value, 8)}',
-            f'Best point cent: {self.optimizer.globalMin.center}',
+            f'Best point diff: {round(self.fun.minValue - self.optimizer.globalMin.value, 10)}',
+            f'Best point cent: {", ".join([str(round(c, 6)) for c in self.optimizer.globalMin.center])}',
             f'Current min gen: {round(self.optimizer.currentMinGeneration, 1)}'
         ]))
 
