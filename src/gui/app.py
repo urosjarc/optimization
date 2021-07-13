@@ -159,6 +159,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for m in models:
             m.view = self.normalW.functionModel.view
         self.normalW.userModels = models
+        iterLeft = self.iterationsLeft - self.fun.evaluation
 
         for w in self.widgets:
             funBB = w.functionModel.boundBox
@@ -179,16 +180,19 @@ class MainWindow(QtWidgets.QMainWindow):
             w.evalPointsModel.addShape(pointShape)
             w.update()
         self.infoL.setText('\n'.join([
-            f'Iterations left: {self.iterationsLeft - self.fun.evaluation}',
+            f'Iterations left: {iterLeft}',
             f'Best point diff: {round(self.fun.minValue - self.optimizer.globalMin.value, 8)}',
             f'Best point cent: {self.optimizer.globalMin.center}',
-            f'Optimizer mode: {"search" if self.optimizer.searchMode else "normal"}'
+            f'Current min gen: {round(self.optimizer.currentMinGeneration, 1)}'
         ]))
+
+        if iterLeft <= 0:
+            self.nextPointTimer.stop()
 
     def on_start(self):
         self.fun: Function = self.nameCB.currentData()
         self.fun.evaluation = 0
-        self.optimizer = KDTreeOptimizer(self.nameCB.currentData())
+        self.optimizer = KDTreeOptimizer(self.nameCB.currentData(), maxIterations=self.iterationsSB.value())
         for m in self.optimizer.models():
             m.initBuffers()
         self.iterationsLeft = self.iterationsSB.value()
