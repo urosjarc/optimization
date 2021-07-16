@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from enum import Enum
 from statistics import mean
 from typing import List
 
@@ -15,6 +16,10 @@ from src.optimization.space import Function
 # TODO: SEARCH MIN CUBE FROM LIST OF CONNECTED CUBES TO A POINT!
 # TODO: THEN AFTER FIRST PASS DIVIDE CUBES
 
+class LocalMin(Enum):
+    NOT = 0
+    CANDIDATE = 1
+    CONFIRMED = 2
 
 class Point:
     def __init__(self, center, parentCube: Cube):
@@ -49,13 +54,20 @@ class Point:
                     points.append(closePoint)
         return points
 
-
     @property
-    def isLocalMin(self):
+    def localMinType(self):
+        confirmed = True
         for closeCube in self.closeCubes:
             if closeCube.centralPoint.value < self.value:
-                return False
-        return True
+                return LocalMin.NOT
+            for closePoint in closeCube.intersectingPoints:
+                if closePoint.value < self.value:
+                    confirmed = False
+                    break
+
+        if confirmed:
+            return LocalMin.CONFIRMED
+        return LocalMin.CANDIDATE
 
 class Cube:
 
@@ -236,40 +248,41 @@ class KDTreeOptimizer:
 
     def lowestLocalMinCubeFromCurrentSearchGeneration(self):
         # Search lowest cube
-        minLocalMinCube = None
-        minLocalMin = None
-        minCube = None
+        localMinCandidate = None
+        localMin = None
         minPoint = None
-        while minCube is None and minLocalMinCube is None:
+        while [localMin, localMinCandidate, minPoint].count(None) == 3:
             for point in self.points:
-                if point.isLocalMin:
-                    for closeCube in point.closeCubes:
-                        if closeCube.generation <= self.currentSearchGeneration:
-                            if minLocalMin is None or point.value < minLocalMin.value:
-                                minLocalMin = point
-                                if minLocalMinCube is None or closeCube.centralPoint.value < minLocalMinCube.centralPoint.value:
-                                    minLocalMinCube = closeCube
-
-                else:
-                    for closeCube in point.closeCubes:
-                        if closeCube.generation <= self.currentSearchGeneration:
+                localMinType = point.localMinType
+                for closeCube in point.intersectingCubes:
+                    if closeCube.generation <= self.currentSearchGeneration:
+                        if localMinType == LocalMin.CONFIRMED:
+                            if localMin is None or point.value < localMin.value:
+                                localMin = point
+                                break
+                        elif localMinType == LocalMin.CANDIDATE:
+                            if localMinCandidate is None or point.value < localMinCandidate.value:
+                                localMinCandidate = point
+                                break
+                        elif localMinType == LocalMin.NOT:
                             if minPoint is None or point.value < minPoint.value:
-                                minPoint= point
-                                minCube= closeCube
-
-
+                                minPoint = point
+                                break
 
             self.currentSearchGeneration += 1
+
+        if localMin is not None:
+            cubes = localMin.intersectingCubes
+        elif localMinCandidate is not None:
+            cubes = localMinCandidate.intersectingCubes
+        else:
+            cubes = sorted(minPoint.intersectingCubes, key=lambda cube: cube.generation)[:1]
 
         # Reset current search generation
         if self.currentSearchGeneration >= self.maxGeneration:
             self.currentSearchGeneration = 0
 
-        #Search for best neighbour
-        if minLocalMinCube is not None:
-            return [minLocalMinCube]
-        else:
-            return [minCube]
+        return cubes
 
     def nextPoint(self):
         # EVALUATE POINT AND THEN RETURN POINTS FROM QUEUE IF EXISTS
@@ -279,7 +292,6 @@ class KDTreeOptimizer:
             point.value = self.fun(point.center)
             if self.globalMin is None or point.value < self.globalMin.value:
                 self.globalMin = point
-            print('   - POINT:', point.generation)
             return point.vector
 
         if not self.partitioningQueue:
@@ -293,7 +305,6 @@ class KDTreeOptimizer:
         while True:
             if not self.partitioningQueue:
                 self.currentSearchGeneration = 0
-                print('No cube in partitioning queue list reseting current search generation')
                 return self.nextPoint()
 
             cube = self.partitioningQueue[0]
@@ -304,7 +315,6 @@ class KDTreeOptimizer:
         return self.partition(cube)
 
     def partition(self, cube: Cube):
-        print(" - CUBE: ", cube.generation)
         children = cube.partition()
 
         # Remove CUBE FROM END CUBES AND ADD CUBE TO PARENT CUBES
