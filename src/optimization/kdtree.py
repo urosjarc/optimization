@@ -234,10 +234,15 @@ class KDTreeOptimizer:
         self.returningQueue = [cube.centralPoint]
 
     def lowestLocalMinCubeFromCurrentSearchGeneration(self):
-        # Search lowest cube
+        # Search most connected cube
+        conCube = self.cubes[0]
+        for cube in self.cubes:
+            if len(cube.adjacentCubes) > len(conCube.adjacentCubes):
+                conCube = cube
+
+        # Search lowest local minimum from current generation
         localMin = None
         minPoint = None
-        # TODO: Search for cube that is connected to the biggest number of cubes!
         while [localMin, minPoint].count(None) == 2:
             for point in self.points:
                 for closeCube in point.intersectingCubes:
@@ -245,23 +250,19 @@ class KDTreeOptimizer:
                         if point.isLocalMin:
                             if localMin is None or point.value < localMin.value:
                                 localMin = point
-                                break
                         else:
                             if minPoint is None or point.value < minPoint.value:
                                 minPoint = point
-                                break
-
+                        break
             self.currentSearchGeneration += 1
 
         # Reset current search generation
         if self.currentSearchGeneration >= self.maxGeneration:
             self.currentSearchGeneration = 0
 
-        cubes = sorted(minPoint.intersectingCubes, key=lambda cube: cube.generation)[:1]
+        cubes = set([conCube, sorted(minPoint.intersectingCubes, key=lambda cube: cube.generation)[0]])
         if localMin is not None:
-            for cube in localMin.intersectingCubes:
-                if cube not in cubes:
-                    cubes.append(cube)
+            cubes.add(sorted(localMin.intersectingCubes, key=lambda cube: cube.generation)[0])
         return cubes
 
     def nextPoint(self):
