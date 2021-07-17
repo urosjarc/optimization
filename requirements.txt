@@ -1,8 +1,6 @@
 gym
 numpy
 pyrr
-numba
-sortedcontainers
 
 gmsh
 pygmsh
@@ -13,5 +11,3 @@ pyqt5-stubs
 
 pyopengl
 PyOpenGL-accelerate
-
-yappi
