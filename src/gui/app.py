@@ -89,8 +89,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lightCB.stateChanged.connect(self.on_light_toggle)
 
     def __initUI(self):
-        for f in functions(2):
-            self.nameCB.addItem(f'{f.name:<33}{f.hardness:>.2f}', f)
+        for f in functions():
+            self.nameCB.addItem(f'{f.dimensions} {f.name:<30}{f.hardness:>.2f}', f)
 
         for cmap in shader.colormaps():
             self.colormapCB.addItem(QIcon(cmap.preview), '', userData=cmap.id)
@@ -253,7 +253,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             bb = shape.boundBox
             center = bb.center()
-            scale = [1 / (bb.end[i] - bb.start[i]) for i in range(bb.dim)]
+            scale = [1 / (bb.end[i] - bb.start[i]) if (bb.end[i] - bb.start[i]) > 0 else 1 for i in range(bb.dim)]
 
             # Create model with scalled x,y,z to ~1
             funModel = FunctionModel(initBuffers=False)
@@ -271,7 +271,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 for i in range(3):
                     color = [1, 0, 0, 1, 0, 0][i:i + 3] + [1]
                     base = np.array([int(i == j) * (1 / scale[j]) for j in range(3)])
-                    minAxis.add_line((minVector - base).tolist(), (minVector + base).tolist(), color)
+                    if fun.dimensions == 1:
+                        print(minVector)
+                        minAxis.add_line([minVector[0], minVector[1], 0], [minVector[0], minVector[1], 1], color)
+                    elif fun.dimensions == 2:
+                        minAxis.add_line((minVector - base).tolist(), (minVector + base).tolist(), color)
                 minAxisModel.addShape(minAxis)
 
             # Create box grid

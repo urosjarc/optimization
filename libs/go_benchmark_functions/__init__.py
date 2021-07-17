@@ -68,5 +68,6 @@ from .go_funcs_W import *
 from .go_funcs_X import *
 from .go_funcs_Y import *
 from .go_funcs_Z import *
+from .go_funcs_univariate import *
 
 __all__ = [s for s in dir() if not s.startswith('_')]

@@ -22,13 +22,16 @@ class Function:
         }
         return parameters.get('dimensions')
 
-    def __init__(self, f: Benchmark, hardness=-1, rand=True):
+    def __init__(self, f: Benchmark, hardness=-1, rand=False):
         self.benchmark: Benchmark = f()
         self.hardness = hardness
         self.dimensions = self.__function_dim(f)
         self.name = str(f).split('.')[-1][:-2]
         self.minValue = np.nan_to_num(self.benchmark.fglob)
-        self.minVectors = [list(ele) for ele in self.benchmark.global_optimum]
+        if isinstance(self.benchmark.global_optimum, list):
+            self.minVectors = [list(ele) for ele in self.benchmark.global_optimum]
+        else:
+            self.minVectors = [[self.benchmark.global_optimum]]
         self.bounds = []
         self.evaluation = 0
         self.init(rand)
@@ -60,7 +63,7 @@ class Function:
         return np.nan_to_num(self.benchmark.fun(np.array(vector)))
 
 
-def functions(dim) -> List[Function]:
+def functions() -> List[Function]:
     gbfh = {}
     with open(utils.getPath(__file__, '../../data/go_benchmark_functions_hardness.csv')) as f:
         csvf = csv.DictReader(f)
@@ -74,7 +77,6 @@ def functions(dim) -> List[Function]:
                 info = gbfh.get(funName, {})
                 fun = Function(f=benchmark, hardness=info.get('hardness', -1))
 
-                if fun.dimensions == dim:
-                    funs.append(fun);
+                funs.append(fun);
 
     return sorted(funs, key=lambda f: f.hardness, reverse=True)

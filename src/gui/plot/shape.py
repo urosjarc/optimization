@@ -190,8 +190,38 @@ class Shape:
         mesh = meshio.read(utils.getPath(__file__, '../../../data/models/dragon_vrip_res2.ply'))
         return self.__addMesh(mesh.points, mesh.cells[0].data, color)
 
-    def add_function(self, function: Function, step, color=(1, 1, 1, 1), zoomCenter: List[float] = None,
-                     zoom: float = 1):
+    def add_function(self, function: Function, step, color=(1,1,1,1), zoomCenter:List[float] = None, zoom=1):
+        args = (function, step, color, zoomCenter, zoom)
+        if function.dimensions == 1:
+            return self.__add_function1D(*args)
+        elif function.dimensions == 2:
+            return self.__add_function2D(*args)
+        elif function.dimensions == 3:
+            return self.__add_function3D(*args)
+        elif function.dimensions > 3:
+            return self.__add_functionND(*args)
+
+    def __add_function1D(self, function: Function, step, color, zoomCenter, zoom):
+        bounds = function.bounds
+        if zoomCenter is not None and zoom != 1:
+            xRange = abs(bounds[0][0] - bounds[0][1]) / zoom
+            bounds = [
+                [max([bounds[0][0], zoomCenter[0] - xRange]), min([bounds[0][1], zoomCenter[0] + xRange])],
+            ]
+        axis_x = np.linspace(*bounds[0], step)
+        points = []
+
+        for xi in range(len(axis_x)):
+            x = axis_x[xi]
+            points.append([x, function([x]), 0])
+
+        lineShape = Shape()
+        for i in range(len(points)):
+            lineShape.add_point(points[i], color)
+
+        return lineShape
+
+    def __add_function2D(self, function: Function, step, color, zoomCenter, zoom):
 
         bounds = function.bounds
         if zoomCenter is not None and zoom != 1:
@@ -226,3 +256,9 @@ class Shape:
                     sqC += 1
 
         return self.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32), color)
+
+    def __add_function3D(self, function: Function, step, color, zoomCenter, zoom):
+        pass
+
+    def __add_functionND(self, function: Function, step, color, zoomCenter, zoom):
+        pass
