@@ -205,7 +205,7 @@ class Cube:
             point.intersectingCubes.remove(self)
 
 class KDTreeOptimizer:
-    def __init__(self, fun: Function, maxGeneration=18, maxIterations=2000):
+    def __init__(self, fun: Function, maxGeneration=25, maxIterations=2000):
         self.fun: Function = fun
 
         self.cubes: List[Cube] = []
@@ -260,9 +260,13 @@ class KDTreeOptimizer:
         if self.currentSearchGeneration >= self.maxGeneration:
             self.currentSearchGeneration = 0
 
-        cubes = set([conCube, sorted(minPoint.intersectingCubes, key=lambda cube: cube.generation)[0]])
+        cubes = []
         if localMin is not None:
-            cubes.add(sorted(localMin.intersectingCubes, key=lambda cube: cube.generation)[0])
+            cubes += localMin.intersectingCubes
+        otherCubes = [conCube, sorted(minPoint.intersectingCubes, key=lambda cube: cube.generation)[0]]
+        for oc in otherCubes:
+            if oc not in cubes:
+                cubes.append(oc)
         return cubes
 
     def nextPoint(self):

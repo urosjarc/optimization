@@ -10,7 +10,6 @@ import numpy as np
 
 from src import utils
 
-
 class Function:
 
     @staticmethod
@@ -23,7 +22,7 @@ class Function:
         }
         return parameters.get('dimensions')
 
-    def __init__(self, f: Benchmark, hardness=-1):
+    def __init__(self, f: Benchmark, hardness=-1, rand=True):
         self.benchmark: Benchmark = f()
         self.hardness = hardness
         self.dimensions = self.__function_dim(f)
@@ -32,9 +31,9 @@ class Function:
         self.minVectors = [list(ele) for ele in self.benchmark.global_optimum]
         self.bounds = []
         self.evaluation = 0
-        self.init()
+        self.init(rand)
 
-    def init(self):
+    def init(self, rand):
         if self.name == 'ZeroSum':
             self.minVectors = [[0, 0]]
 
@@ -51,7 +50,7 @@ class Function:
                 minOnCenter = True
                 break
 
-        if minOnCenter:
+        if minOnCenter or rand:
             for i in range(len(self.bounds)):
                 diff = self.bounds[i][1] - self.bounds[i][0]
                 self.bounds[i][0] += diff / 20 * (1 + random())

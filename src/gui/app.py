@@ -246,7 +246,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # Create shape
             shape = Shape().add_function(
-                function=fun, step=150,
+                function=fun, step=200,
                 color=[1, 0, 0, 1], zoom=zoom,
                 zoomCenter=firstMinVector
             )
