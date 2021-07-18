@@ -78,8 +78,11 @@ class Model:
 
 
 class FunctionModel(Model):
-    def __init__(self, initBuffers=True):
-        super().__init__(MODEL.FUNCTION, GL_TRIANGLES, 3, initBuffers=initBuffers)
+    def __init__(self, dim, initBuffers=True):
+        if dim == 1:
+            super().__init__(MODEL.FUNCTION, GL_LINES, 3, initBuffers=initBuffers)
+        elif dim == 2:
+            super().__init__(MODEL.FUNCTION, GL_TRIANGLES, 3, initBuffers=initBuffers)
 
 
 class AxisModel(Model):

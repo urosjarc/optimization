@@ -28,13 +28,19 @@ class Function:
         self.dimensions = self.__function_dim(f)
         self.name = str(f).split('.')[-1][:-2]
         self.minValue = np.nan_to_num(self.benchmark.fglob)
+        self.bounds = []
         if isinstance(self.benchmark.global_optimum, list):
             self.minVectors = [list(ele) for ele in self.benchmark.global_optimum]
         else:
             self.minVectors = [[self.benchmark.global_optimum]]
-        self.bounds = []
         self.evaluation = 0
+        self.__fix_dimensions()
         self.init(rand)
+
+    def __fix_dimensions(self):
+        for minV in self.minVectors:
+            if self.dimensions == 1:
+                minV.insert(1, 0)
 
     def init(self, rand):
         if self.name == 'ZeroSum':

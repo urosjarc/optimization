@@ -23,7 +23,7 @@ class OpenGLWidget(QOpenGLWidget):
         self.programLocations: Dict[str, GLuint]
 
         self.view: View = View()
-        self.functionModel = FunctionModel()
+        self.functionModel = FunctionModel(2)
         self.axesModel = AxisModel()
         self.evalPointsModel = EvalPointsModel()
         self.evalLinesModel = EvalLinesModel()

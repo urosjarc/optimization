@@ -12,6 +12,7 @@ lightRate: float = .5
 linesSize: float = 0.1
 colormap: int = 0
 light: bool = False
+dimensionality: int = 2
 
 def getAll():
     d = {}

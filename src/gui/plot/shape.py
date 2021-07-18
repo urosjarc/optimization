@@ -213,11 +213,11 @@ class Shape:
 
         for xi in range(len(axis_x)):
             x = axis_x[xi]
-            points.append([x, function([x]), 0])
+            points.append([x, 0, function([x])])
 
         lineShape = Shape()
-        for i in range(len(points)):
-            lineShape.add_point(points[i], color)
+        for i in range(len(points)-1):
+            lineShape.add_line(points[i], points[i+1], color)
 
         return lineShape
 

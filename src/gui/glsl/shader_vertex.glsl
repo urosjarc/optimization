@@ -63,7 +63,9 @@ void main() {
     //Compute diffuse rate
     float diffuseRate = 1;
     if (type_model == FUNCTION_MODEL)// Shading if function
-    diffuseRate = abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
+        if (ui_dimensionality > 1){
+            diffuseRate = abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
+        }
 
     //Compute colormap
     vec4 surfaceColor = colormap(ui_colormap, model.z+0.5);

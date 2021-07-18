@@ -153,6 +153,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_nextPoint(self):
         point = self.optimizer.nextPoint()
+        if config.dimensionality == 1:
+            point.insert(1, 0)
         pointShape = Shape().add_point(point, [0, 0, 0, 1])
         models = self.optimizer.models()
 
@@ -239,6 +241,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def loadFunction(self, fun: Function):
 
+        config.dimensionality = fun.dimensions
+
         def work(fun: Function, zoom):
 
             # First min vector
@@ -256,7 +260,8 @@ class MainWindow(QtWidgets.QMainWindow):
             scale = [1 / (bb.end[i] - bb.start[i]) if (bb.end[i] - bb.start[i]) > 0 else 1 for i in range(bb.dim)]
 
             # Create model with scalled x,y,z to ~1
-            funModel = FunctionModel(initBuffers=False)
+            funModel = FunctionModel(fun.dimensions, initBuffers=False)
+
             funModel.addShape(shape)
             funModel.view.translate(*-center)
             funModel.view.scale(*scale)
@@ -271,11 +276,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 for i in range(3):
                     color = [1, 0, 0, 1, 0, 0][i:i + 3] + [1]
                     base = np.array([int(i == j) * (1 / scale[j]) for j in range(3)])
-                    if fun.dimensions == 1:
-                        print(minVector)
-                        minAxis.add_line([minVector[0], minVector[1], 0], [minVector[0], minVector[1], 1], color)
-                    elif fun.dimensions == 2:
-                        minAxis.add_line((minVector - base).tolist(), (minVector + base).tolist(), color)
+                    minAxis.add_line((minVector - base).tolist(), (minVector + base).tolist(), color)
                 minAxisModel.addShape(minAxis)
 
             # Create box grid
