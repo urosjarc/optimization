@@ -69,8 +69,10 @@ class OpenGLWidget(QOpenGLWidget):
         glEnable(GL_MULTISAMPLE)
         glEnable(GL_LINE_SMOOTH)
         glEnable(GL_POINT_SMOOTH)
+        glEnable(GL_BLEND)
 
         glDepthFunc(GL_LEQUAL)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glClearDepth(1.0)
 
         self.evalPointsModel.initBuffers()
@@ -97,7 +99,11 @@ class OpenGLWidget(QOpenGLWidget):
         for name, conf in shader.uiConfig().items():
             conf['unimapFun'](self.locations[name], conf['value'])
 
-        models = [self.functionModel, self.axesModel, self.evalLinesModel]
+        models = [self.functionModel, self.axesModel]
+
+        if config.dimensionality != 3:
+            models.append(self.evalLinesModel)
+
         if config.pointsSize > 0:
             models.append(self.evalPointsModel)
 

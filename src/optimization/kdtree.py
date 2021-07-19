@@ -95,7 +95,7 @@ class Cube:
         for axis in range(self.dim):
             self.volume *= abs(self.bounds[axis][1] - self.bounds[axis][0])
 
-        if 2 <= self.dim <= 3:
+        if 2 == self.dim:
             Models.drawGrid(self)
 
     def divide(self, axis):

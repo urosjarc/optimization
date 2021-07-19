@@ -36,7 +36,7 @@ class BoundBox:
     def resize(self, boundBox=None, points=None):
         bb = BoundBox.calculate(points) if points is not None else boundBox
 
-        if not self.start:
+        if len(self.start) == 0:
             self.__dict__ = bb.__dict__
             return
 
@@ -49,6 +49,7 @@ class BoundBox:
     def center(self):
         return np.mean([self.end, self.start], axis=0)
 
+
 class Shape:
 
     def __init__(self):
@@ -57,7 +58,7 @@ class Shape:
         self.normals: List[float] = []
         self.boundBox: BoundBox = BoundBox()
 
-    def __addMesh(self, points, faces, color):
+    def __addMesh(self, points, faces, colors: List[List[float]]=None):
         norm = np.zeros(points.shape, dtype=points.dtype)
         tris = points[faces]
         n = np.cross(tris[::, 1] - tris[::, 0], tris[::, 2] - tris[::, 0])
@@ -65,24 +66,29 @@ class Shape:
         for i in range(3):
             norm[faces[:, i]] += n
         norm /= np.linalg.norm(norm, axis=1, keepdims=True)
-        va = points[faces]
-        no = norm[faces]
-        self.positions += va.ravel().tolist()
-        self.normals += no.ravel().tolist()
-        self.colors += np.tile(color, (faces.size, 1)).ravel().tolist()
+        p = points[faces]
+        n = norm[faces]
+        self.positions += p.ravel().tolist()
+        self.normals += n.ravel().tolist()
+
+        if colors is not None:
+            c = colors[faces]
+            self.colors += c.ravel().tolist()
+        else:
+            self.colors += np.tile([1,1,1,1], (faces.size, 1)).ravel().tolist()
 
         self.boundBox.resize(points=points)
 
         return self
 
-    def add_line(self, start: List[float], finish: List[float], color: List[float]):
+    def add_line(self, start: List[float], finish: List[float], color: List[float] = [1, 1, 1, 1]):
         self.positions += start + finish
         self.colors += color + color
-        self.normals += [0,0,0] + start #TODO: HERE IS WRITTEN WHICH POINT IS STARTING AND ENDING POINT :P
+        self.normals += [0, 0, 0] + start  # TODO: HERE IS WRITTEN WHICH POINT IS STARTING AND ENDING POINT :P
         self.boundBox.resize(points=[start, finish])
         return self
 
-    def add_point(self, location: List[float], color: List[float]):
+    def add_point(self, location: List[float], color: List[float] = [1, 1, 1, 1]):
         self.positions += location
         self.colors += color
         self.normals += location
@@ -91,16 +97,16 @@ class Shape:
 
     def add_boundBox(self, bb: BoundBox):
         color = [0, 0, 0, 1]
-        p0 = [bb.xMin, bb.yMax, bb.zMax]
-        p1 = [bb.xMax, bb.yMax, bb.zMax]
-        p2 = [bb.xMax, bb.yMin, bb.zMax]
-        p3 = [bb.xMin, bb.yMin, bb.zMax]
-        p4 = [bb.xMin, bb.yMax, bb.zMin]
-        p5 = [bb.xMax, bb.yMax, bb.zMin]
-        p6 = [bb.xMax, bb.yMin, bb.zMin]
-        p7 = [bb.xMin, bb.yMin, bb.zMin]
+        p0 = [bb.start[0], bb.end[1], bb.end[2]]
+        p1 = [bb.end[0], bb.end[1], bb.end[2]]
+        p2 = [bb.end[0], bb.start[1], bb.end[2]]
+        p3 = [bb.start[0], bb.start[1], bb.end[2]]
+        p4 = [bb.start[0], bb.end[1], bb.start[2]]
+        p5 = [bb.end[0], bb.end[1], bb.start[2]]
+        p6 = [bb.end[0], bb.start[1], bb.start[2]]
+        p7 = [bb.start[0], bb.start[1], bb.start[2]]
 
-        #Up rectangle
+        # Up rectangle
         self.add_line(
             p0, p1, color
         ).add_line(
@@ -111,7 +117,7 @@ class Shape:
             p3, p0, color
         )
 
-        #Down rectangle
+        # Down rectangle
         self.add_line(
             p4, p5, color
         ).add_line(
@@ -122,7 +128,7 @@ class Shape:
             p7, p4, color
         )
 
-        #Up, down connection
+        # Up, down connection
         self.add_line(
             p0, p4, color
         ).add_line(
@@ -133,7 +139,7 @@ class Shape:
             p3, p7, color
         )
 
-        #Diagonals
+        # Diagonals
 
         self.add_line(
             p0, p6, color
@@ -190,8 +196,8 @@ class Shape:
         mesh = meshio.read(utils.getPath(__file__, '../../../data/models/dragon_vrip_res2.ply'))
         return self.__addMesh(mesh.points, mesh.cells[0].data, color)
 
-    def add_function(self, function: Function, step, color=(1,1,1,1), zoomCenter:List[float] = None, zoom=1):
-        args = (function, step, color, zoomCenter, zoom)
+    def add_function(self, function: Function, step, zoomCenter: List[float] = None, zoom=1):
+        args = (function, step, zoomCenter, zoom)
         if function.dimensions == 1:
             return self.__add_function1D(*args)
         elif function.dimensions == 2:
@@ -201,7 +207,7 @@ class Shape:
         elif function.dimensions > 3:
             return self.__add_functionND(*args)
 
-    def __add_function1D(self, function: Function, step, color, zoomCenter, zoom):
+    def __add_function1D(self, function: Function, step, zoomCenter, zoom):
         bounds = function.bounds
         if zoomCenter is not None and zoom != 1:
             xRange = abs(bounds[0][0] - bounds[0][1]) / zoom
@@ -215,13 +221,12 @@ class Shape:
             x = axis_x[xi]
             points.append([x, 0, function([x])])
 
-        lineShape = Shape()
-        for i in range(len(points)-1):
-            lineShape.add_line(points[i], points[i+1], color)
+        for i in range(len(points) - 1):
+            self.add_line(points[i], points[i + 1])
 
-        return lineShape
+        return self
 
-    def __add_function2D(self, function: Function, step, color, zoomCenter, zoom):
+    def __add_function2D(self, function: Function, step, zoomCenter, zoom):
 
         bounds = function.bounds
         if zoomCenter is not None and zoom != 1:
@@ -255,10 +260,68 @@ class Shape:
                 else:
                     sqC += 1
 
-        return self.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32), color)
+        return self.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32))
 
-    def __add_function3D(self, function: Function, step, color, zoomCenter, zoom):
-        pass
+    def __add_function3D(self, function: Function, step, zoomCenter, zoom):
+        step = int(step*0.2)
+        bounds = function.bounds
+        if zoomCenter is not None and zoom != 1:
+            xRange = abs(bounds[0][0] - bounds[0][1]) / zoom
+            yRange = abs(bounds[1][0] - bounds[1][1]) / zoom
+            zRange = abs(bounds[2][0] - bounds[2][1]) / zoom
+            bounds = [
+                [max([bounds[0][0], zoomCenter[0] - xRange]), min([bounds[0][1], zoomCenter[0] + xRange])],
+                [max([bounds[1][0], zoomCenter[1] - yRange]), min([bounds[1][1], zoomCenter[1] + yRange])],
+                [max([bounds[2][0], zoomCenter[2] - zRange]), min([bounds[2][1], zoomCenter[2] + zRange])]
+            ]
+
+        axis_x = np.linspace(*bounds[0], step)
+        axis_y = np.linspace(*bounds[1], step)
+        axis_z = np.linspace(*bounds[2], step)
+
+        minVal = 10**10
+        maxVal = -10**10
+        layers = []
+        for zi in range(len(axis_z)):
+            points = []
+            faces = []
+            values = []
+            sqC = 0  # Square count
+            for yi in range(len(axis_y)):
+                for xi in range(len(axis_x)):
+                    z = axis_z[zi]
+                    y = axis_y[yi]
+                    x = axis_x[xi]
+                    val = function([x, y, z])
+                    minVal = min([minVal, val])
+                    maxVal = max([maxVal, val])
+                    points.append([x, y, z])
+                    values.append(val)
+                    upPoint = sqC + (len(axis_y))
+
+                    if xi < len(axis_x) - 1 and yi < len(axis_y) - 1:
+                        faces += [
+                            [sqC, sqC + 1, upPoint],
+                            [sqC + 1, upPoint + 1, upPoint],
+                        ]
+                        sqC += 1
+                    else:
+                        sqC += 1
+            layers.append({'points': points, 'values': values, 'faces': faces})
+
+        color = lambda x: 1/(maxVal-minVal) * (x-minVal)
+        for layerObj in layers:
+            colors = []
+            for val in layerObj['values']:
+                c = color(val)
+                colors.append([c, 0, 0, 0.1])
+            self.__addMesh(
+                points=np.array(layerObj['points'], dtype=np.float32),
+                faces=np.array(layerObj['faces'], dtype=np.int32),
+                colors=np.array(colors, dtype=np.float32)
+            )
+
+        return self
 
     def __add_functionND(self, function: Function, step, color, zoomCenter, zoom):
         pass

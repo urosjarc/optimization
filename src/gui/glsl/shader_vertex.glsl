@@ -63,7 +63,7 @@ void main() {
     //Compute diffuse rate
     float diffuseRate = 1;
     if (type_model == FUNCTION_MODEL)// Shading if function
-        if (ui_dimensionality > 1){
+        if (ui_dimensionality == 2){
             diffuseRate = abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
         }
 
@@ -72,20 +72,32 @@ void main() {
 
     switch (type_model){
         case EVAL_POINT_MODEL:
+            if (ui_dimensionality == 3){
+                surfaceColor = in_color;
+                break;
+            }
             surfaceColor = 1 - surfaceColor;
+            surfaceColor.w = 1;
             break;
         case EVAL_LINE_MODEL:
             surfaceColor = 1 - surfaceColor;
             if (length(in_normal) != 0)//Increase line after chosing color for point.
                 surfaceColor = 1-colormap(ui_colormap, normal.z+0.5);
+            surfaceColor.w = 1;
             break;
         case FUNCTION_MODEL:
+            if (ui_dimensionality == 3){
+                surfaceColor = vec4(in_color.xyz, 0.1);
+            }
             break;
         default:
             surfaceColor = in_color;
     }
 
     //Push values to fragment
-    out_color = (ambientColor + diffuseRate * lightColor) * surfaceColor;
+    if(ui_dimensionality <= 2)
+        out_color = (ambientColor + diffuseRate * lightColor) * surfaceColor;
+    else
+        out_color = surfaceColor;
     gl_Position = screenPosition;
 }

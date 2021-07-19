@@ -6,11 +6,12 @@ from PyQt5.QtCore import QTimer, QThreadPool, Qt
 from PyQt5.QtGui import QKeySequence, QIcon
 from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QHBoxLayout, QSlider, \
     QShortcut, QLabel
+from OpenGL.GL import GL_LINES
 
 from src import utils
 from src.gui.glsl import shader
 from src.gui.plot import Shape, Model
-from src.gui.plot.model import FunctionModel, AxisModel
+from src.gui.plot.model import FunctionModel, AxisModel, MODEL
 from src.gui.ui import config
 from src.gui.widgets import OpenGLWidget
 from src.gui.worker import Worker
@@ -183,8 +184,9 @@ class MainWindow(QtWidgets.QMainWindow):
             w.update()
         self.infoL.setText('\n'.join([
             f'Iterations left: {iterLeft}',
-            f'Best point diff: {round(self.fun.minValue - self.optimizer.globalMin.value, 10)}',
+            f'Best point diff: {round(self.optimizer.globalMin.value - self.fun.minValue, 10)}',
             f'Best point cent: {", ".join([str(round(c, 6)) for c in self.optimizer.globalMin.center])}',
+            f'Global min     : {self.fun.minVectors[0]}',
             f'Current min gen: {round(self.optimizer.currentMinGeneration, 1)}'
         ]))
 
@@ -251,12 +253,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # Create shape
             shape = Shape().add_function(
-                function=fun, step=200,
-                color=[1, 0, 0, 1], zoom=zoom,
+                function=fun,
+                step=200,
+                zoom=zoom,
                 zoomCenter=firstMinVector
             )
 
             bb = shape.boundBox
+            print(bb.end, bb.start)
             center = bb.center()
             scale = [1 / (bb.end[i] - bb.start[i]) if (bb.end[i] - bb.start[i]) > 0 else 1 for i in range(bb.dim)]
 
@@ -272,7 +276,10 @@ class MainWindow(QtWidgets.QMainWindow):
             minAxisModel.view.translate(*-center)
             minAxisModel.view.scale(*scale)
             for min2DVector in fun.minVectors:
-                minVector = np.array(min2DVector + [fun.minValue])
+                if fun.dimensions <= 2:
+                    minVector = np.array(min2DVector + [fun.minValue])
+                else:
+                    minVector = np.array(min2DVector)
                 minAxis = Shape()
                 for i in range(3):
                     color = [1, 0, 0, 1, 0, 0][i:i + 3] + [1]
@@ -281,14 +288,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 minAxisModel.addShape(minAxis)
 
             # Create box grid
-            # boundBoxModel = Model(GL_LINES, 3, initBuffers=False)
-            # boundBoxShape = Shape().add_boundBox(bb)
-            # boundBoxModel.addShape(boundBoxShape)
-            # boundBoxModel.view.translate(*-center)
-            # boundBoxModel.view.scale(*scale)
-            # models.append(boundBoxModel)
+            boundBoxModel = Model(MODEL.GENERIC, GL_LINES, 3, initBuffers=False)
+            boundBoxShape = Shape().add_boundBox(bb)
+            boundBoxModel.addShape(boundBoxShape)
+            boundBoxModel.view.translate(*-center)
+            boundBoxModel.view.scale(*scale)
 
-            return [funModel, minAxisModel]
+            return [funModel, minAxisModel, boundBoxModel]
 
         def on_result(widget: OpenGLWidget, models: List[Model]):
             widget.functionModel = models[0]
