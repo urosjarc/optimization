@@ -184,10 +184,16 @@ class OpenGLWidget(QOpenGLWidget):
 
     @property
     def cameraView(self):
-        if config.birdsEye == 1:
-            return self.view.translationMatrix * self.view.scaleMatrix
-        elif config.birdsEye == 2:
-            return self.view.translationMatrix * Matrix44.from_x_rotation(np.pi) * self.view.scaleMatrix
+        if config.dimensionality > 1:
+            if config.birdsEye == 1:
+                return self.view.translationMatrix * self.view.scaleMatrix
+            elif config.birdsEye == 2:
+                return self.view.translationMatrix * Matrix44.from_x_rotation(np.pi) * self.view.scaleMatrix
+        else:
+            if config.birdsEye > 0:
+                scaleFix = Matrix44.from_scale([1,1,0.8])
+                return self.view.translationMatrix * Matrix44.from_x_rotation(np.pi/2) * scaleFix * self.view.scaleMatrix
+
         return self.view.translationMatrix * self.view.rotationMatrix * self.view.scaleMatrix
 
     def update(self, screenView=False, cameraView=False, context=True) -> None:

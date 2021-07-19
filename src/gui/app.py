@@ -215,6 +215,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.nextPointTimer.stop()
 
     def on_name_change(self):
+        self.on_end()
         fun = self.nameCB.currentData()
         if fun and self.inited:
             self.loadFunction(fun)
