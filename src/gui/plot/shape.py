@@ -263,7 +263,7 @@ class Shape:
         return self.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32))
 
     def __add_function3D(self, function: Function, step, zoomCenter, zoom):
-        step = 20
+        step = 2
         bounds = function.bounds
         if zoomCenter is not None and zoom != 1:
             xRange = abs(bounds[0][0] - bounds[0][1]) / zoom
@@ -283,13 +283,9 @@ class Shape:
 
         minVal = 10**10
         maxVal = -10**10
-        calculateValue = lambda x, m, M: 1/(M-m) * (x-m)
 
-        cube = []
         for zi in range(len(axis_z)):
-            plane = []
             for yi in range(len(axis_y)):
-                line = []
                 for xi in range(len(axis_x)):
                     z = axis_z[zi]
                     y = axis_y[yi]
@@ -297,9 +293,6 @@ class Shape:
                     val = function([x, y, z])
                     minVal = min([minVal, val])
                     maxVal = max([maxVal, val])
-                    line.append([x, y, z, val])
-                plane.append(line)
-            cube.append(plane)
 
         valueScaling = lambda x, m, M: 1/(M-m) * (x-m)
 
@@ -307,10 +300,9 @@ class Shape:
             for yi in range(len(axis_y)-1):
                 for xi in range(len(axis_x)-1):
 
-                    point = cube[zi][yi][xi]
-                    x = point[0]
-                    y = point[1]
-                    z = point[2]
+                    x =  axis_x[xi]
+                    y =  axis_y[yi]
+                    z =  axis_z[zi]
                     x2 = axis_x[xi+1]
                     y2 = axis_y[yi+1]
                     z2 = axis_z[zi+1]
@@ -325,22 +317,22 @@ class Shape:
                         [x, y, z2], [x2, y, z2], [x, y2, z2], [x2, y2, z2]
                     ]
 
-                    if xi+1 == len(axis_x)-1:
-                        triangles += [[1,5,7], [1,2,7]]
-                    if yi+1 == len(axis_y)-1:
-                        triangles += [[2,3,6], [2,6,7]]
-                    if zi+1 == len(axis_z)-1:
-                        triangles += [[4,5,6], [5,6,7]]
+                    # if xi+1 == len(axis_x)-1:
+                    #     triangles += [[1,5,7], [1,2,7]]
+                    # if yi+1 == len(axis_y)-1:
+                    #     triangles += [[2,3,6], [2,6,7]]
+                    # if zi+1 == len(axis_z)-1:
+                    #     triangles += [[4,5,6], [5,6,7]]
 
                     values = [function(p) for p in points]
 
-                    calculateValue
                     for tri in triangles:
                         for pi in tri:
                             self.positions += points[pi]
-                            val = valueScaling(values[pi], minVal, maxVal)
-                            self.normals += [val, val, val] #this is a hack
+                            val = 0.5#valueScaling(values[pi], minVal, maxVal)
+                            self.normals += [val] #this is a hack
                             self.colors += [1,1,1,1]
+
 
         return self
 
