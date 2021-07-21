@@ -72,7 +72,7 @@ class OpenGLWidget(QOpenGLWidget):
         glEnable(GL_BLEND)
 
         glDepthFunc(GL_LEQUAL)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glClearDepth(1.0)
 
         self.evalPointsModel.initBuffers()
@@ -110,8 +110,13 @@ class OpenGLWidget(QOpenGLWidget):
         for model in models + self.userModels:
 
             glEnable(GL_DEPTH_TEST)
-            if config.transperency and model in [self.evalPointsModel, self.evalLinesModel]:
-                glDisable(GL_DEPTH_TEST)
+            if config.transperency:
+                if model in [self.evalPointsModel, self.evalLinesModel]:
+                    glDisable(GL_DEPTH_TEST)
+
+                if model == self.axesModel and config.dimensionality == 3:
+                    glDisable(GL_DEPTH_TEST)
+
 
             bd = model.bdata
 

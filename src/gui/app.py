@@ -260,7 +260,6 @@ class MainWindow(QtWidgets.QMainWindow):
             )
 
             bb = shape.boundBox
-            print(bb.end, bb.start)
             center = bb.center()
             scale = [1 / (bb.end[i] - bb.start[i]) if (bb.end[i] - bb.start[i]) > 0 else 1 for i in range(bb.dim)]
 

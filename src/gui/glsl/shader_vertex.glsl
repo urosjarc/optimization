@@ -37,67 +37,72 @@ void main() {
     vec4 model = view_model * position;
 
     /* HEIGHT SCALLING FOR EVAL POINTS AND LINES */
-    switch (type_model){
-        case FUNCTION_MODEL:
+    if (ui_dimensionality < 3){
+        switch (type_model){
+            case FUNCTION_MODEL:
             model.z = height_scalling(model.z, ui_scaleRate);
             break;
-        case EVAL_POINT_MODEL:
+            case EVAL_POINT_MODEL:
             model.z = height_scalling(model.z, ui_scaleRate);
             break;
-        case EVAL_LINE_MODEL:
+            case EVAL_LINE_MODEL:
             model.z = height_scalling(model.z, ui_scaleRate);
-            if (length(in_normal) != 0){ //Increase line after chosing color for point.
+            if (length(in_normal) != 0){ //If current point is end point **HACK**
                 normal = view_model * normal;
                 normal.z = height_scalling(normal.z, ui_scaleRate);
                 model.z += ui_linesSize;
             }
             break;
+        }
     }
 
     //Compute position and normal
     vec4 cameraModelPosition = view_camera * model;
     vec4 screenPosition = view_screen * cameraModelPosition;
-    vec4 cameraModelNormal = view_normal * normal;
-    vec4 lightDirection = light - cameraModelPosition;
 
     //Compute diffuse rate
     float diffuseRate = 1;
-    if (type_model == FUNCTION_MODEL)// Shading if function
-        if (ui_dimensionality == 2){
-            diffuseRate = abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
-        }
+    if (type_model == FUNCTION_MODEL && ui_dimensionality == 2){// Shading if function
+        vec4 cameraModelNormal = view_normal * normal;
+        vec4 lightDirection = light - cameraModelPosition;
+        diffuseRate = abs(dot(normalize(cameraModelNormal.xyz), normalize(lightDirection.xyz)));
+    }
+
+    //Compute colormap value
+    float value = model.z + 0.5;
+    if(ui_dimensionality == 3)
+        value = normal.x;
+
 
     //Compute colormap
-    vec4 surfaceColor = colormap(ui_colormap, model.z+0.5);
-
+    vec4 surfaceColor = colormap(ui_colormap, value);
     switch (type_model){
         case EVAL_POINT_MODEL:
-            if (ui_dimensionality == 3){
-                surfaceColor = in_color;
-                break;
-            }
             surfaceColor = 1 - surfaceColor;
             surfaceColor.w = 1;
             break;
         case EVAL_LINE_MODEL:
             surfaceColor = 1 - surfaceColor;
-            if (length(in_normal) != 0)//Increase line after chosing color for point.
-                surfaceColor = 1-colormap(ui_colormap, normal.z+0.5);
+            if (length(in_normal) != 0){
+                value = normal.z+0.5;
+                surfaceColor = 1-colormap(ui_colormap, value);
+            }
             surfaceColor.w = 1;
             break;
         case FUNCTION_MODEL:
-            if (ui_dimensionality == 3){
-                surfaceColor = vec4(in_color.xyz, 0.1);
-            }
+            if(ui_dimensionality == 3) surfaceColor.w = 1-smoothstep(0, ui_scaleRate, value);
             break;
-        default:
+        default :
             surfaceColor = in_color;
     }
 
     //Push values to fragment
-    if(ui_dimensionality <= 2)
+    if (ui_dimensionality <= 2)
         out_color = (ambientColor + diffuseRate * lightColor) * surfaceColor;
-    else
+    else{
         out_color = surfaceColor;
+    }
+
+
     gl_Position = screenPosition;
 }

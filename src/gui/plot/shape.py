@@ -263,7 +263,7 @@ class Shape:
         return self.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32))
 
     def __add_function3D(self, function: Function, step, zoomCenter, zoom):
-        step = int(step*0.2)
+        step = 20
         bounds = function.bounds
         if zoomCenter is not None and zoom != 1:
             xRange = abs(bounds[0][0] - bounds[0][1]) / zoom
@@ -279,15 +279,17 @@ class Shape:
         axis_y = np.linspace(*bounds[1], step)
         axis_z = np.linspace(*bounds[2], step)
 
+        self.boundBox.resize(points=[[b[1] for b in bounds], [b[0] for b in bounds]])
+
         minVal = 10**10
         maxVal = -10**10
-        layers = []
+        calculateValue = lambda x, m, M: 1/(M-m) * (x-m)
+
+        cube = []
         for zi in range(len(axis_z)):
-            points = []
-            faces = []
-            values = []
-            sqC = 0  # Square count
+            plane = []
             for yi in range(len(axis_y)):
+                line = []
                 for xi in range(len(axis_x)):
                     z = axis_z[zi]
                     y = axis_y[yi]
@@ -295,31 +297,50 @@ class Shape:
                     val = function([x, y, z])
                     minVal = min([minVal, val])
                     maxVal = max([maxVal, val])
-                    points.append([x, y, z])
-                    values.append(val)
-                    upPoint = sqC + (len(axis_y))
+                    line.append([x, y, z, val])
+                plane.append(line)
+            cube.append(plane)
 
-                    if xi < len(axis_x) - 1 and yi < len(axis_y) - 1:
-                        faces += [
-                            [sqC, sqC + 1, upPoint],
-                            [sqC + 1, upPoint + 1, upPoint],
-                        ]
-                        sqC += 1
-                    else:
-                        sqC += 1
-            layers.append({'points': points, 'values': values, 'faces': faces})
+        valueScaling = lambda x, m, M: 1/(M-m) * (x-m)
 
-        color = lambda x: 1/(maxVal-minVal) * (x-minVal)
-        for layerObj in layers:
-            colors = []
-            for val in layerObj['values']:
-                c = color(val)
-                colors.append([c, 0, 0, 0.1])
-            self.__addMesh(
-                points=np.array(layerObj['points'], dtype=np.float32),
-                faces=np.array(layerObj['faces'], dtype=np.int32),
-                colors=np.array(colors, dtype=np.float32)
-            )
+        for zi in range(len(axis_z)-1):
+            for yi in range(len(axis_y)-1):
+                for xi in range(len(axis_x)-1):
+
+                    point = cube[zi][yi][xi]
+                    x = point[0]
+                    y = point[1]
+                    z = point[2]
+                    x2 = axis_x[xi+1]
+                    y2 = axis_y[yi+1]
+                    z2 = axis_z[zi+1]
+
+                    triangles = [
+                        [0,1,2], [0,2,3],
+                        [0,1,5], [0,5,4],
+                        [0,4,6], [0,6,3]
+                    ]
+                    points = [
+                        [x, y, z], [x2, y, z], [x2, y2, z], [x, y2, z],
+                        [x, y, z2], [x2, y, z2], [x, y2, z2], [x2, y2, z2]
+                    ]
+
+                    if xi+1 == len(axis_x)-1:
+                        triangles += [[1,5,7], [1,2,7]]
+                    if yi+1 == len(axis_y)-1:
+                        triangles += [[2,3,6], [2,6,7]]
+                    if zi+1 == len(axis_z)-1:
+                        triangles += [[4,5,6], [5,6,7]]
+
+                    values = [function(p) for p in points]
+
+                    calculateValue
+                    for tri in triangles:
+                        for pi in tri:
+                            self.positions += points[pi]
+                            val = valueScaling(values[pi], minVal, maxVal)
+                            self.normals += [val, val, val] #this is a hack
+                            self.colors += [1,1,1,1]
 
         return self
 
