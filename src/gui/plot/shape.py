@@ -263,7 +263,7 @@ class Shape:
         return self.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32))
 
     def __add_function3D(self, function: Function, step, zoomCenter, zoom):
-        step = 2
+        step = 30
         bounds = function.bounds
         if zoomCenter is not None and zoom != 1:
             xRange = abs(bounds[0][0] - bounds[0][1]) / zoom
@@ -308,29 +308,35 @@ class Shape:
                     z2 = axis_z[zi+1]
 
                     triangles = [
-                        [0,1,2], [0,2,3],
-                        [0,1,5], [0,5,4],
-                        [0,4,6], [0,6,3]
+                        [0,1,3], [0,2,3],
+                        [0,1,5], [0,4,5],
+                        [0,2,6], [0,4,6]
                     ]
                     points = [
-                        [x, y, z], [x2, y, z], [x2, y2, z], [x, y2, z],
-                        [x, y, z2], [x2, y, z2], [x, y2, z2], [x2, y2, z2]
+                        [x, y, z],      # 0
+                        [x2, y, z],     # 1
+                        [x, y2, z],    # 2
+                        [x2, y2, z],     # 3
+                        [x, y, z2],     # 4
+                        [x2, y, z2],    # 5
+                        [x, y2, z2],    # 6
+                        [x2, y2, z2]    # 7
                     ]
 
-                    # if xi+1 == len(axis_x)-1:
-                    #     triangles += [[1,5,7], [1,2,7]]
-                    # if yi+1 == len(axis_y)-1:
-                    #     triangles += [[2,3,6], [2,6,7]]
-                    # if zi+1 == len(axis_z)-1:
-                    #     triangles += [[4,5,6], [5,6,7]]
+                    if xi+1 == len(axis_x)-1:
+                        triangles += [[1,3,7], [1,5,7]]
+                    if yi+1 == len(axis_y)-1:
+                        triangles += [[2,3,7], [2,6,7]]
+                    if zi+1 == len(axis_z)-1:
+                        triangles += [[4,5,7], [4,6,7]]
 
                     values = [function(p) for p in points]
 
                     for tri in triangles:
                         for pi in tri:
                             self.positions += points[pi]
-                            val = 0.5#valueScaling(values[pi], minVal, maxVal)
-                            self.normals += [val] #this is a hack
+                            val = valueScaling(values[pi], minVal, maxVal)
+                            self.normals += [val, val, val] #this is a hack
                             self.colors += [1,1,1,1]
 
 
