@@ -274,17 +274,15 @@ class MainWindow(QtWidgets.QMainWindow):
             minAxisModel = AxisModel(initBuffers=False)
             minAxisModel.view.translate(*-center)
             minAxisModel.view.scale(*scale)
-            for min2DVector in fun.minVectors:
-                if fun.dimensions <= 2:
+            if fun.dimensions == 2:
+                for min2DVector in fun.minVectors:
                     minVector = np.array(min2DVector + [fun.minValue])
-                else:
-                    minVector = np.array(min2DVector)
-                minAxis = Shape()
-                for i in range(3):
-                    color = [1, 0, 0, 1, 0, 0][i:i + 3] + [1]
-                    base = np.array([int(i == j) * (1 / scale[j]) for j in range(3)])
-                    minAxis.add_line((minVector - base).tolist(), (minVector + base).tolist(), color)
-                minAxisModel.addShape(minAxis)
+                    minAxis = Shape()
+                    for i in range(3):
+                        color = [1, 0, 0, 1, 0, 0][i:i + 3] + [1]
+                        base = np.array([int(i == j) * (1 / scale[j]) for j in range(3)])
+                        minAxis.add_line((minVector - base).tolist(), (minVector + base).tolist(), color)
+                    minAxisModel.addShape(minAxis)
 
             # Create box grid
             boundBoxModel = Model(MODEL.GENERIC, GL_LINES, 3, initBuffers=False)

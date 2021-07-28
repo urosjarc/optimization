@@ -99,10 +99,7 @@ class OpenGLWidget(QOpenGLWidget):
         for name, conf in shader.uiConfig().items():
             conf['unimapFun'](self.locations[name], conf['value'])
 
-        models = [self.functionModel, self.axesModel]
-
-        if config.dimensionality != 3:
-            models.append(self.evalLinesModel)
+        models = [self.functionModel, self.axesModel, self.evalLinesModel]
 
         if config.pointsSize > 0:
             models.append(self.evalPointsModel)
@@ -113,10 +110,6 @@ class OpenGLWidget(QOpenGLWidget):
             if config.transperency:
                 if model in [self.evalPointsModel, self.evalLinesModel]:
                     glDisable(GL_DEPTH_TEST)
-
-                if model == self.axesModel and config.dimensionality == 3:
-                    glDisable(GL_DEPTH_TEST)
-
 
             bd = model.bdata
 
