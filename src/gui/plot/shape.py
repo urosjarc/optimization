@@ -4,8 +4,11 @@ from typing import List
 import meshio
 import numpy as np
 import pygmsh
+from hilbertcurve.hilbertcurve import HilbertCurve
 
 from src import utils
+from src.math import mapping
+from src.math.mapping import getPartitions
 from src.optimization.space import Function
 
 
@@ -202,9 +205,7 @@ class Shape:
             return self.__add_function1D(*args)
         elif function.dimensions == 2:
             return self.__add_function2D(*args)
-        elif function.dimensions == 3:
-            return self.__add_function3D(*args)
-        elif function.dimensions > 3:
+        elif function.dimensions >= 3:
             return self.__add_functionND(*args)
 
     def __add_function1D(self, function: Function, step, zoomCenter, zoom):
@@ -262,85 +263,34 @@ class Shape:
 
         return self.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32))
 
-    def __add_function3D(self, function: Function, step, zoomCenter, zoom):
-        step = 30
-        bounds = function.bounds
-        if zoomCenter is not None and zoom != 1:
-            xRange = abs(bounds[0][0] - bounds[0][1]) / zoom
-            yRange = abs(bounds[1][0] - bounds[1][1]) / zoom
-            zRange = abs(bounds[2][0] - bounds[2][1]) / zoom
-            bounds = [
-                [max([bounds[0][0], zoomCenter[0] - xRange]), min([bounds[0][1], zoomCenter[0] + xRange])],
-                [max([bounds[1][0], zoomCenter[1] - yRange]), min([bounds[1][1], zoomCenter[1] + yRange])],
-                [max([bounds[2][0], zoomCenter[2] - zRange]), min([bounds[2][1], zoomCenter[2] + zRange])]
-            ]
+    def __add_functionND(self, function: Function, step, zoomCenter, zoom):
+        axis_x = np.linspace(0,1, step)
+        axis_y = np.linspace(0,1, step)
 
-        axis_x = np.linspace(*bounds[0], step)
-        axis_y = np.linspace(*bounds[1], step)
-        axis_z = np.linspace(*bounds[2], step)
+        points = []
+        faces = []
 
-        self.boundBox.resize(points=[[b[1] for b in bounds], [b[0] for b in bounds]])
+        hc = HilbertCurve(p=getPartitions(step**2, 2), n=2, n_procs=-1)
+        part = getPartitions(hc.max_h, function.dimensions)
+        hcn = HilbertCurve(p=part, n=function.dimensions, n_procs=-1)
 
-        minVal = 10**10
-        maxVal = -10**10
+        sqC = 0  # Square count
+        for yi in range(len(axis_y)):
+            for xi in range(len(axis_x)):
+                y = axis_y[yi]
+                x = axis_x[xi]
+                prog = [xi/(len(axis_x)-1), yi/(len(axis_y)-1)]
+                value = mapping.mappedValue(hcn, hc, prog, function)
+                points.append([x, y, value])
+                upPoint = sqC + (len(axis_y))
 
-        for zi in range(len(axis_z)):
-            for yi in range(len(axis_y)):
-                for xi in range(len(axis_x)):
-                    z = axis_z[zi]
-                    y = axis_y[yi]
-                    x = axis_x[xi]
-                    val = function([x, y, z])
-                    minVal = min([minVal, val])
-                    maxVal = max([maxVal, val])
-
-        valueScaling = lambda x, m, M: 1/(M-m) * (x-m)
-
-        for zi in range(len(axis_z)-1):
-            for yi in range(len(axis_y)-1):
-                for xi in range(len(axis_x)-1):
-
-                    x =  axis_x[xi]
-                    y =  axis_y[yi]
-                    z =  axis_z[zi]
-                    x2 = axis_x[xi+1]
-                    y2 = axis_y[yi+1]
-                    z2 = axis_z[zi+1]
-
-                    triangles = [
-                        [0,1,3], [0,2,3],
-                        [0,1,5], [0,4,5],
-                        [0,2,6], [0,4,6]
+                if xi < len(axis_x) - 1 and yi < len(axis_y) - 1:
+                    faces += [
+                        [sqC, sqC + 1, upPoint],
+                        [sqC + 1, upPoint + 1, upPoint],
                     ]
-                    points = [
-                        [x, y, z],      # 0
-                        [x2, y, z],     # 1
-                        [x, y2, z],    # 2
-                        [x2, y2, z],     # 3
-                        [x, y, z2],     # 4
-                        [x2, y, z2],    # 5
-                        [x, y2, z2],    # 6
-                        [x2, y2, z2]    # 7
-                    ]
+                    sqC += 1
+                else:
+                    sqC += 1
 
-                    if xi+1 == len(axis_x)-1:
-                        triangles += [[1,3,7], [1,5,7]]
-                    if yi+1 == len(axis_y)-1:
-                        triangles += [[2,3,7], [2,6,7]]
-                    if zi+1 == len(axis_z)-1:
-                        triangles += [[4,5,7], [4,6,7]]
-
-                    values = [function(p) for p in points]
-
-                    for tri in triangles:
-                        for pi in tri:
-                            self.positions += points[pi]
-                            val = valueScaling(values[pi], minVal, maxVal)
-                            self.normals += [val, val, val] #this is a hack
-                            self.colors += [1,1,1,1]
-
-
-        return self
-
-    def __add_functionND(self, function: Function, step, color, zoomCenter, zoom):
-        pass
+        return self.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32)), hc, hcn

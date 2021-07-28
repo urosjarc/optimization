@@ -37,23 +37,21 @@ void main() {
     vec4 model = view_model * position;
 
     /* HEIGHT SCALLING FOR EVAL POINTS AND LINES */
-    if (ui_dimensionality < 3){
-        switch (type_model){
-            case FUNCTION_MODEL:
-            model.z = height_scalling(model.z, ui_scaleRate);
-            break;
-            case EVAL_POINT_MODEL:
-            model.z = height_scalling(model.z, ui_scaleRate);
-            break;
-            case EVAL_LINE_MODEL:
-            model.z = height_scalling(model.z, ui_scaleRate);
-            if (length(in_normal) != 0){ //If current point is end point **HACK**
-                normal = view_model * normal;
-                normal.z = height_scalling(normal.z, ui_scaleRate);
-                model.z += ui_linesSize;
-            }
-            break;
+    switch (type_model){
+        case FUNCTION_MODEL:
+        model.z = height_scalling(model.z, ui_scaleRate);
+        break;
+        case EVAL_POINT_MODEL:
+        model.z = height_scalling(model.z, ui_scaleRate);
+        break;
+        case EVAL_LINE_MODEL:
+        model.z = height_scalling(model.z, ui_scaleRate);
+        if (length(in_normal) != 0){ //If current point is end point **HACK**
+            normal = view_model * normal;
+            normal.z = height_scalling(normal.z, ui_scaleRate);
+            model.z += ui_linesSize;
         }
+        break;
     }
 
     //Compute position and normal
@@ -70,9 +68,6 @@ void main() {
 
     //Compute colormap value
     float value = model.z + 0.5;
-    if(ui_dimensionality == 3)
-        value = normal.x;
-
 
     //Compute colormap
     vec4 surfaceColor = colormap(ui_colormap, value);
@@ -90,19 +85,12 @@ void main() {
             surfaceColor.w = 1;
             break;
         case FUNCTION_MODEL:
-            if(ui_dimensionality == 3) surfaceColor.w = 1-smoothstep(0, ui_scaleRate, value);
             break;
         default :
             surfaceColor = in_color;
     }
 
     //Push values to fragment
-    if (ui_dimensionality <= 2)
-        out_color = (ambientColor + diffuseRate * lightColor) * surfaceColor;
-    else{
-        out_color = surfaceColor;
-    }
-
-
+    out_color = (ambientColor + diffuseRate * lightColor) * surfaceColor;
     gl_Position = screenPosition;
 }
