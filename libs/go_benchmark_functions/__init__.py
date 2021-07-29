@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 ==============================================================================
-`go_benchmark_functions` --  Problems for testing global optimization routines
+`go_benchmark_functions2` --  Problems for testing global optimization routines
 ==============================================================================
 
 This module provides a comprehensive set of problems for benchmarking global
