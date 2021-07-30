@@ -190,7 +190,6 @@ class MainWindow(QtWidgets.QMainWindow):
             f'Best point diff: {round(self.optimizer.globalMin.value - self.fun.minValue, 10)}',
             f'Best point cent: {", ".join([str(round(c, 6)) for c in self.optimizer.globalMin.center])}',
             f'Global min     : {self.fun.minVectors[0]}',
-            f'Current min gen: {round(self.optimizer.currentMinGeneration, 1)}'
         ]))
 
         if iterLeft <= 0:
