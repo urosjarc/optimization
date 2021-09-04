@@ -14,8 +14,8 @@ def startGUI():
 
 def startTUI():
     funcs = functions()
-    fun = funcs[12]
-    opt = KDTreeOptimizer(fun, fun.bounds, maxGeneration=20, maxIterations=10000)
+    fun = funcs[10]
+    opt = KDTreeOptimizer(fun, fun.bounds, maxGeneration=10, maxIterations=30000)
 
     print(fun)
     minVector = None
@@ -35,5 +35,5 @@ def startTUI():
     print(f"\nBEST VECTOR[{minIter}]: {minVector[:-1]} {minVector[-1]}")
 
 if __name__ == '__main__':
-    # startTUI()
-    startGUI()
+    startTUI()
+    # startGUI()

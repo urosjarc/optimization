@@ -234,23 +234,7 @@ class KDTreeOptimizer:
 
     def lowestLocalMinCubeFromCurrentSearchGeneration(self):
         # Search most connected cube
-        criteria = {
-            "adjacentCubes": [],
-            "distance": [],
-            "height": [],
-            "generation": []
-        }
-        conCubes = sorted(self.cubes, key=lambda c: (len(c.adjacentCubes), -c.generation//2, -sum([(ele-self.globalMin.vector[i])**2 for i, ele in enumerate(c.centralPoint.vector)])), reverse=True)[:2**len(self.bounds)]
-        # for c in cubes:
-        #     criteria['adjacentCubes'].append(len(c.adjacentCubes))
-        #     criteria['distance'].append(sum([(ele-self.globalMin.vector[i])**2 for i, ele in enumerate(c.centralPoint.vector)])**0.5)
-        #     criteria['height'].append(c.centralPoint.value)
-        #     criteria['generation'].append(c.generation)
-        # for k, v in criteria.items():
-        #     criteria[k] += np.array(v)/max(v)
-        #
-        # allCriteria = criteria["generation"]*100 + criteria["height"]*-25
-        # conCubes = [cubes[i] for i in np.argsort(allCriteria)[-2**len(self.bounds):]]
+        conCubes = sorted(self.cubes, key=lambda c: (len(c.adjacentCubes), -c.generation, -sum([(ele-self.globalMin.vector[i])**2 for i, ele in enumerate(c.centralPoint.vector)])), reverse=True)[:2**len(self.bounds)]
 
         # Search lowest local minimum from current generation
         localMin = None
