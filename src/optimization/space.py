@@ -4,14 +4,11 @@ from random import random
 from statistics import mean
 from typing import List
 
-from hilbertcurve.hilbertcurve import HilbertCurve
-
 from libs import go_benchmark_functions
 from libs.go_benchmark_functions.go_benchmark import Benchmark
 import numpy as np
 
 from src import utils
-from src.math import mapping
 
 
 class Function:
@@ -79,24 +76,12 @@ class Function:
                 diff = self.bounds[i][1] - self.bounds[i][0]
                 self.bounds[i][0] += diff / 20 * (1 + random())
 
-    def initHilbert2DMapping(self, axisSteps):
-        self.hc2 = HilbertCurve(p=mapping.getPartitions(axisSteps**self.dimensions, 2), n=2, n_procs=-1)
-        part = mapping.getPartitions(self.hc2.max_h, self.dimensions)
-        self.hcN = HilbertCurve(p=part, n=self.dimensions, n_procs=-1)
-
-    def getHilbert2DProgressVector(self, vectorND, bounds=None):
-        bound = self.bounds if bounds is None else bounds
-        progressVector = mapping.getProgressVector(vectorND, bound)
-        return mapping.mappedPoint(self.hcN, self.hc2, progressVector, [[0,1], [0,1]])
-
-    def getHilbert2DMappedValue(self, vector2D, bounds=None):
-        bound = self.bounds if bounds is None else bounds
-        progressVector = mapping.getProgressVector(vector2D, bound)
-        return self(mapping.mappedPoint(self.hc2, self.hcN, progressVector, self.bounds))
-
     def __call__(self, vector):
         self.evaluation += 1
         return np.nan_to_num(self.benchmark.fun(np.array(vector)))
+
+    def __str__(self):
+        return f'{self.name}(dim={self.dimensions}, hard={self.hardness}%, minVec={self.minVectors}, min={self.minValue})'
 
 
 def functions() -> List[Function]:
@@ -112,7 +97,6 @@ def functions() -> List[Function]:
             if issubclass(benchmark, Benchmark) and funName not in ['Benchmark']:
                 info = gbfh.get(funName, {})
                 fun = Function(f=benchmark, hardness=info.get('hardness', -1))
-
-                funs.append(fun);
+                funs.append(fun)
 
     return sorted(funs, key=lambda f: f.hardness, reverse=True)

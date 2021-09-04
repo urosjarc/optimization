@@ -22,7 +22,7 @@ libs:
 	mv temp/colormap-shaders/shaders/glsl libs/colormap_shaders/glsl
 	mv temp/colormap-shaders/sample libs/colormap_shaders/previews
 
-	mv temp/scipy libs/go_benchmark_functions
+	mv temp/scipy/benchmarks/benchmarks/go_benchmark_functions libs/go_benchmark_functions
 
 	rm temp -rf
 

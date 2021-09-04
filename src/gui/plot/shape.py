@@ -4,11 +4,8 @@ from typing import List
 import meshio
 import numpy as np
 import pygmsh
-from hilbertcurve.hilbertcurve import HilbertCurve
 
 from src import utils
-from src.math import mapping
-from src.math.mapping import getPartitions
 from src.optimization.space import Function
 
 
@@ -205,8 +202,6 @@ class Shape:
             return self.__add_function1D(*args)
         elif function.dimensions == 2:
             return self.__add_function2D(*args)
-        elif function.dimensions >= 3:
-            return self.__add_functionND(*args)
 
     def __add_function1D(self, function: Function, step, zoomCenter, zoom):
         bounds = function.bounds
@@ -250,44 +245,6 @@ class Shape:
                 y = axis_y[yi]
                 x = axis_x[xi]
                 points.append([x, y, function([x, y])])
-                upPoint = sqC + (len(axis_y))
-
-                if xi < len(axis_x) - 1 and yi < len(axis_y) - 1:
-                    faces += [
-                        [sqC, sqC + 1, upPoint],
-                        [sqC + 1, upPoint + 1, upPoint],
-                    ]
-                    sqC += 1
-                else:
-                    sqC += 1
-
-        return self.__addMesh(np.array(points, dtype=np.float32), np.array(faces, dtype=np.int32))
-
-    def __add_functionND(self, function: Function, step, zoomCenter, zoom):
-
-        function.initHilbert2DMapping(step)
-        bounds = function.getHilbert2DProgressVector(zoomCenter)
-
-        if zoomCenter is not None and zoom != 1:
-            xRange = abs(bounds[0][0] - bounds[0][1]) / zoom
-            yRange = abs(bounds[1][0] - bounds[1][1]) / zoom
-            bounds = [
-                [max([bounds[0][0], zoomCenter[0] - xRange]), min([bounds[0][1], zoomCenter[0] + xRange])],
-                [max([bounds[1][0], zoomCenter[1] - yRange]), min([bounds[1][1], zoomCenter[1] + yRange])]
-            ]
-        axis_x = np.linspace(*bounds[0], step)
-        axis_y = np.linspace(*bounds[1], step)
-
-        points = []
-        faces = []
-
-        sqC = 0  # Square count
-        for yi in range(len(axis_y)):
-            for xi in range(len(axis_x)):
-                y = axis_y[yi]
-                x = axis_x[xi]
-                value = function.getHilbert2DMappedValue([x, y], bounds=[[0, 1], [0, 1]])
-                points.append([x, y, value])
                 upPoint = sqC + (len(axis_y))
 
                 if xi < len(axis_x) - 1 and yi < len(axis_y) - 1:

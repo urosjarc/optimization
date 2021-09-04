@@ -36,11 +36,14 @@ class BufferData:
                      GL_DYNAMIC_DRAW)
 
     def __del__(self):
-        glDeleteBuffers(3, [
-            self.normalBuffer,
-            self.positionBuffer,
-            self.colorBuffer,
-        ])
+        try:
+            glDeleteBuffers(3, [
+                self.normalBuffer,
+                self.positionBuffer,
+                self.colorBuffer,
+            ])
+        except Exception:
+            pass
 
     def appendBuffers(self, positions, colors, normals):
         positions = np.array(positions, dtype=np.float32)

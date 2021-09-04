@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import copy
-from enum import Enum
 from statistics import mean
-from typing import List
+from typing import List, Callable
 
+import numpy as np
 from OpenGL import GL
 
 from src.gui.plot import Model, Shape
 from src.gui.plot.model import MODEL
-from src.optimization.space import Function
-
 
 # TODO: DO NOT MAKE A TREE THERE SHALL BE ONLY END CUBES WITH DOUBLE CONNECTED POINTS CONNECTIONS
 # TODO: SEARCH MIN CUBE FROM LIST OF CONNECTED CUBES TO A POINT!
@@ -205,8 +203,9 @@ class Cube:
             point.intersectingCubes.remove(self)
 
 class KDTreeOptimizer:
-    def __init__(self, fun: Function, maxGeneration=25, maxIterations=2000):
-        self.fun: Function = fun
+    def __init__(self, fun: Callable, bounds: List[List[float]],  maxGeneration=15, maxIterations=2000):
+        self.fun: Callable = fun
+        self.bounds = bounds
 
         self.cubes: List[Cube] = []
         self.points: List[Point] = []
@@ -224,7 +223,7 @@ class KDTreeOptimizer:
         self.init()
 
     def init(self):
-        cube = Cube(self.fun.bounds)
+        cube = Cube(self.bounds)
         cube.generation = 0
 
         self.cubes = [cube]
@@ -235,10 +234,23 @@ class KDTreeOptimizer:
 
     def lowestLocalMinCubeFromCurrentSearchGeneration(self):
         # Search most connected cube
-        conCube = self.cubes[0]
-        for cube in self.cubes:
-            if len(cube.adjacentCubes) > len(conCube.adjacentCubes):
-                conCube = cube
+        criteria = {
+            "adjacentCubes": [],
+            "distance": [],
+            "height": [],
+            "generation": []
+        }
+        conCubes = sorted(self.cubes, key=lambda c: (len(c.adjacentCubes), -c.generation//2, -sum([(ele-self.globalMin.vector[i])**2 for i, ele in enumerate(c.centralPoint.vector)])), reverse=True)[:2**len(self.bounds)]
+        # for c in cubes:
+        #     criteria['adjacentCubes'].append(len(c.adjacentCubes))
+        #     criteria['distance'].append(sum([(ele-self.globalMin.vector[i])**2 for i, ele in enumerate(c.centralPoint.vector)])**0.5)
+        #     criteria['height'].append(c.centralPoint.value)
+        #     criteria['generation'].append(c.generation)
+        # for k, v in criteria.items():
+        #     criteria[k] += np.array(v)/max(v)
+        #
+        # allCriteria = criteria["generation"]*100 + criteria["height"]*-25
+        # conCubes = [cubes[i] for i in np.argsort(allCriteria)[-2**len(self.bounds):]]
 
         # Search lowest local minimum from current generation
         localMin = None
@@ -263,7 +275,7 @@ class KDTreeOptimizer:
         cubes = []
         if localMin is not None:
             cubes += localMin.intersectingCubes
-        otherCubes = [conCube, sorted(minPoint.intersectingCubes, key=lambda cube: cube.generation)[0]]
+        otherCubes = conCubes + [sorted(minPoint.intersectingCubes, key=lambda cube: cube.generation)[0]]
         for oc in otherCubes:
             if oc not in cubes:
                 cubes.append(oc)
@@ -323,7 +335,6 @@ class KDTreeOptimizer:
 
     def models(self):
         return [Models.grids, Models.localMins]
-
 
 class Models:
     grids = Model(MODEL.GENERIC, GL.GL_LINES, 2, initBuffers=False)

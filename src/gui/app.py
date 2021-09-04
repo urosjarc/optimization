@@ -5,7 +5,7 @@ from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QTimer, QThreadPool, Qt
 from PyQt5.QtGui import QKeySequence, QIcon
 from PyQt5.QtWidgets import QPushButton, QSpinBox, QComboBox, QCheckBox, QHBoxLayout, QSlider, \
-    QShortcut, QLabel
+    QShortcut, QLabel, QMessageBox
 from OpenGL.GL import GL_LINES
 
 from src import utils
@@ -91,7 +91,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __initUI(self):
         for f in functions():
-            self.nameCB.addItem(f'{f.dimensions} {f.name:<30}{f.hardness:>.2f}', f)
+            if f.dimensions <= 2:
+                self.nameCB.addItem(f'{f.dimensions} {f.name:<30}{f.hardness:>.2f}', f)
 
         for cmap in shader.colormaps():
             self.colormapCB.addItem(QIcon(cmap.preview), '', userData=cmap.id)
@@ -156,8 +157,6 @@ class MainWindow(QtWidgets.QMainWindow):
         point = self.optimizer.nextPoint()
         if config.dimensionality == 1:
             point.insert(1, 0)
-        elif config.dimensionality > 2:
-            point = self.fun.getHilbert2DProgressVector(point[:-1]) + [point[-1]]
 
         pointShape = Shape().add_point(point, [0, 0, 0, 1])
         models = self.optimizer.models()
@@ -198,7 +197,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_start(self):
         self.fun: Function = self.nameCB.currentData()
         self.fun.evaluation = 0
-        self.optimizer = KDTreeOptimizer(self.nameCB.currentData(), maxIterations=self.iterationsSB.value())
+        fun = self.nameCB.currentData()
+        self.optimizer = KDTreeOptimizer(fun, fun.bounds, maxIterations=self.iterationsSB.value())
         for m in self.optimizer.models():
             m.initBuffers()
         self.iterationsLeft = self.iterationsSB.value()
@@ -278,8 +278,6 @@ class MainWindow(QtWidgets.QMainWindow):
             minAxisModel.view.scale(*scale)
 
             for min2DVector in fun.minVectors:
-                if fun.dimensions > 2:
-                    min2DVector = fun.getHilbert2DProgressVector(min2DVector)
                 minVector = np.array(min2DVector + [fun.minValue])
                 minAxis = Shape()
                 for i in range(3):

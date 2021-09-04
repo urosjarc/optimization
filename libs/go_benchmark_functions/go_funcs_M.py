@@ -3,6 +3,9 @@ from numpy import (abs, asarray, cos, exp, log, arange, pi, prod, sin, sqrt,
                    sum, tan)
 from .go_benchmark import Benchmark
 
+from scipy.special import factorial
+
+
 class Matyas(Benchmark):
 
     r"""

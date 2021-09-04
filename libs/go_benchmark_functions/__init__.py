@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 ==============================================================================
-`go_benchmark_functions2` --  Problems for testing global optimization routines
+`go_benchmark_functions` --  Problems for testing global optimization routines
 ==============================================================================
 
 This module provides a comprehensive set of problems for benchmarking global
@@ -68,6 +68,5 @@ from .go_funcs_W import *
 from .go_funcs_X import *
 from .go_funcs_Y import *
 from .go_funcs_Z import *
-from .go_funcs_univariate import *
 
 __all__ = [s for s in dir() if not s.startswith('_')]
